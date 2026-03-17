@@ -454,4 +454,48 @@ body {
   font-size: 1.1rem;
   color: #c40000;
   font-weight: bold;
+}.floating-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 85px;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  z-index: 9999;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+/* Logo a la izquierda */
+.floating-logo {
+  height: 55px;
+  margin-left: 20px;
+}
+
+/* TEXTO CENTRADO REAL */
+.floating-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+}
+
+.floating-center h3 {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #111;
+}
+
+.floating-center p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+/* Para que el contenido no quede debajo */
+.page {
+  padding-top: 95px;
 }

@@ -87,9 +87,14 @@ export default function Home() {
 
   return (
     <main className="page">
-      <header className="top-header">
-        <img src="/logo.png" alt="Logo" className="logo" />
-      </header>
+<header className="floating-header">
+  <img src="/logo.png" alt="Logo" className="floating-logo" />
+
+  <div className="floating-center">
+    <h3>RIFAS-LSD</h3>
+    <p>DT 175 del año</p>
+  </div>
+</header>
 
       <section className="hero-switch">
         <div className="image-wrapper">
