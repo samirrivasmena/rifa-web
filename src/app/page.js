@@ -94,13 +94,13 @@ export default function Home() {
       <section className="hero-switch">
         <div className="image-wrapper">
           <img
-            src="/foto-dt-azul.jpeg"
+            src="/FOTO-DT-AZUL.jpeg"
             alt="Primera imagen"
             className={`hero-image fade-image ${showSecondImage ? "hide" : "show"}`}
           />
 
           <img
-            src="/foto-dt-azul2.jpeg"
+            src="/FOTO-DT-AZUL2.jpeg"
             alt="Segunda imagen"
             className={`hero-image fade-image second-layer ${showSecondImage ? "show" : "hide"}`}
           />
