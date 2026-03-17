@@ -1,0 +1,457 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: #ffffff;
+  color: #111;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+.page {
+  width: 100%;
+  max-width: 500px;
+  margin: 0 auto;
+  background: #fff;
+}
+
+.top-header {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px 15px 10px;
+  background: white;
+}
+
+.logo {
+  width: 140px;
+  height: auto;
+  object-fit: contain;
+}
+
+.hero-switch {
+  width: 100%;
+}
+
+.image-wrapper {
+  position: relative;
+  width: 100%;
+  height: 650px;
+  overflow: hidden;
+}
+
+.hero-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.fade-image {
+  position: absolute;
+  top: 0;
+  left: 0;
+  transition: opacity 1s ease-in-out;
+}
+
+.second-layer {
+  z-index: 2;
+}
+
+.show {
+  opacity: 1;
+}
+
+.hide {
+  opacity: 0;
+}
+
+.fade-overlay {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 180px;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0) 0%, #ffffff 100%);
+  z-index: 3;
+  pointer-events: none;
+}
+
+.title-box {
+  text-align: center;
+  padding: 20px;
+}
+
+.title-box h1 {
+  font-size: 2rem;
+  font-weight: 900;
+}
+
+.title-box p {
+  font-size: 1.2rem;
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.section {
+  padding: 25px 20px;
+}
+
+.section h2 {
+  font-size: 2rem;
+  text-align: center;
+  margin-bottom: 10px;
+  font-weight: 900;
+}
+
+.section p {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.ticket-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.ticket-card {
+  background: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 16px;
+  padding: 30px 20px;
+  font-size: 1.8rem;
+  font-weight: bold;
+  text-align: left;
+  box-shadow: 0 4px 0 #8a0000;
+  cursor: pointer;
+}
+
+.ticket-card.active {
+  background: #000;
+  box-shadow: 0 4px 0 #444;
+}
+
+.selected-box {
+  margin-top: 20px;
+  padding: 15px;
+  border: 2px solid #ddd;
+  border-radius: 12px;
+  text-align: center;
+  font-size: 1.1rem;
+}
+
+.payment-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.payment-card {
+  background: #fff;
+  border: 2px solid #f3c6c6;
+  border-radius: 14px;
+  padding: 18px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.06);
+}
+
+.payment-card.active {
+  border: 2px solid red;
+  background: #fff5f5;
+}
+
+.payment-info {
+  margin-top: 20px;
+  border: 2px solid red;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.payment-info h3 {
+  font-size: 1.8rem;
+  margin-bottom: 15px;
+}
+
+.payment-info p {
+  text-align: left;
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.form input {
+  width: 100%;
+  padding: 18px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 1rem;
+}
+
+.upload-label {
+  display: block;
+  padding: 18px;
+  border: 1px dashed #999;
+  border-radius: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.main-btn {
+  background: #f8a8b5;
+  color: white;
+  border: none;
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.verify-section input {
+  width: 100%;
+  padding: 18px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  margin-bottom: 15px;
+  font-size: 1rem;
+}
+
+.verify-btn {
+  width: 100%;
+  background: #ddd;
+  border: none;
+  padding: 16px;
+  border-radius: 10px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.footer {
+  background: #000;
+  color: white;
+  padding: 40px 20px;
+  text-align: center;
+  margin-top: 30px;
+}
+
+.footer h2 {
+  font-size: 2rem;
+  margin-bottom: 20px;
+  text-transform: uppercase;
+}
+
+.footer-links {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.footer-links a {
+  color: white;
+  text-decoration: none;
+  border: 1px solid #666;
+  border-radius: 30px;
+  padding: 12px;
+  display: inline-block;
+}
+
+@media (max-width: 480px) {
+  .logo {
+    width: 110px;
+  }
+
+  .image-wrapper {
+    height: 500px;
+  }
+
+  .ticket-card {
+    font-size: 1.5rem;
+    padding: 25px 15px;
+  }
+
+  .section h2 {
+    font-size: 1.7rem;
+  }
+
+  .title-box h1 {
+    font-size: 1.7rem;
+  }
+}.whatsapp-float {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 62px;
+  height: 62px;
+  background: #25d366;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.08);
+  background: #1ebe5d;
+}
+
+.whatsapp-icon {
+  width: 34px;
+  height: 34px;
+}.ticket-section-red {
+  background: #ffffff;
+  padding: 30px 20px 35px;
+  text-align: center;
+  color: #111;
+}
+
+.ticket-title-red {
+  font-size: 2.2rem;
+  font-weight: 900;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  color: #c40000;
+}
+
+.ticket-subtitle-red {
+  font-size: 1rem;
+  color: #444;
+  margin-bottom: 25px;
+}
+
+.ticket-counter {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 28px;
+  margin-bottom: 16px;
+}
+
+.counter-btn-red {
+  width: 62px;
+  height: 62px;
+  border: none;
+  border-radius: 50%;
+  font-size: 2.5rem;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: transform 0.2s ease;
+}
+
+.counter-btn-red:hover {
+  transform: scale(1.05);
+}
+
+.minus-red {
+  background: #ffd6d6;
+  color: #ff0000;
+}
+
+.plus-red {
+  background: #ff0000;
+  color: white;
+}
+
+.ticket-input-red {
+  width: 100px;
+  height: 58px;
+  border: 2px solid #ffb3b3;
+  border-radius: 8px;
+  text-align: center;
+  font-size: 2rem;
+  font-weight: bold;
+  background: white;
+  color: #111;
+  outline: none;
+}
+
+.ticket-label-red {
+  font-size: 1rem;
+  color: #555;
+  margin-bottom: 18px;
+}
+
+.quick-ticket-buttons-red {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.quick-ticket-btn-red {
+  background: #ff0000;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  min-width: 58px;
+  height: 50px;
+  font-size: 1.2rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background 0.2s ease, transform 0.2s ease;
+}
+
+.quick-ticket-btn-red:hover {
+  background: #c40000;
+  transform: translateY(-2px);
+}
+
+.whatsapp-float {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 62px;
+  height: 62px;
+  background: #25d366;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+  z-index: 9999;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.whatsapp-float:hover {
+  transform: scale(1.08);
+  background: #1ebe5d;
+}
+
+.whatsapp-icon {
+  width: 34px;
+  height: 34px;
+}.total-box {
+  margin-top: 18px;
+  padding: 18px;
+  border: 2px solid #ffb3b3;
+  border-radius: 12px;
+  background: #fff5f5;
+  text-align: center;
+}
+
+.total-box p {
+  margin: 8px 0;
+  font-size: 1.1rem;
+  color: #c40000;
+  font-weight: bold;
+}
