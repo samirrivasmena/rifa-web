@@ -1,6 +1,14 @@
 import { Suspense } from "react";
 import HomePageClient from "./HomePageClient";
 
+const organizationSchema = {
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  name: "Rifas LSD",
+  url: "https://rifaslsd.vercel.app",
+  logo: "https://rifaslsd.vercel.app/logo.png",
+};
+
 export const metadata = {
   metadataBase: new URL("https://rifaslsd.vercel.app"),
   title: "Rifas LSD | Compra tus tickets",
@@ -8,6 +16,11 @@ export const metadata = {
     "Participa en la rifa activa de Rifas LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.",
   verification: {
     google: "lHL2_luXyFRFsSODxgMeqVUQNkzhAdDVrmaNBGJnKo4",
+  },
+  icons: {
+    icon: "/icon.png",
+    shortcut: "/icon.png",
+    apple: "/icon.png",
   },
   openGraph: {
     title: "Rifas LSD | Compra tus tickets",
@@ -30,8 +43,17 @@ export const metadata = {
 
 export default function Page() {
   return (
-    <Suspense fallback={<div>Cargando...</div>}>
-      <HomePageClient />
-    </Suspense>
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(organizationSchema),
+        }}
+      />
+
+      <Suspense fallback={<div>Cargando...</div>}>
+        <HomePageClient />
+      </Suspense>
+    </>
   );
 }
