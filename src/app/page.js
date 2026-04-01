@@ -2,14 +2,18 @@ import { Suspense } from "react";
 import HomePageClient from "./HomePageClient";
 
 export const metadata = {
+  metadataBase: new URL("https://rifaslsd.vercel.app"),
   title: "Rifas LSD | Compra tus tickets",
   description:
     "Participa en la rifa activa de Rifas LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.",
+  verification: {
+    google: "lHL2_luXyFRFsSODxgMeqVUQNkzhAdDVrmaNBGJnKo4",
+  },
   openGraph: {
     title: "Rifas LSD | Compra tus tickets",
     description:
       "Participa en la rifa activa de Rifas LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.",
-    url: "https://tu-dominio.com/",
+    url: "https://rifaslsd.vercel.app/",
     siteName: "Rifas LSD",
     images: [
       {
