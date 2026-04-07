@@ -9,6 +9,7 @@ import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import { paymentMethodsConfig, paymentMethodsList } from "@/lib/paymentMethods";
 import { validarEmail } from "@/lib/verifyTickets";
+import AppPayButton from "@/components/shared/AppPayButton";
 
 export default function HomePageClient() {
   const searchParams = useSearchParams();
@@ -38,6 +39,14 @@ export default function HomePageClient() {
     comprobante: null,
     codigoPais: "+58",
   });
+
+  const esPublicada = (value) =>
+    value === true || value === 1 || value === "1" || value === "true";
+
+  const estaDisponibleParaCompra = (estado) =>
+    ["activa", "disponible", "publicada"].includes(
+      String(estado || "").toLowerCase()
+    );
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,7 +88,7 @@ export default function HomePageClient() {
           const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
 
           const rifaEncontrada = listaRifas.find(
-            (r) => String(r.id) === String(rifaDesdeQuery) && Boolean(r.publicada)
+            (r) => String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
           );
 
           if (!rifaEncontrada) {
@@ -201,7 +210,7 @@ export default function HomePageClient() {
   }, [previewUrl]);
 
   const rifasPublicadasOrdenadas = useMemo(() => {
-    const publicadas = rifas.filter((r) => Boolean(r.publicada));
+    const publicadas = rifas.filter((r) => esPublicada(r.publicada));
 
     return [...publicadas].sort((a, b) => {
       const destacadaA = Boolean(a.destacada);
@@ -220,6 +229,7 @@ export default function HomePageClient() {
 
   const precioPorTicket = Number(rifaActiva?.precio_ticket || 0);
   const totalPagar = tickets * precioPorTicket;
+  const [showAppPayModal, setShowAppPayModal] = useState(false);
 
   const nombreRifa = rifaActiva?.nombre || "";
   const descripcionRifa = rifaActiva?.descripcion || "";
@@ -368,6 +378,16 @@ export default function HomePageClient() {
         return;
       }
 
+      if (!estaDisponibleParaCompra(rifaActiva?.estado)) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Rifa no disponible",
+          text: "Esta rifa no está disponible para compra en este momento",
+        });
+        return;
+      }
+
       if (!nombre.trim() || !email.trim() || !telefono.trim() || !referencia.trim()) {
         await Swal.fire({
           ...swalConfig,
@@ -407,6 +427,7 @@ export default function HomePageClient() {
         });
         return;
       }
+      
 
       let comprobanteUrl = "";
 
@@ -495,6 +516,97 @@ export default function HomePageClient() {
       setLoadingCompra(false);
     }
   };
+  const registrarCompraAppPay = async ({
+  referenciaPago,
+  emailWallet = "",
+  nombreWallet = "",
+}) => {
+  const { nombre, email, telefono, codigoPais } = formData;
+
+  if (!rifaActiva?.id) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Sin rifa disponible",
+      text: "No hay una rifa disponible para registrar el pago",
+    });
+    return;
+  }
+
+  if (!telefono.trim()) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Teléfono requerido",
+      text: "Debes ingresar tu teléfono para registrar la compra con App Pay",
+    });
+    return;
+  }
+
+  const nombreFinal = nombre.trim() || nombreWallet || "Pago App Pay";
+  const emailFinal = email.trim() || emailWallet;
+
+  if (!emailFinal || !validarEmail(emailFinal)) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Email requerido",
+      text: "Debes ingresar un correo válido para registrar la compra con App Pay",
+    });
+    return;
+  }
+
+  const response = await fetch("/api/comprar", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      nombre: nombreFinal,
+      email: emailFinal,
+      telefono: `${codigoPais || "+58"} ${telefono.trim()}`,
+      referencia: referenciaPago,
+      tickets,
+      totalPagar,
+      paymentMethod: "App Pay",
+      comprobanteUrl: "",
+      rifaId: rifaActiva.id,
+      capturaInmediata: true,
+    }),
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "error",
+      title: "Error al registrar compra",
+      text: data.error || "El pago fue exitoso pero no se pudo registrar la compra",
+    });
+    return;
+  }
+
+  await Swal.fire({
+    ...swalConfig,
+    icon: "success",
+    title: "Pago realizado",
+    text: "Tu compra con App Pay fue registrada correctamente.",
+  });
+
+  setFormData({
+    nombre: "",
+    email: "",
+    telefono: "",
+    referencia: "",
+    comprobante: null,
+    codigoPais: "+58",
+  });
+
+  setCapturaInmediata(false);
+  setTickets(1);
+  limpiarArchivo();
+};
 
   const paymentMethods = paymentMethodsList;
   const metodoSeleccionado = paymentMethodsConfig[paymentMethod];
@@ -529,16 +641,81 @@ export default function HomePageClient() {
           </div>
         </section>
 
-<VerifyTicketsModal
-  open={showVerifyModal}
-  onClose={() => setShowVerifyModal(false)}
-  email={verifyEmail}
-  setEmail={setVerifyEmail}
-  rifaId={rifaActiva?.id || null}
-/>
+        <VerifyTicketsModal
+          open={showVerifyModal}
+          onClose={() => setShowVerifyModal(false)}
+          email={verifyEmail}
+          setEmail={setVerifyEmail}
+          rifaId={rifaActiva?.id || null}
+        />
       </main>
     );
   }
+  {showAppPayModal && (
+  <div className="apppay-modal-overlay" onClick={() => setShowAppPayModal(false)}>
+    <div className="apppay-modal" onClick={(e) => e.stopPropagation()}>
+      <button
+        type="button"
+        className="apppay-modal-close"
+        onClick={() => setShowAppPayModal(false)}
+      >
+        ✕
+      </button>
+
+      <div className="apppay-modal-brand"> Pay</div>
+
+      <div className="apppay-modal-card">
+        <div className="apppay-modal-row">
+          <span>Método</span>
+          <strong>App Pay</strong>
+        </div>
+
+        <div className="apppay-modal-row">
+          <span>Rifa</span>
+          <strong>{nombreRifa || "Rifa disponible"}</strong>
+        </div>
+
+        <div className="apppay-modal-row">
+          <span>Boletos</span>
+          <strong>
+            {tickets} boleto{tickets > 1 ? "s" : ""}
+          </strong>
+        </div>
+
+        <div className="apppay-modal-row total">
+          <span>Total</span>
+          <strong>${totalPagar.toFixed(2)} USD</strong>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="apppay-modal-pay-btn"
+        onClick={() => {
+          setShowAppPayModal(false);
+          Swal.fire({
+            ...swalConfig,
+            icon: "info",
+            title: "App Pay",
+            html: `
+              <div style="line-height:1.7;">
+                <p>El flujo visual de App Pay está listo.</p>
+                <p>Para procesar pagos reales con Apple Pay necesitas integración con Stripe u otro proveedor compatible.</p>
+                <p>Puedes continuar usando el formulario para registrar tu compra y comprobante.</p>
+              </div>
+            `,
+          });
+        }}
+      >
+         Pay
+      </button>
+
+      <p className="apppay-modal-help">
+        Compatible con dispositivos y navegadores compatibles.
+      </p>
+    </div>
+  </div>
+)}
 
   return (
     <main className="page" id="inicio">
@@ -640,18 +817,20 @@ export default function HomePageClient() {
                   </div>
                 </div>
 
-<div
-  className="ticket-tooltip-wrap"
-  data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(2)}\nRifa: ${nombreRifa || "Rifa disponible"}`}
->
-  <button
-    className="circle-btn circle-btn-main"
-    onClick={() => setTickets((prev) => Math.min(prev + 1, 100))}
-    type="button"
-  >
-    +
-  </button>
-</div>
+                <div
+                  className="ticket-tooltip-wrap"
+                  data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(2)}\nRifa: ${
+                    nombreRifa || "Rifa disponible"
+                  }`}
+                >
+                  <button
+                    className="circle-btn circle-btn-main"
+                    onClick={() => setTickets((prev) => Math.min(prev + 1, 100))}
+                    type="button"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
 
               <p className="main-total">Total: USD {totalPagar.toFixed(2)}</p>
@@ -778,46 +957,72 @@ export default function HomePageClient() {
                   ))}
                 </div>
 
-                <div className="selected-payment-box">
-                  <h4>{metodoSeleccionado.titulo}</h4>
-                  <span className="payment-small-label">{metodoSeleccionado.subtitulo}</span>
+{paymentMethod === "App Pay" ? (
+  <div className="apppay-detail-box">
+    <span className="apppay-detail-label">{metodoSeleccionado.subtitulo}</span>
 
-                  <div className="payment-account-row">
-                    <div className="payment-account">{metodoSeleccionado.cuenta}</div>
-                    <button
-                      type="button"
-                      className="copy-btn"
-                      onClick={() => copiarTexto(metodoSeleccionado.cuenta)}
-                    >
-                      Copiar
-                    </button>
-                  </div>
+    <div className="apppay-brand"> Pay</div>
 
-                  <div className="payment-owner">TITULAR: {metodoSeleccionado.nombre}</div>
+    <div className="apppay-total">
+      Total: ${totalPagar.toFixed(2)} USD
+    </div>
 
-                  {Array.isArray(metodoSeleccionado.extra) &&
-                    metodoSeleccionado.extra.map((item) => (
-                      <div key={`${item.label}-${item.value}`} className="payment-account-row">
-                        <div className="payment-account">
-                          {item.label}: {item.value}
-                        </div>
-                        <button
-                          type="button"
-                          className="copy-btn"
-                          onClick={() => copiarTexto(item.value)}
-                        >
-                          Copiar
-                        </button>
-                      </div>
-                    ))}
+    <AppPayButton
+      totalPagar={totalPagar}
+      nombreRifa={nombreRifa}
+      registrarCompra={registrarCompraAppPay}
+      swalConfig={swalConfig}
+      disabled={!rifaActiva?.id || tickets < 1}
+    />
 
-                  <div className="payment-total-banner">
-                    Total: ${totalPagar.toFixed(2)} USD ({tickets} boleto
-                    {tickets > 1 ? "s" : ""})
-                  </div>
+    <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
 
-                  <p className="payment-description">{metodoSeleccionado.descripcion}</p>
-                </div>
+    {metodoSeleccionado.note && (
+      <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
+    )}
+  </div>
+) : (
+  <div className="selected-payment-box">
+    <h4>{metodoSeleccionado.titulo}</h4>
+    <span className="payment-small-label">{metodoSeleccionado.subtitulo}</span>
+
+    <div className="payment-account-row">
+      <div className="payment-account">{metodoSeleccionado.cuenta}</div>
+      <button
+        type="button"
+        className="copy-btn"
+        onClick={() => copiarTexto(metodoSeleccionado.cuenta)}
+      >
+        Copiar
+      </button>
+    </div>
+
+    <div className="payment-owner">TITULAR: {metodoSeleccionado.nombre}</div>
+
+    {Array.isArray(metodoSeleccionado.extra) &&
+      metodoSeleccionado.extra.map((item) => (
+        <div key={`${item.label}-${item.value}`} className="payment-account-row">
+          <div className="payment-account">
+            {item.label}: {item.value}
+          </div>
+          <button
+            type="button"
+            className="copy-btn"
+            onClick={() => copiarTexto(item.value)}
+          >
+            Copiar
+          </button>
+        </div>
+      ))}
+
+    <div className="payment-total-banner">
+      Total: ${totalPagar.toFixed(2)} USD ({tickets} boleto
+      {tickets > 1 ? "s" : ""})
+    </div>
+
+    <p className="payment-description">{metodoSeleccionado.descripcion}</p>
+  </div>
+)}
               </section>
 
               <section className="card-section">
@@ -887,13 +1092,17 @@ export default function HomePageClient() {
                 <button
                   type="submit"
                   className="confirm-main-btn"
-                  disabled={loadingCompra || !rifaActiva?.id || rifaActiva?.estado !== "activa"}
+                  disabled={
+                    loadingCompra ||
+                    !rifaActiva?.id ||
+                    !estaDisponibleParaCompra(rifaActiva?.estado)
+                  }
                 >
                   {loadingCompra
                     ? "PROCESANDO..."
                     : !rifaActiva?.id
                     ? "NO HAY RIFA DISPONIBLE"
-                    : rifaActiva?.estado !== "activa"
+                    : !estaDisponibleParaCompra(rifaActiva?.estado)
                     ? "RIFA NO DISPONIBLE"
                     : "CONFIRMAR"}
                 </button>
@@ -941,13 +1150,13 @@ export default function HomePageClient() {
         <p>© 2026 - Todos los derechos reservados.</p>
       </footer>
 
-<VerifyTicketsModal
-  open={showVerifyModal}
-  onClose={() => setShowVerifyModal(false)}
-  email={verifyEmail}
-  setEmail={setVerifyEmail}
-  rifaId={rifaActiva?.id || null}
-/>
+      <VerifyTicketsModal
+        open={showVerifyModal}
+        onClose={() => setShowVerifyModal(false)}
+        email={verifyEmail}
+        setEmail={setVerifyEmail}
+        rifaId={rifaActiva?.id || null}
+      />
 
       <a
         href="https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa"

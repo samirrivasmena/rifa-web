@@ -25,6 +25,19 @@ export default function PrincipalPageClient() {
     cancelButtonColor: "#6b7280",
   };
 
+  const esPublicada = (value) =>
+    value === true || value === 1 || value === "1" || value === "true";
+
+  const esEventoDisponible = (estado) =>
+    ["activa", "disponible", "publicada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
+  const esEventoFinalizado = (estado) =>
+    ["finalizada", "finalizado", "cerrada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
   useEffect(() => {
     const handleHashScroll = () => {
       const hash = window.location.hash;
@@ -88,7 +101,16 @@ export default function PrincipalPageClient() {
           cache: "no-store",
         });
 
-        const data = await res.json();
+        const raw = await res.text();
+        let data;
+
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          console.error("Respuesta inválida en /api/rifas-publicas");
+          setRifas([]);
+          return;
+        }
 
         if (!res.ok) {
           console.error(data.error || "No se pudieron cargar las rifas");
@@ -116,7 +138,16 @@ export default function PrincipalPageClient() {
           cache: "no-store",
         });
 
-        const data = await res.json();
+        const raw = await res.text();
+        let data;
+
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          console.error("Respuesta inválida en /api/rifa-activa");
+          setRifaActiva(null);
+          return;
+        }
 
         if (!res.ok) {
           setRifaActiva(null);
@@ -134,7 +165,7 @@ export default function PrincipalPageClient() {
   }, []);
 
   const rifasPublicadas = useMemo(() => {
-    return rifas.filter((r) => Boolean(r.publicada));
+    return rifas.filter((r) => esPublicada(r.publicada));
   }, [rifas]);
 
   const ordenarRifas = (lista) => {
@@ -154,20 +185,12 @@ export default function PrincipalPageClient() {
   };
 
   const eventosDisponibles = useMemo(() => {
-    const disponibles = rifasPublicadas.filter((r) =>
-      ["activa", "disponible"].includes(String(r.estado || "").toLowerCase())
-    );
-
+    const disponibles = rifasPublicadas.filter((r) => esEventoDisponible(r.estado));
     return ordenarRifas(disponibles);
   }, [rifasPublicadas]);
 
   const eventosFinalizados = useMemo(() => {
-    const finalizados = rifasPublicadas.filter((r) =>
-      ["finalizada", "finalizado", "cerrada"].includes(
-        String(r.estado || "").toLowerCase()
-      )
-    );
-
+    const finalizados = rifasPublicadas.filter((r) => esEventoFinalizado(r.estado));
     return ordenarRifas(finalizados);
   }, [rifasPublicadas]);
 
@@ -252,7 +275,7 @@ export default function PrincipalPageClient() {
                   href={
                     primerEventoDisponible?.id
                       ? `/evento/${primerEventoDisponible.id}`
-                      : "/"
+                      : "/principal#eventos-disponibles"
                   }
                   className="principal-red-btn"
                 >
@@ -314,11 +337,11 @@ export default function PrincipalPageClient() {
 
                 return (
                   <article key={evento.id} className="principal-event-card-mobile">
-{evento.destacada && (
-  <div className="principal-card-badge-left">
-    <div className="principal-destacada-badge">⭐ Destacada</div>
-  </div>
-)}
+                    {evento.destacada && (
+                      <div className="principal-card-badge-left">
+                        <div className="principal-destacada-badge">⭐ Destacada</div>
+                      </div>
+                    )}
 
                     <RaffleDualImage
                       principalSrc={evento.portada_url}
@@ -331,15 +354,11 @@ export default function PrincipalPageClient() {
                       <h3>{evento.nombre || "Evento disponible"}</h3>
 
                       {fecha ? (
-                        <p className="principal-event-meta-mobile">
-                          📅 {fecha}
-                        </p>
+                        <p className="principal-event-meta-mobile">📅 {fecha}</p>
                       ) : null}
 
                       {hora ? (
-                        <p className="principal-event-meta-mobile">
-                          ⏰ {hora}
-                        </p>
+                        <p className="principal-event-meta-mobile">⏰ {hora}</p>
                       ) : null}
 
                       {evento.precio_ticket ? (
@@ -392,7 +411,10 @@ export default function PrincipalPageClient() {
             <>
               <div className="principal-events-list">
                 {eventosFinalizadosPaginados.map((evento) => (
-                  <article key={evento.id} className="principal-event-card-mobile principal-finalizada-card">
+                  <article
+                    key={evento.id}
+                    className="principal-event-card-mobile principal-finalizada-card"
+                  >
                     <div className="principal-card-badges-row">
                       {evento.destacada ? (
                         <div className="principal-destacada-badge">⭐ Destacada</div>
@@ -574,16 +596,16 @@ export default function PrincipalPageClient() {
               <h3>ACCESOS</h3>
 
               <div className="principal-footer-links">
-                <a href="#inicio" className="principal-footer-link">
+                <a href="/principal#inicio" className="principal-footer-link">
                   Inicio
                 </a>
-                <a href="#eventos-disponibles" className="principal-footer-link">
+                <a href="/principal#eventos-disponibles" className="principal-footer-link">
                   Eventos
                 </a>
-                <a href="#pagos" className="principal-footer-link">
+                <a href="/principal#pagos" className="principal-footer-link">
                   Pagos
                 </a>
-                <a href="#contacto" className="principal-footer-link">
+                <a href="/principal#contacto" className="principal-footer-link">
                   Contacto
                 </a>
               </div>

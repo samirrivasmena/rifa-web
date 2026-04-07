@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 
 const validarEmail = (email) => /\S+@\S+\.\S+/.test(email);
@@ -13,6 +13,29 @@ export default function VerifyTicketsModal({
   rifaId = null,
 }) {
   const [loading, setLoading] = useState(false);
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape" && !loading) {
+        setEmail("");
+        onClose?.();
+      }
+    };
+
+    window.addEventListener("keydown", handleEscape);
+
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 80);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+      clearTimeout(timer);
+    };
+  }, [open, loading, onClose, setEmail]);
 
   if (!open) return null;
 
@@ -26,7 +49,7 @@ export default function VerifyTicketsModal({
   const cerrarModal = () => {
     if (loading) return;
     setEmail("");
-    onClose();
+    onClose?.();
   };
 
   const handleVerify = async () => {
@@ -170,7 +193,7 @@ export default function VerifyTicketsModal({
       });
 
       setEmail("");
-      onClose();
+      onClose?.();
     } catch (error) {
       await Swal.fire({
         ...swalConfig,
@@ -185,10 +208,16 @@ export default function VerifyTicketsModal({
 
   return (
     <div className="verify-modal-overlay" onClick={cerrarModal}>
-      <div className="verify-modal-box premium" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="verify-modal-box premium"
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="verify-modal-title"
+      >
         <div className="verify-modal-badge">🎟️ VERIFICADOR</div>
 
-        <h2>VERIFICA TUS TICKETS</h2>
+        <h2 id="verify-modal-title">VERIFICA TUS TICKETS</h2>
 
         <p className="verify-modal-warning">
           ⚠️ Soporte tiene hasta 24 horas para revisar y aprobar tu compra
@@ -200,12 +229,14 @@ export default function VerifyTicketsModal({
         </p>
 
         <input
+          ref={inputRef}
           type="email"
           placeholder="Ingresa tu email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
           className="verify-modal-input"
           disabled={loading}
+          autoComplete="email"
           onKeyDown={(e) => {
             if (e.key === "Enter") {
               e.preventDefault();

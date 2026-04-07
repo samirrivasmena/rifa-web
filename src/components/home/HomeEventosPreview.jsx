@@ -10,21 +10,23 @@ export default function HomeEventosPreview({ rifas = [] }) {
   const [paginaFinalizados, setPaginaFinalizados] = useState(1);
   const itemsPorPaginaFinalizados = 1;
 
+  const esEventoDisponible = (estado) =>
+    ["activa", "disponible", "publicada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
+  const esEventoFinalizado = (estado) =>
+    ["finalizada", "finalizado", "cerrada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
   const eventosDisponibles = useMemo(
-    () =>
-      rifas.filter((r) =>
-        ["activa", "disponible"].includes(String(r.estado || "").toLowerCase())
-      ),
+    () => rifas.filter((r) => esEventoDisponible(r.estado)),
     [rifas]
   );
 
   const eventosFinalizados = useMemo(
-    () =>
-      rifas.filter((r) =>
-        ["finalizada", "finalizado", "cerrada"].includes(
-          String(r.estado || "").toLowerCase()
-        )
-      ),
+    () => rifas.filter((r) => esEventoFinalizado(r.estado)),
     [rifas]
   );
 
@@ -47,7 +49,11 @@ export default function HomeEventosPreview({ rifas = [] }) {
 
   const irABoletos = () => {
     const section = document.getElementById("boletos");
-    if (!section) return;
+
+    if (!section) {
+      router.push("/#boletos");
+      return;
+    }
 
     section.scrollIntoView({
       behavior: "smooth",
@@ -97,11 +103,11 @@ export default function HomeEventosPreview({ rifas = [] }) {
 
               return (
                 <article key={evento.id} className="home-event-card">
-{evento.destacada && (
-  <div className="home-card-badge-left">
-    <div className="home-destacada-badge">⭐ Destacada</div>
-  </div>
-)}
+                  {evento.destacada && (
+                    <div className="home-card-badge-left">
+                      <div className="home-destacada-badge">⭐ Destacada</div>
+                    </div>
+                  )}
 
                   {evento.portada_url || evento.portada_scroll_url ? (
                     <RaffleDualImage

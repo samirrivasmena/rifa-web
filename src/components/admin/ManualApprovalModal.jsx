@@ -126,9 +126,12 @@ export default function ManualApprovalModal({
   };
 
   return (
-    <div className="adminpro-modal-backdrop">
-      <div className="adminpro-modal premium-manual-modal">
-        <div className="adminpro-modal-head">
+    <div className="adminpro-modal-backdrop" onClick={onClose}>
+      <div
+        className="adminpro-modal premium-manual-modal"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="manual-modal-head">
           <div>
             <h2 style={{ margin: 0 }}>Aprobación manual</h2>
             <p style={{ marginTop: "8px", color: "#64748b" }}>
@@ -146,116 +149,111 @@ export default function ManualApprovalModal({
           </button>
         </div>
 
-        <div className="adminpro-manual-topbar">
-          <div className="adminpro-manual-pill">
-            <strong>Compra ID:</strong> {compra.id}
-          </div>
-
-          <div className="adminpro-manual-pill">
-            <strong>Seleccionados:</strong> {seleccionados.length}/{maxSeleccion}
-          </div>
-
-          <div className="adminpro-manual-pill warn">
-            <strong>Faltan:</strong> {faltan}
-          </div>
-
-          {numeroGanadorOficial !== null && (
-            <div className="adminpro-manual-pill gold">
-              <Trophy size={14} />
-              Ganador: {String(numeroGanadorOficial).padStart(padLength, "0")}
+        <div className="manual-modal-body">
+          <div className="adminpro-manual-topbar">
+            <div className="adminpro-manual-pill">
+              <strong>Compra ID:</strong> {compra.id}
             </div>
-          )}
-        </div>
 
-        <div className="adminpro-manual-info-grid">
-          <div className="adminpro-manual-info-box">
-            <p><strong>Usuario:</strong> {compra.usuarios?.nombre || "Sin nombre"}</p>
-            <p><strong>Email:</strong> {compra.usuarios?.email || "Sin email"}</p>
-            <p><strong>Teléfono:</strong> {compra.usuarios?.telefono || "Sin teléfono"}</p>
-          </div>
-
-          <div className="adminpro-manual-info-box">
-            <p><strong>Referencia:</strong> {compra.referencia || "Sin referencia"}</p>
-            <p><strong>Método:</strong> {compra.metodo_pago || "Sin método"}</p>
-            <p>
-              <strong>Fecha:</strong>{" "}
-              {formatearFecha?.(compra.fecha_compra || compra.created_at) ||
-                compra.fecha_compra ||
-                compra.created_at ||
-                "Sin fecha"}
-            </p>
-          </div>
-
-          <div className="adminpro-manual-info-box highlight">
-            <p><strong>Tickets a asignar:</strong> {compra.cantidad_tickets}</p>
-            <p><strong>Rifa:</strong> {rifaSeleccionada.nombre}</p>
-            <p><strong>Formato:</strong> {rifaSeleccionada.formato}</p>
-          </div>
-        </div>
-
-        <div className="adminpro-legend">
-          <div><span className="legend-box sold" /> Vendido</div>
-          <div><span className="legend-box free" /> Disponible</div>
-          <div><span className="legend-box selected" /> Seleccionado</div>
-          <div><span className="legend-box winner" /> Ganador oficial</div>
-        </div>
-
-        <div className="adminpro-manual-grid-wrap">
-          <div className="adminpro-manual-grid">
-            {numeros.map((numero) => {
-              const vendido = vendidosSet.has(numero);
-              const seleccionado = seleccionados.includes(numero);
-              const esGanador =
-                numeroGanadorOficial !== null && numero === numeroGanadorOficial;
-
-              let className = "free";
-              if (esGanador) className = "winner";
-              else if (vendido) className = "sold";
-              else if (seleccionado) className = "selected";
-
-              return (
-                <button
-                  key={numero}
-                  type="button"
-                  disabled={vendido || esGanador}
-                  onClick={() => toggleNumero(numero)}
-                  className={`adminpro-manual-ticket ${className}`}
-                  title={
-                    esGanador
-                      ? "Número ganador oficial"
-                      : vendido
-                      ? "Vendido / aprobado"
-                      : seleccionado
-                      ? "Seleccionado"
-                      : "Disponible"
-                  }
-                >
-                  {String(numero).padStart(padLength, "0")}
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        <div style={{ marginTop: "18px" }}>
-          <strong>Tickets seleccionados:</strong>
-
-          {seleccionados.length > 0 ? (
-            <div className="adminpro-ticket-chips">
-              {seleccionados.map((numero) => (
-                <span key={numero}>
-                  {String(numero).padStart(padLength, "0")}
-                </span>
-              ))}
+            <div className="adminpro-manual-pill">
+              <strong>Seleccionados:</strong> {seleccionados.length}/{maxSeleccion}
             </div>
-          ) : (
-            <p className="adminpro-muted" style={{ marginTop: "8px" }}>
-              No has seleccionado tickets todavía
-            </p>
-          )}
+
+            <div className="adminpro-manual-pill warn">
+              <strong>Faltan:</strong> {faltan}
+            </div>
+
+            {numeroGanadorOficial !== null && (
+              <div className="adminpro-manual-pill gold">
+                <Trophy size={14} />
+                Ganador: {String(numeroGanadorOficial).padStart(padLength, "0")}
+              </div>
+            )}
+          </div>
+
+          <div className="adminpro-manual-info-grid">
+            <div className="adminpro-manual-info-box">
+              <p><strong>Usuario:</strong> {compra.usuarios?.nombre || "Sin nombre"}</p>
+              <p><strong>Email:</strong> {compra.usuarios?.email || "Sin email"}</p>
+              <p><strong>Teléfono:</strong> {compra.usuarios?.telefono || "Sin teléfono"}</p>
+            </div>
+
+            <div className="adminpro-manual-info-box">
+              <p><strong>Referencia:</strong> {compra.referencia || "Sin referencia"}</p>
+              <p><strong>Método:</strong> {compra.metodo_pago || "Sin método"}</p>
+              <p>
+                <strong>Fecha:</strong>{" "}
+                {formatearFecha?.(compra.fecha_compra || compra.created_at) ||
+                  compra.fecha_compra ||
+                  compra.created_at ||
+                  "Sin fecha"}
+              </p>
+            </div>
+
+            <div className="adminpro-manual-info-box highlight">
+              <p><strong>Tickets a asignar:</strong> {compra.cantidad_tickets}</p>
+              <p><strong>Rifa:</strong> {rifaSeleccionada.nombre}</p>
+              <p><strong>Formato:</strong> {rifaSeleccionada.formato}</p>
+            </div>
+          </div>
+
+          <div className="adminpro-legend">
+            <div><span className="legend-box sold" /> Vendido</div>
+            <div><span className="legend-box free" /> Disponible</div>
+            <div><span className="legend-box selected" /> Seleccionado</div>
+            <div><span className="legend-box winner" /> Ganador oficial</div>
+          </div>
+
+          <div className="manual-grid-block">
+            <div className="adminpro-manual-grid-wrap">
+              <div className="adminpro-manual-grid">
+                {numeros.map((numero) => {
+                  const vendido = vendidosSet.has(numero);
+                  const seleccionado = seleccionados.includes(numero);
+                  const esGanador =
+                    numeroGanadorOficial !== null && numero === numeroGanadorOficial;
+
+                  let className = "free";
+                  if (esGanador) className = "winner";
+                  else if (vendido) className = "sold";
+                  else if (seleccionado) className = "selected";
+
+                  return (
+                    <button
+                      key={numero}
+                      type="button"
+                      disabled={vendido || esGanador}
+                      onClick={() => toggleNumero(numero)}
+                      className={`adminpro-manual-ticket ${className}`}
+                    >
+                      {String(numero).padStart(padLength, "0")}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          <div className="manual-selected-box">
+            <strong>Tickets seleccionados:</strong>
+
+            {seleccionados.length > 0 ? (
+              <div className="adminpro-ticket-chips">
+                {seleccionados.map((numero) => (
+                  <span key={numero}>
+                    {String(numero).padStart(padLength, "0")}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="adminpro-muted" style={{ marginTop: "8px" }}>
+                No has seleccionado tickets todavía
+              </p>
+            )}
+          </div>
         </div>
 
-        <div className="adminpro-actions-wrap" style={{ marginTop: "18px" }}>
+        <div className="manual-modal-footer">
           <button
             className="adminpro-primary-btn"
             onClick={onConfirmar}

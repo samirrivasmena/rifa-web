@@ -9,6 +9,7 @@ export const paymentMethodsConfig = {
     subtitulo: "ID",
     logo: "/payment/binance.png",
     bgClass: "binance-bg",
+    type: "standard",
   },
 
   Zelle: {
@@ -21,6 +22,7 @@ export const paymentMethodsConfig = {
     subtitulo: "EMAIL",
     logo: "/payment/zelle.png",
     bgClass: "zelle-bg",
+    type: "standard",
   },
 
   "Banco de Venezuela": {
@@ -34,18 +36,21 @@ export const paymentMethodsConfig = {
     logo: "/payment/bdv.png",
     bgClass: "bdv-bg",
     extra: [{ label: "CI", value: "25011847" }],
+    type: "standard",
   },
 
-  PayPal: {
-    key: "PayPal",
-    titulo: "PAYPAL",
+  "App Pay": {
+    key: "App Pay",
+    titulo: "APP PAY",
     descripcion:
-      "Envía el pago a la cuenta indicada en PayPal y luego completa el formulario con la referencia exacta.",
+      "Usa App Pay en dispositivos compatibles para realizar tu pago. Luego completa el formulario con tu referencia o comprobante para validar la compra.",
     nombre: "Samir Rivas",
-    cuenta: "@SamirRivas",
-    subtitulo: "USUARIO",
-    logo: "/payment/paypal.png",
-    bgClass: "paypal-bg",
+    cuenta: "App Pay disponible",
+    subtitulo: "PAGO RÁPIDO",
+    logo: "/payment/apppay.png",
+    bgClass: "apppay-bg",
+    type: "wallet",
+    note: "Compatible con dispositivos y navegadores compatibles.",
   },
 };
 

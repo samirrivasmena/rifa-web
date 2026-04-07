@@ -21,31 +21,46 @@ export default function RaffleDualImage({
     const node = containerRef.current;
     if (!node) return;
 
-    const isMobile = window.innerWidth <= 768;
+    const createObserver = () => {
+      const isMobile = window.innerWidth <= 768;
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setIsVisible(entry.isIntersecting);
-      },
-      {
-        threshold: isMobile ? 0.12 : 0.18,
-        rootMargin: isMobile
-          ? "-10% 0px -10% 0px"
-          : "-8% 0px -8% 0px",
-      }
-    );
+      return new IntersectionObserver(
+        ([entry]) => {
+          setIsVisible(entry.isIntersecting);
+        },
+        {
+          threshold: isMobile ? 0.12 : 0.18,
+          rootMargin: isMobile
+            ? "-10% 0px -10% 0px"
+            : "-8% 0px -8% 0px",
+        }
+      );
+    };
 
+    const observer = createObserver();
     observer.observe(node);
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+    };
   }, []);
 
   useEffect(() => {
-    if (!tieneSecundaria) return;
+    if (!tieneSecundaria) {
+      setShowSecondImage(false);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
+      return;
+    }
 
     if (!isVisible) {
       setShowSecondImage(false);
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       return;
     }
 
@@ -54,7 +69,10 @@ export default function RaffleDualImage({
     }, 2000);
 
     return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
     };
   }, [isVisible, tieneSecundaria]);
 
@@ -66,15 +84,21 @@ export default function RaffleDualImage({
         className={`raffle-dual-image-layer ${
           showSecondImage && tieneSecundaria ? "hide" : "show"
         }`}
+        loading="lazy"
+        decoding="async"
+        draggable={false}
       />
 
       {tieneSecundaria && (
         <img
           src={secondarySrc}
-          alt={`${alt} secundaria`}
+          alt={alt}
           className={`raffle-dual-image-layer ${
             showSecondImage ? "show" : "hide"
           }`}
+          loading="lazy"
+          decoding="async"
+          draggable={false}
         />
       )}
     </div>

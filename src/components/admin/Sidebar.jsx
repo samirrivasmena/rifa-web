@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 function IconDashboard() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
@@ -120,9 +122,33 @@ function IconBrand() {
 }
 
 export default function Sidebar({ activa, onNavigate, onLogout, adminEmail }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth > 980) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    const handleEscape = (e) => {
+      if (e.key === "Escape") {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, []);
+
   const items = [
     { id: "dashboard", icon: <IconDashboard />, label: "Dashboard" },
-    { id: "rifas", icon: <IconRifas />, label: "Mapa de Tickets" },
+    { id: "rifas", icon: <IconRifas />, label: "Crear Rifas" },
     { id: "compras", icon: <IconCompras />, label: "Gestión de Compras" },
     { id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },
     { id: "ranking", icon: <IconRanking />, label: "Ranking" },
@@ -132,51 +158,147 @@ export default function Sidebar({ activa, onNavigate, onLogout, adminEmail }) {
   const nombreVisible =
     adminEmail?.split("@")[0]?.replace(/[._-]/g, " ") || "Administrador";
 
+  const handleNavigate = (id) => {
+    onNavigate(id);
+    setMobileMenuOpen(false);
+  };
+
   return (
-    <aside className="adminpro-sidebar">
-      <div className="adminpro-brand">
-        <div className="adminpro-brand-icon">
-          <IconBrand />
-        </div>
-
-        <div>
-          <h2>RIFAPRO</h2>
-          <p>ADMIN PANEL</p>
-        </div>
-      </div>
-
-      <nav className="adminpro-nav">
-        {items.map((item) => (
-          <button
-            key={item.id}
-            className={`adminpro-nav-btn ${activa === item.id ? "active" : ""}`}
-            onClick={() => onNavigate(item.id)}
-            type="button"
-          >
-            <span className="adminpro-nav-icon-wrap">{item.icon}</span>
-            <span>{item.label}</span>
-            <span className="adminpro-nav-dot" />
-          </button>
-        ))}
-      </nav>
-
-      <div className="adminpro-user-card adminpro-user-card-bottom">
-        <div className="adminpro-avatar">{inicial}</div>
-
-        <div className="adminpro-user-meta">
-          <strong style={{ textTransform: "capitalize" }}>{nombreVisible}</strong>
-          <small>Administrador Principal</small>
+    <>
+      <div className="adminpro-mobile-topbar">
+        <div className="adminpro-mobile-topbar-brand">
+          <div className="adminpro-brand-icon">
+            <IconBrand />
+          </div>
+          <div>
+            <strong>RIFAPRO</strong>
+            <small>ADMIN PANEL</small>
+          </div>
         </div>
 
         <button
-          className="adminpro-user-logout-icon"
-          onClick={onLogout}
           type="button"
-          title="Cerrar sesión"
+          className={`adminpro-mobile-menu-btn ${mobileMenuOpen ? "open" : ""}`}
+          onClick={() => setMobileMenuOpen((prev) => !prev)}
+          aria-label={mobileMenuOpen ? "Cerrar menú admin" : "Abrir menú admin"}
+          aria-expanded={mobileMenuOpen}
         >
-          <IconLogout />
+          <span />
+          <span />
+          <span />
         </button>
       </div>
-    </aside>
+
+      {mobileMenuOpen && (
+        <div
+          className="adminpro-mobile-overlay"
+          onClick={() => setMobileMenuOpen(false)}
+        >
+          <div
+            className="adminpro-mobile-drawer"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="adminpro-mobile-drawer-head">
+              <div className="adminpro-mobile-topbar-brand">
+                <div className="adminpro-brand-icon">
+                  <IconBrand />
+                </div>
+                <div>
+                  <strong>RIFAPRO</strong>
+                  <small>ADMIN PANEL</small>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                className="adminpro-mobile-close-btn"
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                ✕
+              </button>
+            </div>
+
+            <nav className="adminpro-mobile-nav">
+              {items.map((item) => (
+                <button
+                  key={item.id}
+                  className={`adminpro-nav-btn ${activa === item.id ? "active" : ""}`}
+                  onClick={() => handleNavigate(item.id)}
+                  type="button"
+                >
+                  <span className="adminpro-nav-icon-wrap">{item.icon}</span>
+                  <span>{item.label}</span>
+                  <span className="adminpro-nav-dot" />
+                </button>
+              ))}
+            </nav>
+
+            <div className="adminpro-user-card adminpro-user-card-bottom">
+              <div className="adminpro-avatar">{inicial}</div>
+
+              <div className="adminpro-user-meta">
+                <strong style={{ textTransform: "capitalize" }}>{nombreVisible}</strong>
+                <small>Administrador Principal</small>
+              </div>
+
+              <button
+                className="adminpro-user-logout-icon"
+                onClick={onLogout}
+                type="button"
+                title="Cerrar sesión"
+              >
+                <IconLogout />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <aside className="adminpro-sidebar">
+        <div className="adminpro-brand">
+          <div className="adminpro-brand-icon">
+            <IconBrand />
+          </div>
+
+          <div>
+            <h2>RIFAPRO</h2>
+            <p>ADMIN PANEL</p>
+          </div>
+        </div>
+
+        <nav className="adminpro-nav">
+          {items.map((item) => (
+            <button
+              key={item.id}
+              className={`adminpro-nav-btn ${activa === item.id ? "active" : ""}`}
+              onClick={() => onNavigate(item.id)}
+              type="button"
+            >
+              <span className="adminpro-nav-icon-wrap">{item.icon}</span>
+              <span>{item.label}</span>
+              <span className="adminpro-nav-dot" />
+            </button>
+          ))}
+        </nav>
+
+        <div className="adminpro-user-card adminpro-user-card-bottom">
+          <div className="adminpro-avatar">{inicial}</div>
+
+          <div className="adminpro-user-meta">
+            <strong style={{ textTransform: "capitalize" }}>{nombreVisible}</strong>
+            <small>Administrador Principal</small>
+          </div>
+
+          <button
+            className="adminpro-user-logout-icon"
+            onClick={onLogout}
+            type="button"
+            title="Cerrar sesión"
+          >
+            <IconLogout />
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
