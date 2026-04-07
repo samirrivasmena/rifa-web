@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 export default function PublicTopbar({
@@ -9,11 +9,13 @@ export default function PublicTopbar({
   logoHref = "/principal",
   inicioHref = "/principal#inicio",
   eventosHref = "/principal#eventos-disponibles",
+  resultadosHref = "/principal#resultados-oficiales",
   pagosHref = "/principal#pagos",
   contactoHref = "/principal#contacto",
 }) {
   const [hiddenOnMobile, setHiddenOnMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const navRef = useRef(null);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -65,6 +67,44 @@ export default function PublicTopbar({
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    if (mobileMenuOpen && window.innerWidth <= 768) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!mobileMenuOpen) return;
+      if (!navRef.current) return;
+
+      const menuButton = document.querySelector(".public-topbar-menu-btn");
+
+      const clickedInsideNav = navRef.current.contains(event.target);
+      const clickedMenuButton = menuButton?.contains(event.target);
+
+      if (!clickedInsideNav && !clickedMenuButton) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("touchstart", handleClickOutside);
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("touchstart", handleClickOutside);
+    };
+  }, [mobileMenuOpen]);
+
   const cerrarMenu = () => setMobileMenuOpen(false);
 
   return (
@@ -80,13 +120,18 @@ export default function PublicTopbar({
           onClick={() => setMobileMenuOpen((prev) => !prev)}
           aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
           aria-expanded={mobileMenuOpen}
+          aria-controls="public-topbar-nav"
         >
           <span />
           <span />
           <span />
         </button>
 
-        <nav className={`public-topbar-nav ${mobileMenuOpen ? "open" : ""}`}>
+        <nav
+          id="public-topbar-nav"
+          ref={navRef}
+          className={`public-topbar-nav ${mobileMenuOpen ? "open" : ""}`}
+        >
           <Link
             href={inicioHref}
             className={`public-topbar-link ${active === "inicio" ? "active" : ""}`}
@@ -101,6 +146,14 @@ export default function PublicTopbar({
             onClick={cerrarMenu}
           >
             EVENTOS
+          </Link>
+
+          <Link
+            href={resultadosHref}
+            className={`public-topbar-link ${active === "resultados" ? "active" : ""}`}
+            onClick={cerrarMenu}
+          >
+            RESULTADOS
           </Link>
 
           <Link

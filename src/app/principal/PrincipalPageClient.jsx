@@ -33,10 +33,38 @@ export default function PrincipalPageClient() {
       String(estado || "").toLowerCase()
     );
 
+  const esEventoAgotado = (estado) =>
+    ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
+
   const esEventoFinalizado = (estado) =>
     ["finalizada", "finalizado", "cerrada"].includes(
       String(estado || "").toLowerCase()
     );
+
+  const formatearPrecioSeguro = (valor) => {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
+  };
+
+  const obtenerPorcentajeSeguro = (evento) => {
+    const totalNumerosRaw = Number(
+      evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
+    );
+
+    const ticketsVendidosRaw = Number(
+      evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
+    );
+
+    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
+    const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
+
+    const porcentajeRaw = Number(
+      evento?.porcentaje_vendido ??
+        (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
+    );
+
+    return Number.isFinite(porcentajeRaw) ? porcentajeRaw : 0;
+  };
 
   useEffect(() => {
     const handleHashScroll = () => {
@@ -56,9 +84,29 @@ export default function PrincipalPageClient() {
           return;
         }
 
-        section.scrollIntoView({
+        const isMobile = window.innerWidth <= 768;
+
+        let offset = 110;
+
+        if (id === "resultados-oficiales") {
+          offset = isMobile ? 84 : 118;
+        } else if (id === "eventos-disponibles") {
+          offset = isMobile ? 84 : 108;
+        } else if (id === "pagos") {
+          offset = isMobile ? 84 : 108;
+        } else if (id === "contacto") {
+          offset = isMobile ? 84 : 108;
+        } else if (id === "inicio") {
+          offset = isMobile ? 76 : 96;
+        } else {
+          offset = isMobile ? 80 : 105;
+        }
+
+        const top = section.getBoundingClientRect().top + window.scrollY - offset;
+
+        window.scrollTo({
+          top,
           behavior: "smooth",
-          block: "start",
         });
 
         section.classList.remove("principal-highlight");
@@ -73,7 +121,7 @@ export default function PrincipalPageClient() {
 
       setTimeout(() => {
         intentarScroll();
-      }, 180);
+      }, 220);
     };
 
     handleHashScroll();
@@ -174,7 +222,7 @@ export default function PrincipalPageClient() {
       const destacadaB = Boolean(b.destacada);
 
       if (destacadaA !== destacadaB) {
-        return destacadaB - destacadaA;
+        return Number(destacadaB) - Number(destacadaA);
       }
 
       const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
@@ -187,6 +235,11 @@ export default function PrincipalPageClient() {
   const eventosDisponibles = useMemo(() => {
     const disponibles = rifasPublicadas.filter((r) => esEventoDisponible(r.estado));
     return ordenarRifas(disponibles);
+  }, [rifasPublicadas]);
+
+  const eventosAgotados = useMemo(() => {
+    const agotados = rifasPublicadas.filter((r) => esEventoAgotado(r.estado));
+    return ordenarRifas(agotados);
   }, [rifasPublicadas]);
 
   const eventosFinalizados = useMemo(() => {
@@ -211,7 +264,7 @@ export default function PrincipalPageClient() {
     setPaginaFinalizados(1);
   }, [eventosFinalizados.length]);
 
-  const primerEventoDisponible = eventosDisponibles[0] || null;
+  const primerEventoDisponible = eventosDisponibles[0] || eventosAgotados[0] || null;
 
   const copiarTexto = async (texto) => {
     try {
@@ -244,6 +297,7 @@ export default function PrincipalPageClient() {
           logoHref="/principal"
           inicioHref="/principal#inicio"
           eventosHref="/principal#eventos-disponibles"
+          resultadosHref="/principal#resultados-oficiales"
           pagosHref="/principal#pagos"
           contactoHref="/principal#contacto"
         />
@@ -335,6 +389,8 @@ export default function PrincipalPageClient() {
                   evento.hora_rifa ||
                   "";
 
+                const porcentaje = obtenerPorcentajeSeguro(evento);
+
                 return (
                   <article key={evento.id} className="principal-event-card-mobile">
                     {evento.destacada && (
@@ -361,11 +417,15 @@ export default function PrincipalPageClient() {
                         <p className="principal-event-meta-mobile">⏰ {hora}</p>
                       ) : null}
 
-                      {evento.precio_ticket ? (
+                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
                         <p className="principal-event-meta-mobile">
-                          💰 ${Number(evento.precio_ticket).toFixed(2)}
+                          💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                         </p>
                       ) : null}
+
+                      <p className="principal-event-meta-mobile">
+                        📊 {porcentaje.toFixed(1)}% vendido
+                      </p>
 
                       <div className="principal-event-actions-mobile">
                         <Link
@@ -382,6 +442,65 @@ export default function PrincipalPageClient() {
             </div>
           )}
         </section>
+
+        {eventosAgotados.length > 0 && (
+          <section className="principal-section" id="eventos-agotados">
+            <div className="principal-section-head">
+              <h2>AGOTADOS</h2>
+            </div>
+
+            <div className="principal-events-list">
+              {eventosAgotados.map((evento) => {
+                const porcentaje = obtenerPorcentajeSeguro(evento);
+
+                return (
+                  <article
+                    key={evento.id}
+                    className="principal-event-card-mobile principal-finalizada-card"
+                  >
+                    <div className="principal-card-badges-row">
+                      {evento.destacada ? (
+                        <div className="principal-destacada-badge">⭐ Destacada</div>
+                      ) : (
+                        <div className="principal-badge-placeholder" />
+                      )}
+
+                      <div className="principal-agotado-badge">Agotada</div>
+                    </div>
+
+                    <RaffleDualImage
+                      principalSrc={evento.portada_url}
+                      secondarySrc={evento.portada_scroll_url}
+                      alt={evento.nombre || "Evento agotado"}
+                      className="principal-event-image-mobile-wrap finalizada"
+                    />
+
+                    <div className="principal-event-content-mobile">
+                      <h3>{evento.nombre || "Evento agotado"}</h3>
+
+                      <p className="principal-event-meta-mobile">
+                        📊 {porcentaje.toFixed(1)}% vendido
+                      </p>
+
+                      <p className="principal-event-meta-mobile">
+                        ⏳ Pendiente de sorteo
+                      </p>
+
+                      <div className="principal-event-actions-mobile">
+                        <Link
+                          href={`/evento/${evento.id}`}
+                          className="principal-white-btn small-btn"
+                        >
+                          VER EVENTO
+                        </Link>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         <section className="principal-section" id="eventos-finalizados">
           <div className="principal-section-head">
@@ -441,9 +560,9 @@ export default function PrincipalPageClient() {
                         </p>
                       ) : null}
 
-                      {evento.precio_ticket ? (
+                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
                         <p className="principal-event-meta-mobile">
-                          💰 ${Number(evento.precio_ticket).toFixed(2)}
+                          💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                         </p>
                       ) : null}
 
@@ -466,6 +585,7 @@ export default function PrincipalPageClient() {
                   className="principal-pagination-btn premium"
                   onClick={() => setPaginaFinalizados((prev) => Math.max(prev - 1, 1))}
                   disabled={paginaFinalizados === 1}
+                  aria-label="Ir a la página anterior de eventos finalizados"
                 >
                   ← Anterior
                 </button>
@@ -486,6 +606,7 @@ export default function PrincipalPageClient() {
                     )
                   }
                   disabled={paginaFinalizados === totalPaginasFinalizados}
+                  aria-label="Ir a la página siguiente de eventos finalizados"
                 >
                   Siguiente →
                 </button>
@@ -500,47 +621,119 @@ export default function PrincipalPageClient() {
           </div>
 
           <div className="principal-payments-vertical">
-            {Object.entries(paymentMethodsConfig).map(([methodName, method]) => (
-              <div key={methodName} className="principal-payment-block">
-                <img
-                  src={method.logo}
-                  alt={method.titulo}
-                  className="principal-payment-icon"
-                />
+            {Object.entries(paymentMethodsConfig).map(([methodName, method]) => {
+              const mostrarCuenta = Boolean(method?.cuenta);
+              const mostrarTitular = Boolean(method?.nombre);
+              const extras = Array.isArray(method?.extra) ? method.extra : [];
 
-                <h3>{method.titulo}</h3>
-                <p>{method.subtitulo}</p>
+              return (
+                <div key={methodName} className="principal-payment-block">
+                  {method.logo && (
+                    <img
+                      src={method.logo}
+                      alt={method.titulo || methodName}
+                      className="principal-payment-icon"
+                    />
+                  )}
 
-                <div className="copy-line">
-                  <strong>{method.cuenta}</strong>
-                  <button onClick={() => copiarTexto(method.cuenta)} type="button">
-                    📋
-                  </button>
-                </div>
+                  <h3>{method.titulo || methodName}</h3>
+                  {method.subtitulo ? <p>{method.subtitulo}</p> : null}
 
-                {Array.isArray(method.extra) &&
-                  method.extra.map((item) => (
+                  {mostrarCuenta && (
+                    <div className="copy-line">
+                      <strong>{method.cuenta}</strong>
+                      <button
+                        onClick={() => copiarTexto(method.cuenta)}
+                        type="button"
+                        aria-label={`Copiar cuenta de ${methodName}`}
+                      >
+                        📋
+                      </button>
+                    </div>
+                  )}
+
+                  {extras.map((item) => (
                     <div key={`${methodName}-${item.label}-${item.value}`}>
                       <p>{item.label}</p>
                       <div className="copy-line">
                         <strong>{item.value}</strong>
-                        <button onClick={() => copiarTexto(item.value)} type="button">
+                        <button
+                          onClick={() => copiarTexto(item.value)}
+                          type="button"
+                          aria-label={`Copiar ${item.label} de ${methodName}`}
+                        >
                           📋
                         </button>
                       </div>
                     </div>
                   ))}
 
-                <div className="copy-line">
-                  <span>
-                    <strong>Titular:</strong> {method.nombre}
-                  </span>
-                  <button onClick={() => copiarTexto(method.nombre)} type="button">
-                    📋
-                  </button>
+                  {mostrarTitular && (
+                    <div className="copy-line">
+                      <span>
+                        <strong>Titular:</strong> {method.nombre}
+                      </span>
+                      <button
+                        onClick={() => copiarTexto(method.nombre)}
+                        type="button"
+                        aria-label={`Copiar titular de ${methodName}`}
+                      >
+                        📋
+                      </button>
+                    </div>
+                  )}
+
+                  {method.descripcion ? <p>{method.descripcion}</p> : null}
                 </div>
+              );
+            })}
+          </div>
+        </section>
+
+        <section className="principal-section" id="resultados-oficiales">
+          <div className="principal-section-head">
+            <h2>RESULTADOS OFICIALES</h2>
+          </div>
+
+          <div className="principal-results-box">
+            <div className="principal-results-copy">
+              <p className="principal-results-kicker">TRANSPARENCIA Y CONFIANZA</p>
+
+              <h3>Consulta aquí los resultados oficiales</h3>
+
+              <p>
+                El resultado ganador de nuestras rifas se tomará con base en los resultados
+                oficiales publicados por las loterías autorizadas. Puedes consultar los
+                números directamente en la plataforma oficial.
+              </p>
+
+              <a
+                href="https://supergana.com.ve/resultados.php"
+                target="_blank"
+                rel="noreferrer"
+                className="principal-red-btn"
+              >
+                VER RESULTADOS OFICIALES
+              </a>
+            </div>
+
+            <div className="principal-results-logos">
+              <div className="principal-results-logo-card">
+                <img
+                  src="/resultados/triple-tachira.png"
+                  alt="Triple Táchira"
+                  className="principal-results-logo"
+                />
               </div>
-            ))}
+
+              <div className="principal-results-logo-card">
+                <img
+                  src="/resultados/super-gana.png"
+                  alt="Super Gana"
+                  className="principal-results-logo"
+                />
+              </div>
+            </div>
           </div>
         </section>
 

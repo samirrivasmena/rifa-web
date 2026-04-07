@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Elements,
   PaymentRequestButtonElement,
@@ -9,7 +9,9 @@ import {
 import { loadStripe } from "@stripe/stripe-js";
 import Swal from "sweetalert2";
 
-const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY);
+const stripePromise = process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+  ? loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+  : null;
 
 function AppPayInner({
   totalPagar,
@@ -23,31 +25,50 @@ function AppPayInner({
   const [available, setAvailable] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+  const amountInCents = useMemo(() => {
+    const total = Number(totalPagar);
+    return Number.isFinite(total) && total > 0 ? Math.round(total * 100) : 0;
+  }, [totalPagar]);
+
   useEffect(() => {
-    if (!stripe || !totalPagar || disabled) return;
+    if (!stripe || !amountInCents || disabled) {
+      setPaymentRequest(null);
+      setAvailable(false);
+      return;
+    }
 
     const pr = stripe.paymentRequest({
       country: "US",
       currency: "usd",
       total: {
         label: nombreRifa || "Compra de tickets",
-        amount: Math.round(Number(totalPagar) * 100),
+        amount: amountInCents,
       },
       requestPayerName: true,
       requestPayerEmail: true,
     });
 
+    let isMounted = true;
+
     pr.canMakePayment().then((result) => {
+      if (!isMounted) return;
+
       if (result?.applePay) {
         setPaymentRequest(pr);
         setAvailable(true);
       } else {
+        setPaymentRequest(null);
         setAvailable(false);
       }
     });
 
-    pr.on("paymentmethod", async (ev) => {
+    const handlePaymentMethod = async (ev) => {
       try {
+        if (disabled) {
+          ev.complete("fail");
+          return;
+        }
+
         setProcessing(true);
 
         const res = await fetch("/api/create-payment-intent", {
@@ -56,7 +77,7 @@ function AppPayInner({
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            amount: Math.round(Number(totalPagar) * 100),
+            amount: amountInCents,
             currency: "usd",
             description: nombreRifa || "Compra de tickets",
           }),
@@ -118,20 +139,45 @@ function AppPayInner({
             emailWallet: ev.payerEmail || "",
             nombreWallet: ev.payerName || "",
           });
+        } else {
+          await Swal.fire({
+            ...swalConfig,
+            icon: "warning",
+            title: "Pago no completado",
+            text: "El pago no se completó correctamente.",
+          });
         }
       } catch (error) {
         console.error("Apple Pay flow error:", error);
+        try {
+          ev.complete("fail");
+        } catch {}
         await Swal.fire({
           ...swalConfig,
           icon: "error",
           title: "Error inesperado",
-          text: error.message || "No se pudo procesar el pago",
+          text: error?.message || "No se pudo procesar el pago",
         });
       } finally {
         setProcessing(false);
       }
-    });
-  }, [stripe, totalPagar, nombreRifa, registrarCompra, swalConfig, disabled]);
+    };
+
+    pr.on("paymentmethod", handlePaymentMethod);
+
+    return () => {
+      isMounted = false;
+      setPaymentRequest(null);
+      setAvailable(false);
+    };
+  }, [
+    stripe,
+    amountInCents,
+    nombreRifa,
+    registrarCompra,
+    swalConfig,
+    disabled,
+  ]);
 
   if (!available || !paymentRequest || disabled) return null;
 
@@ -156,6 +202,10 @@ function AppPayInner({
 }
 
 export default function AppPayButton(props) {
+  if (!stripePromise) {
+    return null;
+  }
+
   return (
     <Elements stripe={stripePromise}>
       <AppPayInner {...props} />

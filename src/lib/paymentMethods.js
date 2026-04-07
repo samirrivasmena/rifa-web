@@ -43,15 +43,48 @@ export const paymentMethodsConfig = {
     key: "App Pay",
     titulo: "APP PAY",
     descripcion:
-      "Usa App Pay en dispositivos compatibles para realizar tu pago. Luego completa el formulario con tu referencia o comprobante para validar la compra.",
+      "Usa App Pay en dispositivos compatibles para realizar tu pago de forma rápida y segura.",
     nombre: "Samir Rivas",
     cuenta: "App Pay disponible",
     subtitulo: "PAGO RÁPIDO",
     logo: "/payment/apppay.png",
     bgClass: "apppay-bg",
     type: "wallet",
-    note: "Compatible con dispositivos y navegadores compatibles.",
+    note: "Compatible con dispositivos Apple y navegadores compatibles.",
+  },
+
+  PayPal: {
+    key: "PayPal",
+    titulo: "PAYPAL",
+    descripcion:
+      "Envía el pago a la cuenta indicada en PayPal y luego completa el formulario con la referencia exacta.",
+    nombre: "Samir Rivas",
+    cuenta: "paypal.me/SamirRivas",
+    subtitulo: "USUARIO",
+    logo: "/payment/paypal.png",
+    bgClass: "paypal-bg",
+    type: "standard",
+  },
+
+  "Cash App": {
+    key: "Cash App",
+    titulo: "CASH APP",
+    descripcion:
+      "Envía el pago a través de Cash App y luego completa el formulario con la referencia o comprobante.",
+    nombre: "Samir Rivas",
+    cuenta: "$SamirRivas",
+    subtitulo: "CASH TAG",
+    logo: "/payment/cashapp.png",
+    bgClass: "cashapp-bg",
+    type: "standard",
   },
 };
 
-export const paymentMethodsList = Object.keys(paymentMethodsConfig);
+export const paymentMethodsList = [
+  "Binance",
+  "Zelle",
+  "Banco de Venezuela",
+  "App Pay",
+  "PayPal",
+  "Cash App",
+];

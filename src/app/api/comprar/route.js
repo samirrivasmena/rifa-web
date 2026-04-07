@@ -34,35 +34,43 @@ export async function POST(req) {
     const telefonoLimpio = limpiarTelefono(telefono);
     const referenciaLimpia = limpiarTexto(referencia);
     const metodoPago = limpiarTexto(paymentMethod);
-    const metodosPermitidos = [
-  "Binance",
-  "Zelle",
-  "Banco de Venezuela",
-  "Bancolombia",
-];
-
-if (!metodosPermitidos.includes(metodoPago)) {
-  return NextResponse.json(
-    { error: "Método de pago no válido" },
-    { status: 400 }
-  );
-}
     const comprobante = limpiarTexto(comprobanteUrl);
     const rifaIdLimpio = limpiarTexto(rifaId);
 
     const cantidadTickets = Number(tickets);
     const totalRecibido = Number(totalPagar);
 
+    const metodosPermitidos = [
+      "Binance",
+      "Zelle",
+      "Banco de Venezuela",
+      "Bancolombia",
+      "App Pay",
+    ];
+
+    if (!metodosPermitidos.includes(metodoPago)) {
+      return NextResponse.json(
+        { error: "Método de pago no válido" },
+        { status: 400 }
+      );
+    }
+
     if (
       !nombreLimpio ||
       !emailLimpio ||
       !telefonoLimpio ||
-      !referenciaLimpia ||
       !metodoPago ||
       !rifaIdLimpio
     ) {
       return NextResponse.json(
         { error: "Faltan datos obligatorios" },
+        { status: 400 }
+      );
+    }
+
+    if (metodoPago !== "App Pay" && !referenciaLimpia) {
+      return NextResponse.json(
+        { error: "La referencia es obligatoria para este método de pago" },
         { status: 400 }
       );
     }
@@ -112,10 +120,56 @@ if (!metodosPermitidos.includes(metodoPago)) {
       );
     }
 
-    if (rifa.estado !== "activa") {
+    const estadoRifa = String(rifa.estado || "").toLowerCase();
+
+    if (!["activa", "disponible", "publicada"].includes(estadoRifa)) {
       return NextResponse.json(
-        { error: "La rifa seleccionada no está activa" },
+        { error: "La rifa seleccionada no está disponible para comprar" },
         { status: 400 }
+      );
+    }
+
+    const totalNumerosRaw = Number(
+      rifa.cantidad_numeros ?? rifa.total_tickets ?? rifa.numeros_totales ?? 0
+    );
+
+    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
+
+    if (totalNumeros <= 0) {
+      return NextResponse.json(
+        { error: "La rifa no tiene una cantidad de números válida configurada" },
+        { status: 400 }
+      );
+    }
+
+    const { data: ticketsExistentes, error: ticketsError } = await supabaseAdmin
+      .from("tickets")
+      .select("id, rifa_id")
+      .eq("rifa_id", rifaIdLimpio);
+
+    if (ticketsError) {
+      return NextResponse.json(
+        { error: ticketsError.message || "No se pudo validar la disponibilidad de tickets" },
+        { status: 500 }
+      );
+    }
+
+    const ticketsVendidos = Array.isArray(ticketsExistentes) ? ticketsExistentes.length : 0;
+    const ticketsDisponibles = Math.max(totalNumeros - ticketsVendidos, 0);
+
+    if (ticketsVendidos >= totalNumeros) {
+      return NextResponse.json(
+        { error: "La rifa ya alcanzó el 100% y no acepta más compras" },
+        { status: 409 }
+      );
+    }
+
+    if (cantidadTickets > ticketsDisponibles) {
+      return NextResponse.json(
+        {
+          error: `Solo quedan ${ticketsDisponibles} ticket(s) disponibles para esta rifa`,
+        },
+        { status: 409 }
       );
     }
 
@@ -132,28 +186,30 @@ if (!metodosPermitidos.includes(metodoPago)) {
       );
     }
 
-    const { data: compraDuplicada, error: compraDuplicadaError } =
-      await supabaseAdmin
-        .from("compras")
-        .select("id, referencia, estado_pago, rifa_id")
-        .eq("referencia", referenciaLimpia)
-        .eq("rifa_id", rifaIdLimpio)
-        .maybeSingle();
+    if (metodoPago !== "App Pay") {
+      const { data: compraDuplicada, error: compraDuplicadaError } =
+        await supabaseAdmin
+          .from("compras")
+          .select("id, referencia, estado_pago, rifa_id")
+          .eq("referencia", referenciaLimpia)
+          .eq("rifa_id", rifaIdLimpio)
+          .maybeSingle();
 
-    if (compraDuplicadaError) {
-      return NextResponse.json(
-        { error: compraDuplicadaError.message },
-        { status: 500 }
-      );
-    }
+      if (compraDuplicadaError) {
+        return NextResponse.json(
+          { error: compraDuplicadaError.message },
+          { status: 500 }
+        );
+      }
 
-    if (compraDuplicada) {
-      return NextResponse.json(
-        {
-          error: "Ya existe una compra registrada con esa referencia para esta rifa",
-        },
-        { status: 409 }
-      );
+      if (compraDuplicada) {
+        return NextResponse.json(
+          {
+            error: "Ya existe una compra registrada con esa referencia para esta rifa",
+          },
+          { status: 409 }
+        );
+      }
     }
 
     const { data: usuarioExistente, error: usuarioBusquedaError } =
@@ -217,7 +273,7 @@ if (!metodosPermitidos.includes(metodoPago)) {
       cantidad_tickets: cantidadTickets,
       monto_total: totalFormateado,
       metodo_pago: metodoPago,
-      referencia: referenciaLimpia,
+      referencia: referenciaLimpia || `APPPAY-${Date.now()}`,
       comprobante_url: comprobante || null,
       estado_pago: "pendiente",
       fecha_compra: new Date().toISOString(),
@@ -240,6 +296,11 @@ if (!metodosPermitidos.includes(metodoPago)) {
       ok: true,
       message: "Compra registrada correctamente",
       compra: compraCreada,
+      disponibilidad: {
+        total_numeros: totalNumeros,
+        tickets_vendidos: ticketsVendidos,
+        tickets_disponibles: ticketsDisponibles - cantidadTickets,
+      },
     });
   } catch (error) {
     console.error("comprar route error:", error);

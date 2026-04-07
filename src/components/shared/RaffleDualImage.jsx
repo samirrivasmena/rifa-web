@@ -14,30 +14,28 @@ export default function RaffleDualImage({
   const [isVisible, setIsVisible] = useState(false);
   const [showSecondImage, setShowSecondImage] = useState(false);
 
-  const tieneSecundaria =
-    Boolean(secondarySrc) && String(secondarySrc).trim() !== "";
+  const principalFinal = String(principalSrc || "").trim() || "/logo.png";
+  const secundariaFinal = String(secondarySrc || "").trim();
+  const tieneSecundaria = Boolean(secundariaFinal) && secundariaFinal !== principalFinal;
 
   useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
 
-    const createObserver = () => {
-      const isMobile = window.innerWidth <= 768;
+    const isMobile = window.innerWidth <= 768;
 
-      return new IntersectionObserver(
-        ([entry]) => {
-          setIsVisible(entry.isIntersecting);
-        },
-        {
-          threshold: isMobile ? 0.12 : 0.18,
-          rootMargin: isMobile
-            ? "-10% 0px -10% 0px"
-            : "-8% 0px -8% 0px",
-        }
-      );
-    };
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsVisible(entry.isIntersecting);
+      },
+      {
+        threshold: isMobile ? 0.12 : 0.18,
+        rootMargin: isMobile
+          ? "-10% 0px -10% 0px"
+          : "-8% 0px -8% 0px",
+      }
+    );
 
-    const observer = createObserver();
     observer.observe(node);
 
     return () => {
@@ -46,23 +44,22 @@ export default function RaffleDualImage({
   }, []);
 
   useEffect(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+
     if (!tieneSecundaria) {
       setShowSecondImage(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
       return;
     }
 
     if (!isVisible) {
       setShowSecondImage(false);
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-        intervalRef.current = null;
-      }
       return;
     }
+
+    setShowSecondImage(false);
 
     intervalRef.current = setInterval(() => {
       setShowSecondImage((prev) => !prev);
@@ -74,12 +71,12 @@ export default function RaffleDualImage({
         intervalRef.current = null;
       }
     };
-  }, [isVisible, tieneSecundaria]);
+  }, [isVisible, tieneSecundaria, secundariaFinal, principalFinal]);
 
   return (
     <div ref={containerRef} className={`raffle-dual-image-wrap ${className}`}>
       <img
-        src={principalSrc || "/logo.png"}
+        src={principalFinal}
         alt={alt}
         className={`raffle-dual-image-layer ${
           showSecondImage && tieneSecundaria ? "hide" : "show"
@@ -91,11 +88,9 @@ export default function RaffleDualImage({
 
       {tieneSecundaria && (
         <img
-          src={secondarySrc}
-          alt={alt}
-          className={`raffle-dual-image-layer ${
-            showSecondImage ? "show" : "hide"
-          }`}
+          src={secundariaFinal}
+          alt={`${alt} secundaria`}
+          className={`raffle-dual-image-layer ${showSecondImage ? "show" : "hide"}`}
           loading="lazy"
           decoding="async"
           draggable={false}

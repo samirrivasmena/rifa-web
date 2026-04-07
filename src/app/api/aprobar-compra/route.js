@@ -125,16 +125,36 @@ export async function POST(req) {
       );
     }
 
-    if (rifa.estado !== "activa") {
+    const estadoRifa = String(rifa.estado || "").toLowerCase();
+
+    if (!["activa", "disponible", "publicada"].includes(estadoRifa)) {
       return NextResponse.json(
-        { error: "La rifa no está activa para aprobar compras automáticamente" },
+        { error: "La rifa no está disponible para aprobar compras automáticamente" },
         { status: 400 }
       );
     }
 
+    const numeroInicio = Number(rifa.numero_inicio);
+    const numeroFin = Number(rifa.numero_fin);
+
+    if (!Number.isInteger(numeroInicio) || !Number.isInteger(numeroFin) || numeroFin < numeroInicio) {
+      return NextResponse.json(
+        { error: "La rifa no tiene un rango de números válido" },
+        { status: 400 }
+      );
+    }
+
+    const totalNumerosConfigurados = Number(
+      rifa.cantidad_numeros ?? numeroFin - numeroInicio + 1
+    );
+
+    const totalNumeros = Number.isFinite(totalNumerosConfigurados) && totalNumerosConfigurados > 0
+      ? totalNumerosConfigurados
+      : numeroFin - numeroInicio + 1;
+
     const { data: ticketsExistentes, error: ticketsExistentesError } = await supabaseAdmin
       .from("tickets")
-      .select("numero_ticket")
+      .select("id, numero_ticket")
       .eq("rifa_id", rifa.id);
 
     if (ticketsExistentesError) {
@@ -144,12 +164,45 @@ export async function POST(req) {
       );
     }
 
+    const ticketsActuales = Array.isArray(ticketsExistentes) ? ticketsExistentes : [];
+    const ticketsVendidosAntes = ticketsActuales.length;
+
+    if (ticketsVendidosAntes >= totalNumeros) {
+      const { error: updateAgotadaError } = await supabaseAdmin
+        .from("rifas")
+        .update({ estado: "agotada" })
+        .eq("id", rifa.id);
+
+      if (updateAgotadaError) {
+        return NextResponse.json(
+          { error: updateAgotadaError.message },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(
+        { error: "La rifa ya alcanzó el 100% y no tiene números disponibles" },
+        { status: 409 }
+      );
+    }
+
+    const disponiblesRestantesAntes = totalNumeros - ticketsVendidosAntes;
+
+    if (cantidadTickets > disponiblesRestantesAntes) {
+      return NextResponse.json(
+        {
+          error: `No hay suficientes números disponibles. Solo quedan ${disponiblesRestantesAntes} ticket(s)`,
+        },
+        { status: 409 }
+      );
+    }
+
     const numerosOcupados = new Set(
-      (ticketsExistentes || []).map((t) => Number(t.numero_ticket))
+      ticketsActuales.map((t) => Number(t.numero_ticket))
     );
 
     const disponibles = [];
-    for (let i = Number(rifa.numero_inicio); i <= Number(rifa.numero_fin); i++) {
+    for (let i = numeroInicio; i <= numeroFin; i++) {
       if (!numerosOcupados.has(i)) {
         disponibles.push(i);
       }
@@ -198,6 +251,24 @@ export async function POST(req) {
       );
     }
 
+    const ticketsVendidosDespues = ticketsVendidosAntes + cantidadTickets;
+    const rifaCompleta = ticketsVendidosDespues >= totalNumeros;
+    const nuevoEstadoRifa = rifaCompleta ? "agotada" : rifa.estado;
+
+    if (rifaCompleta) {
+      const { error: updateRifaError } = await supabaseAdmin
+        .from("rifas")
+        .update({ estado: "agotada" })
+        .eq("id", rifa.id);
+
+      if (updateRifaError) {
+        return NextResponse.json(
+          { error: updateRifaError.message },
+          { status: 500 }
+        );
+      }
+    }
+
     return NextResponse.json({
       ok: true,
       tickets: nuevosTickets || [],
@@ -205,7 +276,15 @@ export async function POST(req) {
         id: rifa.id,
         nombre: rifa.nombre,
         formato: rifa.formato,
+        estado: nuevoEstadoRifa,
+        tickets_vendidos: ticketsVendidosDespues,
+        total_numeros: totalNumeros,
+        porcentaje_vendido:
+          totalNumeros > 0
+            ? Number(((ticketsVendidosDespues / totalNumeros) * 100).toFixed(2))
+            : 0,
       },
+      rifaCompleta,
     });
   } catch (error) {
     console.error("aprobar-compra error:", error);

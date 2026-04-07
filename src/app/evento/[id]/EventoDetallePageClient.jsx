@@ -19,6 +19,14 @@ export default function EventoDetallePageClient() {
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
 
+  const esEstadoFinalizado = (estado) =>
+    ["finalizada", "finalizado", "cerrada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
+  const esEstadoAgotado = (estado) =>
+    ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
+
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") setShowVerifyModal(false);
@@ -72,13 +80,18 @@ export default function EventoDetallePageClient() {
 
     if (params?.id) {
       cargarEvento();
+    } else {
+      setEvento(null);
+      setLoading(false);
     }
   }, [params?.id]);
 
   const estaFinalizado = useMemo(() => {
-    return ["finalizada", "finalizado", "cerrada"].includes(
-      String(evento?.estado || "").toLowerCase()
-    );
+    return esEstadoFinalizado(evento?.estado);
+  }, [evento]);
+
+  const estaAgotado = useMemo(() => {
+    return esEstadoAgotado(evento?.estado);
   }, [evento]);
 
   const premios = useMemo(() => {
@@ -100,8 +113,28 @@ export default function EventoDetallePageClient() {
     evento?.hora_rifa ||
     "";
 
-  const precio = Number(evento?.precio_ticket || 0);
+  const precioRaw = Number(evento?.precio_ticket);
+  const precio = Number.isFinite(precioRaw) ? precioRaw : 0;
+
   const descripcion = evento?.descripcion || "Sin descripción disponible.";
+
+  const totalNumerosRaw = Number(
+    evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
+  );
+  const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
+
+  const ticketsVendidosRaw = Number(
+    evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
+  );
+  const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
+
+  const porcentajeVendidoRaw = Number(
+    evento?.porcentaje_vendido ??
+      (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
+  );
+  const porcentajeVendido = Number.isFinite(porcentajeVendidoRaw)
+    ? Math.min(porcentajeVendidoRaw, 100)
+    : 0;
 
   return (
     <>
@@ -112,6 +145,7 @@ export default function EventoDetallePageClient() {
           logoHref="/principal"
           inicioHref="/principal#inicio"
           eventosHref="/principal#eventos-disponibles"
+          resultadosHref="/principal#resultados-oficiales"
           pagosHref="/principal#pagos"
           contactoHref="/principal#contacto"
         />
@@ -170,16 +204,25 @@ export default function EventoDetallePageClient() {
                   principalSrc={evento.portada_url}
                   secondarySrc={evento.portada_scroll_url}
                   alt={evento.nombre || "Evento"}
-                  className={`evento-image-dual-wrap ${estaFinalizado ? "finalizada" : ""}`}
+                  className={`evento-image-dual-wrap ${estaFinalizado || estaAgotado ? "finalizada" : ""}`}
                 />
 
                 <div className="evento-overlay" />
 
                 {estaFinalizado && <div className="evento-ribbon">FINALIZADO</div>}
+                {!estaFinalizado && estaAgotado && <div className="evento-ribbon">AGOTADO</div>}
 
                 <div className="evento-image-content">
-                  <div className={`evento-status ${estaFinalizado ? "off" : "on"}`}>
-                    {estaFinalizado ? "● Finalizada" : "● Disponible"}
+                  <div
+                    className={`evento-status ${
+                      estaFinalizado || estaAgotado ? "off" : "on"
+                    }`}
+                  >
+                    {estaFinalizado
+                      ? "● Finalizada"
+                      : estaAgotado
+                      ? "● Agotada"
+                      : "● Disponible"}
                   </div>
 
                   <h1>{evento.nombre || "Evento"}</h1>
@@ -200,7 +243,11 @@ export default function EventoDetallePageClient() {
                   <div className="evento-mini-grid">
                     <div className="evento-mini-box">
                       <span>ESTADO</span>
-                      <strong className={estaFinalizado ? "text-red" : "text-green"}>
+                      <strong
+                        className={
+                          estaFinalizado || estaAgotado ? "text-red" : "text-green"
+                        }
+                      >
                         {evento.estado || "Disponible"}
                       </strong>
                     </div>
@@ -219,8 +266,32 @@ export default function EventoDetallePageClient() {
                       <span>HORA</span>
                       <strong>{hora || "Por confirmar"}</strong>
                     </div>
+
+                    <div className="evento-mini-box">
+                      <span>PROGRESO</span>
+                      <strong>{porcentajeVendido.toFixed(1)}%</strong>
+                    </div>
+
+                    <div className="evento-mini-box">
+                      <span>VENDIDOS</span>
+                      <strong>
+                        {ticketsVendidos}
+                        {totalNumeros > 0 ? ` / ${totalNumeros}` : ""}
+                      </strong>
+                    </div>
                   </div>
                 </div>
+
+                {estaAgotado && !estaFinalizado && (
+                  <div className="evento-card">
+                    <p className="evento-kicker">ESTADO DEL EVENTO</p>
+                    <h2>Rifa completa</h2>
+                    <p className="evento-description">
+                      Todos los boletos fueron vendidos. Este evento está agotado y pendiente
+                      del sorteo oficial.
+                    </p>
+                  </div>
+                )}
 
                 <div className="evento-card">
                   <p className="evento-kicker">PREMIACIÓN</p>
@@ -229,7 +300,7 @@ export default function EventoDetallePageClient() {
                   {premios.length > 0 ? (
                     <div className="evento-premios">
                       {premios.map((premio, index) => (
-                        <div key={index} className="evento-premio-item">
+                        <div key={`${premio}-${index}`} className="evento-premio-item">
                           🎁 {premio}
                         </div>
                       ))}
@@ -246,10 +317,14 @@ export default function EventoDetallePageClient() {
                   <h2>Participar</h2>
 
                   <div className="evento-actions">
-                    {!estaFinalizado ? (
+                    {!estaFinalizado && !estaAgotado ? (
                       <Link href={`/?rifa=${evento.id}#boletos`} className="principal-red-btn">
                         COMPRAR TICKETS
                       </Link>
+                    ) : estaAgotado ? (
+                      <button type="button" className="evento-disabled-btn" disabled>
+                        BOLETOS AGOTADOS
+                      </button>
                     ) : (
                       <button type="button" className="evento-disabled-btn" disabled>
                         EVENTO FINALIZADO

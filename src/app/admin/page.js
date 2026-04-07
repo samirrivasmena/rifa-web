@@ -184,7 +184,9 @@ export default function Admin() {
           return prev;
         }
 
-        const activa = rifasConStats.find((r) => r.estado === "activa");
+        const activa = rifasConStats.find(
+          (r) => String(r.estado || "").toLowerCase() === "activa"
+        );
         if (activa) return activa.id;
 
         return rifasConStats[0]?.id || "";
@@ -582,7 +584,10 @@ export default function Admin() {
 
       const res = await fetch("/api/aprobar-compra", {
         method: "POST",
-        headers: await getAdminAuthHeaders(),
+        headers: {
+          ...(await getAdminAuthHeaders()),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           compraId: compra.id,
         }),
@@ -741,7 +746,10 @@ export default function Admin() {
 
       const res = await fetch("/api/aprobar-compra-manual", {
         method: "POST",
-        headers: await getAdminAuthHeaders(),
+        headers: {
+          ...(await getAdminAuthHeaders()),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           compraId: compraManualSeleccionada.id,
           rifaId: rifaSeleccionada.id,
@@ -823,7 +831,10 @@ export default function Admin() {
 
       const res = await fetch("/api/rechazar-compra", {
         method: "POST",
-        headers: await getAdminAuthHeaders(),
+        headers: {
+          ...(await getAdminAuthHeaders()),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           compraId: compra.id,
         }),
@@ -889,7 +900,10 @@ export default function Admin() {
 
       const res = await fetch("/api/eliminar-compra", {
         method: "POST",
-        headers: await getAdminAuthHeaders(),
+        headers: {
+          ...(await getAdminAuthHeaders()),
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           compraId: compra.id,
         }),
@@ -1023,41 +1037,41 @@ export default function Admin() {
           )}
 
           {seccionActiva === "dashboard" && (
-<AdminDashboardSection
-  dashboardRef={dashboardRef}
-  dashboardFilterRef={dashboardFilterRef}
-  mapaTicketsRef={mapaTicketsRef}
-  comprasSectionRef={comprasSectionRef}
-  ganadorRef={ganadorRef}
-  rankingRef={rankingRef}
-  rifaSeleccionada={rifaSeleccionada}
-  padLength={padLength}
-  formatearFecha={formatearFecha}
-  comprasFiltradasPorRifa={comprasFiltradasPorRifa}
-  ticketsFiltradosPorRifa={ticketsFiltradosPorRifa}
-  showSecondImage={showSecondImage}
-  setSeccionActiva={setSeccionActiva}
-  scrollToRef={scrollToRef}
-  abrirFiltroDashboard={abrirFiltroDashboard}
-  dashboardCompactSummary={dashboardCompactSummary}
-  irADashboardTotal={irADashboardTotal}
-  irAPendientes={irAPendientes}
-  irAAprobadas={irAAprobadas}
-  irARechazadas={irARechazadas}
-  irAMapaTickets={irAMapaTickets}
-  filtroDashboard={filtroDashboard}
-  setFiltroDashboard={setFiltroDashboard}
-  ticketsPorCompra={ticketsPorCompra}
-  aprobarCompra={aprobarCompra}
-  abrirAprobacionManual={abrirAprobacionManual}
-  rechazarCompra={rechazarCompra}
-  eliminarCompra={eliminarCompra}
-  loadingAprobacion={loadingAprobacion}
-  loadingRechazo={loadingRechazo}
-  loadingEliminacion={loadingEliminacion}
-  comprasPendientes={comprasPendientes}
-  abrirAprobacionManualDesdeCuadricula={abrirAprobacionManualDesdeCuadricula}
-/>
+            <AdminDashboardSection
+              dashboardRef={dashboardRef}
+              dashboardFilterRef={dashboardFilterRef}
+              mapaTicketsRef={mapaTicketsRef}
+              comprasSectionRef={comprasSectionRef}
+              ganadorRef={ganadorRef}
+              rankingRef={rankingRef}
+              rifaSeleccionada={rifaSeleccionada}
+              padLength={padLength}
+              formatearFecha={formatearFecha}
+              comprasFiltradasPorRifa={comprasFiltradasPorRifa}
+              ticketsFiltradosPorRifa={ticketsFiltradosPorRifa}
+              showSecondImage={showSecondImage}
+              setSeccionActiva={setSeccionActiva}
+              scrollToRef={scrollToRef}
+              abrirFiltroDashboard={abrirFiltroDashboard}
+              dashboardCompactSummary={dashboardCompactSummary}
+              irADashboardTotal={irADashboardTotal}
+              irAPendientes={irAPendientes}
+              irAAprobadas={irAAprobadas}
+              irARechazadas={irARechazadas}
+              irAMapaTickets={irAMapaTickets}
+              filtroDashboard={filtroDashboard}
+              setFiltroDashboard={setFiltroDashboard}
+              ticketsPorCompra={ticketsPorCompra}
+              aprobarCompra={aprobarCompra}
+              abrirAprobacionManual={abrirAprobacionManual}
+              rechazarCompra={rechazarCompra}
+              eliminarCompra={eliminarCompra}
+              loadingAprobacion={loadingAprobacion}
+              loadingRechazo={loadingRechazo}
+              loadingEliminacion={loadingEliminacion}
+              comprasPendientes={comprasPendientes}
+              abrirAprobacionManualDesdeCuadricula={abrirAprobacionManualDesdeCuadricula}
+            />
           )}
 
           {seccionActiva === "rifas" && (
@@ -1070,6 +1084,8 @@ export default function Admin() {
               topRef={topRef}
               scrollToRef={scrollToRef}
               formatearFecha={formatearFecha}
+              rifaActiva={rifaActiva}
+              loadingRifa={loadingRifa}
             />
           )}
 

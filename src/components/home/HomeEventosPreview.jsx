@@ -15,13 +15,46 @@ export default function HomeEventosPreview({ rifas = [] }) {
       String(estado || "").toLowerCase()
     );
 
+  const esEventoAgotado = (estado) =>
+    ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
+
   const esEventoFinalizado = (estado) =>
     ["finalizada", "finalizado", "cerrada"].includes(
       String(estado || "").toLowerCase()
     );
 
+  const formatearPrecioSeguro = (valor) => {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
+  };
+
+  const obtenerPorcentajeSeguro = (evento) => {
+    const totalNumerosRaw = Number(
+      evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
+    );
+
+    const ticketsVendidosRaw = Number(
+      evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
+    );
+
+    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
+    const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
+
+    const porcentajeRaw = Number(
+      evento?.porcentaje_vendido ??
+        (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
+    );
+
+    return Number.isFinite(porcentajeRaw) ? porcentajeRaw : 0;
+  };
+
   const eventosDisponibles = useMemo(
     () => rifas.filter((r) => esEventoDisponible(r.estado)),
+    [rifas]
+  );
+
+  const eventosAgotados = useMemo(
+    () => rifas.filter((r) => esEventoAgotado(r.estado)),
     [rifas]
   );
 
@@ -101,6 +134,8 @@ export default function HomeEventosPreview({ rifas = [] }) {
                 evento.hora_rifa ||
                 "";
 
+              const porcentaje = obtenerPorcentajeSeguro(evento);
+
               return (
                 <article key={evento.id} className="home-event-card">
                   {evento.destacada && (
@@ -126,11 +161,15 @@ export default function HomeEventosPreview({ rifas = [] }) {
                     {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
                     {hora && <p className="home-event-card-time">⏰ {hora}</p>}
 
-                    {evento.precio_ticket ? (
+                    {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
                       <p className="home-event-card-price">
-                        💰 ${Number(evento.precio_ticket).toFixed(2)}
+                        💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                       </p>
                     ) : null}
+
+                    <p className="home-event-card-progress">
+                      📊 {porcentaje.toFixed(1)}% vendido
+                    </p>
 
                     <div className="home-event-card-actions">
                       <button
@@ -154,6 +193,76 @@ export default function HomeEventosPreview({ rifas = [] }) {
               );
             })}
           </div>
+        )}
+
+        {eventosAgotados.length > 0 && (
+          <>
+            <div className="home-events-title-wrap home-events-finalizados">
+              <h2 className="home-events-title">AGOTADAS</h2>
+              <p className="home-events-subtitle">
+                Rifas completas y pendientes de sorteo
+              </p>
+            </div>
+
+            <div className="home-events-grid">
+              {eventosAgotados.map((evento) => {
+                const fecha =
+                  evento.fecha_sorteo ||
+                  evento.fecha ||
+                  evento.fecha_rifa ||
+                  "";
+
+                const porcentaje = obtenerPorcentajeSeguro(evento);
+
+                return (
+                  <article key={evento.id} className="home-event-card finalizada">
+                    <div className="home-card-badges-row">
+                      {evento.destacada ? (
+                        <div className="home-destacada-badge">⭐ Destacada</div>
+                      ) : (
+                        <div className="home-badge-placeholder" />
+                      )}
+
+                      <div className="home-agotado-badge">Agotada</div>
+                    </div>
+
+                    {evento.portada_url || evento.portada_scroll_url ? (
+                      <RaffleDualImage
+                        principalSrc={evento.portada_url}
+                        secondarySrc={evento.portada_scroll_url}
+                        alt={evento.nombre || "Evento agotado"}
+                        className="home-event-card-image-wrap finalizada"
+                      />
+                    ) : (
+                      <div className="home-event-card-placeholder">Sin imagen</div>
+                    )}
+
+                    <div className="home-event-card-body">
+                      <h3>{evento.nombre}</h3>
+
+                      {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
+
+                      <p className="home-event-card-progress">
+                        📊 {porcentaje.toFixed(1)}% vendido
+                      </p>
+
+                      <p className="home-event-card-date">⏳ Pendiente de sorteo</p>
+
+                      <div className="home-event-card-actions">
+                        <button
+                          type="button"
+                          className="home-event-card-btn secondary"
+                          onClick={() => abrirEvento(evento.id)}
+                        >
+                          VER EVENTO
+                        </button>
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
 
         <div className="home-events-title-wrap home-events-finalizados">
@@ -203,9 +312,9 @@ export default function HomeEventosPreview({ rifas = [] }) {
 
                       {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
 
-                      {evento.precio_ticket ? (
+                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
                         <p className="home-event-card-price">
-                          💰 ${Number(evento.precio_ticket).toFixed(2)}
+                          💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                         </p>
                       ) : null}
 
@@ -230,6 +339,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                 className="home-pagination-btn"
                 onClick={() => setPaginaFinalizados((prev) => Math.max(prev - 1, 1))}
                 disabled={paginaFinalizados === 1}
+                aria-label="Ir a la página anterior de eventos finalizados"
               >
                 ← Anterior
               </button>
@@ -250,6 +360,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   )
                 }
                 disabled={paginaFinalizados === totalPaginasFinalizados}
+                aria-label="Ir a la página siguiente de eventos finalizados"
               >
                 Siguiente →
               </button>

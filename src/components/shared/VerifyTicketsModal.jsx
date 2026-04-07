@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import Swal from "sweetalert2";
 
-const validarEmail = (email) => /\S+@\S+\.\S+/.test(email);
+const validarEmail = (email) => /\S+@\S+\.\S+/.test(String(email || "").trim());
 
 export default function VerifyTicketsModal({
   open,
@@ -37,6 +37,20 @@ export default function VerifyTicketsModal({
     };
   }, [open, loading, onClose, setEmail]);
 
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    if (open) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [open]);
+
   if (!open) return null;
 
   const swalConfig = {
@@ -53,7 +67,7 @@ export default function VerifyTicketsModal({
   };
 
   const handleVerify = async () => {
-    const cleanEmail = email.trim().toLowerCase();
+    const cleanEmail = String(email || "").trim().toLowerCase();
 
     if (!rifaId) {
       await Swal.fire({
@@ -125,7 +139,7 @@ export default function VerifyTicketsModal({
       const ticketsData = Array.isArray(data.tickets) ? data.tickets : [];
 
       const comprasPendientes = compras.filter(
-        (compra) => compra.estado_pago === "pendiente"
+        (compra) => String(compra.estado_pago || "").toLowerCase() === "pendiente"
       );
 
       if (ticketsData.length === 0 && comprasPendientes.length > 0) {
@@ -153,15 +167,13 @@ export default function VerifyTicketsModal({
         return;
       }
 
-      const formatoRifa =
-        compras.find((compra) => compra?.rifas?.formato)?.rifas?.formato || "4digitos";
-
-      const nombreRifa =
-        compras.find((compra) => compra?.rifas?.nombre)?.rifas?.nombre || "Rifa";
-
+      const compraConRifa = compras.find((compra) => compra?.rifas);
+      const formatoRifa = compraConRifa?.rifas?.formato || "4digitos";
+      const nombreRifa = compraConRifa?.rifas?.nombre || "Rifa";
       const padLength = formatoRifa === "3digitos" ? 3 : 4;
 
-      const numeros = ticketsData
+      const numerosOrdenados = [...ticketsData]
+        .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket))
         .map((ticket) => String(ticket.numero_ticket).padStart(padLength, "0"))
         .join(", ");
 
@@ -185,7 +197,7 @@ export default function VerifyTicketsModal({
               line-height:1.8;
               word-break:break-word;
             ">
-              ${numeros}
+              ${numerosOrdenados}
             </div>
           </div>
         `,
@@ -199,7 +211,7 @@ export default function VerifyTicketsModal({
         ...swalConfig,
         icon: "error",
         title: "Error inesperado",
-        text: error.message || "No se pudo verificar la información",
+        text: error?.message || "No se pudo verificar la información",
       });
     } finally {
       setLoading(false);
@@ -214,6 +226,7 @@ export default function VerifyTicketsModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="verify-modal-title"
+        aria-describedby="verify-modal-description"
       >
         <div className="verify-modal-badge">🎟️ VERIFICADOR</div>
 
@@ -223,7 +236,7 @@ export default function VerifyTicketsModal({
           ⚠️ Soporte tiene hasta 24 horas para revisar y aprobar tu compra
         </p>
 
-        <p className="verify-modal-text">
+        <p className="verify-modal-text" id="verify-modal-description">
           Ingresa el correo electrónico que usaste al comprar para consultar tus tickets
           aprobados en esta rifa.
         </p>

@@ -8,6 +8,7 @@ function validarEmail(email) {
 export async function POST(req) {
   try {
     const body = await req.json();
+
     const email = String(body.email || "").trim().toLowerCase();
     const rifaId = body.rifaId ? String(body.rifaId).trim() : "";
 
@@ -49,7 +50,7 @@ export async function POST(req) {
       });
     }
 
-    const { data: compras, error: comprasError } = await supabaseAdmin
+    const { data: comprasData, error: comprasError } = await supabaseAdmin
       .from("compras")
       .select(`
         *,
@@ -70,7 +71,9 @@ export async function POST(req) {
       );
     }
 
-    if (!compras || compras.length === 0) {
+    const compras = Array.isArray(comprasData) ? comprasData : [];
+
+    if (compras.length === 0) {
       return NextResponse.json({
         ok: true,
         encontrado: false,
@@ -82,7 +85,7 @@ export async function POST(req) {
     }
 
     const comprasAprobadas = compras.filter(
-      (compra) => compra.estado_pago === "aprobado"
+      (compra) => String(compra.estado_pago || "").toLowerCase() === "aprobado"
     );
 
     const compraIdsAprobadas = comprasAprobadas.map((compra) => compra.id);
@@ -104,16 +107,18 @@ export async function POST(req) {
         );
       }
 
-      tickets = ticketsData || [];
+      tickets = Array.isArray(ticketsData) ? ticketsData : [];
     }
+
+    const mensaje =
+      comprasAprobadas.length > 0
+        ? "Se encontraron tickets aprobados para este correo en esta rifa"
+        : "Se encontraron compras en esta rifa, pero aún no han sido aprobadas";
 
     return NextResponse.json({
       ok: true,
       encontrado: true,
-      mensaje:
-        comprasAprobadas.length > 0
-          ? "Se encontraron tickets aprobados para este correo en esta rifa"
-          : "Se encontraron compras en esta rifa, pero aún no han sido aprobadas",
+      mensaje,
       usuario,
       compras,
       tickets,
