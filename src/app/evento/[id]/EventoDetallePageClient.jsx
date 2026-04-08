@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
@@ -17,30 +18,19 @@ export default function EventoDetallePageClient() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verificarEmail, setVerificarEmail] = useState("");
 
-  // NUEVO: URL para compartir
+  // URL final (absoluta) para compartir
   const [shareUrl, setShareUrl] = useState("");
-
-  useEffect(() => {
-  if (!evento?.id) return setShareUrl("");
-
-  const origin =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (typeof window !== "undefined" ? window.location.origin : "");
-
-  setShareUrl(origin ? `${origin}/evento/${evento.id}` : "");
-}, [evento?.id]);
 
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
 
   const esEstadoFinalizado = (estado) =>
-    ["finalizada", "finalizado", "cerrada"].includes(
-      String(estado || "").toLowerCase()
-    );
+    ["finalizada", "finalizado", "cerrada"].includes(String(estado || "").toLowerCase());
 
   const esEstadoAgotado = (estado) =>
     ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
 
+  // Cierra modales con Escape
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") setShowVerifyModal(false);
@@ -50,6 +40,7 @@ export default function EventoDetallePageClient() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
+  // Cargar evento
   useEffect(() => {
     const cargarEvento = async () => {
       try {
@@ -100,32 +91,40 @@ export default function EventoDetallePageClient() {
     }
   }, [params?.id]);
 
-  // NUEVO: construir link final para compartir (no afecta nada del resto)
+  /**
+   * ✅ Share URL PRO (sin duplicar dominio/ruta)
+   * - Usa env NEXT_PUBLIC_SITE_URL si existe, sino window.location.origin
+   * - Si env viene sin https://, lo arregla
+   * - Si env viene con path, se queda solo con el origin
+   */
   useEffect(() => {
-    if (!evento?.id) {
+    if (typeof window === "undefined") return;
+
+    const id = params?.id;
+    if (!id) {
       setShareUrl("");
       return;
     }
 
-    const origin =
-      process.env.NEXT_PUBLIC_SITE_URL ||
-      (typeof window !== "undefined" ? window.location.origin : "");
+    let base = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin || "").trim();
 
-    if (!origin) {
-      setShareUrl("");
-      return;
+    // Si viene sin protocolo, lo normalizamos
+    if (base && !/^https?:\/\//i.test(base)) {
+      base = `https://${base}`;
     }
 
-    setShareUrl(`${origin}/evento/${evento.id}`);
-  }, [evento?.id]);
+    // Si base trae path, dejamos solo origin
+    try {
+      base = new URL(base).origin;
+    } catch {
+      base = window.location.origin;
+    }
 
-  const estaFinalizado = useMemo(() => {
-    return esEstadoFinalizado(evento?.estado);
-  }, [evento]);
+    setShareUrl(`${base}/evento/${id}`);
+  }, [params?.id]);
 
-  const estaAgotado = useMemo(() => {
-    return esEstadoAgotado(evento?.estado);
-  }, [evento]);
+  const estaFinalizado = useMemo(() => esEstadoFinalizado(evento?.estado), [evento]);
+  const estaAgotado = useMemo(() => esEstadoAgotado(evento?.estado), [evento]);
 
   const premios = useMemo(() => {
     if (!evento) return [];
@@ -134,17 +133,8 @@ export default function EventoDetallePageClient() {
     return [];
   }, [evento]);
 
-  const fecha =
-    evento?.fecha_sorteo ||
-    evento?.fecha ||
-    evento?.fecha_rifa ||
-    "";
-
-  const hora =
-    evento?.hora_sorteo ||
-    evento?.hora ||
-    evento?.hora_rifa ||
-    "";
+  const fecha = evento?.fecha_sorteo || evento?.fecha || evento?.fecha_rifa || "";
+  const hora = evento?.hora_sorteo || evento?.hora || evento?.hora_rifa || "";
 
   const precioRaw = Number(evento?.precio_ticket);
   const precio = Number.isFinite(precioRaw) ? precioRaw : 0;
@@ -248,16 +238,8 @@ export default function EventoDetallePageClient() {
                 {!estaFinalizado && estaAgotado && <div className="evento-ribbon">AGOTADO</div>}
 
                 <div className="evento-image-content">
-                  <div
-                    className={`evento-status ${
-                      estaFinalizado || estaAgotado ? "off" : "on"
-                    }`}
-                  >
-                    {estaFinalizado
-                      ? "● Finalizada"
-                      : estaAgotado
-                      ? "● Agotada"
-                      : "● Disponible"}
+                  <div className={`evento-status ${estaFinalizado || estaAgotado ? "off" : "on"}`}>
+                    {estaFinalizado ? "● Finalizada" : estaAgotado ? "● Agotada" : "● Disponible"}
                   </div>
 
                   <h1>{evento.nombre || "Evento"}</h1>
@@ -278,11 +260,7 @@ export default function EventoDetallePageClient() {
                   <div className="evento-mini-grid">
                     <div className="evento-mini-box">
                       <span>ESTADO</span>
-                      <strong
-                        className={
-                          estaFinalizado || estaAgotado ? "text-red" : "text-green"
-                        }
-                      >
+                      <strong className={estaFinalizado || estaAgotado ? "text-red" : "text-green"}>
                         {evento.estado || "Disponible"}
                       </strong>
                     </div>
@@ -322,8 +300,8 @@ export default function EventoDetallePageClient() {
                     <p className="evento-kicker">ESTADO DEL EVENTO</p>
                     <h2>Rifa completa</h2>
                     <p className="evento-description">
-                      Todos los boletos fueron vendidos. Este evento está agotado y pendiente
-                      del sorteo oficial.
+                      Todos los boletos fueron vendidos. Este evento está agotado y pendiente del
+                      sorteo oficial.
                     </p>
                   </div>
                 )}
@@ -378,8 +356,8 @@ export default function EventoDetallePageClient() {
           </section>
         )}
 
-        {/* NUEVO: Botón flotante de compartir (solo si hay evento cargado) */}
-        {evento?.id && (
+        {/* BOTÓN DE COMPARTIR (solo si evento existe y shareUrl está listo) */}
+        {evento?.id && shareUrl && (
           <FloatingShareButton
             url={shareUrl}
             title={evento?.nombre || "Evento"}
