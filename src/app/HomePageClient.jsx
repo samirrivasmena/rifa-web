@@ -10,6 +10,7 @@ import PublicTopbar from "@/components/shared/PublicTopbar";
 import { paymentMethodsConfig, paymentMethodsList } from "@/lib/paymentMethods";
 import { validarEmail } from "@/lib/verifyTickets";
 import AppPayButton from "@/components/shared/AppPayButton";
+import PurchaseGuideFloating from "@/components/shared/PurchaseGuideFloating";
 
 export default function HomePageClient() {
   const searchParams = useSearchParams();
@@ -824,7 +825,7 @@ export default function HomePageClient() {
         </section>
       ) : (
         <>
-          <section className="hero-showcase">
+          <section className="hero-showcase reveal-fade-up">
             <div className="hero-showcase-image-wrap">
               {imagenRifaPrincipal && (
                 <img
@@ -872,7 +873,7 @@ export default function HomePageClient() {
           </section>
 
           {totalNumeros > 0 && (
-            <section className="mini-progress-wrap">
+            <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
               <div className={`mini-progress-card ${rifaCompleta ? "is-complete" : ""}`}>
                 <div className="mini-progress-head">
                   <span className="mini-progress-label">
@@ -904,7 +905,7 @@ export default function HomePageClient() {
             </section>
           )}
 
-          <section className="form-card" id="boletos">
+          <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
             <section className="card-section">
               <h2 className="big-card-title">LISTA DE BOLETOS</h2>
 
@@ -1090,29 +1091,38 @@ export default function HomePageClient() {
                 </div>
 
                 {paymentMethod === "App Pay" ? (
-                  <div className="apppay-detail-box">
+                  <div className="apppay-detail-box premium-card-hover">
                     <span className="apppay-detail-label">{metodoSeleccionado.subtitulo}</span>
 
                     <div className="apppay-brand"> Pay</div>
 
                     <div className="apppay-total">
-                      Total: ${totalPagar.toFixed(2)} USD
+                      Total: ${Number(totalPagar || 0).toFixed(2)} USD
                     </div>
 
-                    <AppPayButton
-                      totalPagar={totalPagar}
-                      nombreRifa={nombreRifa}
-                      registrarCompra={registrarCompraAppPay}
-                      swalConfig={swalConfig}
-                      disabled={
-                        loadingCompra ||
-                        !rifaActiva?.id ||
-                        tickets < 1 ||
-                        precioPorTicket <= 0 ||
-                        !estaDisponibleParaCompra(rifaActiva?.estado) ||
-                        rifaCompleta
-                      }
-                    />
+                    <div className="apppay-debug-amount">
+                      Cobro confirmado: ${(Math.round(Number(totalPagar || 0) * 100) / 100).toFixed(2)} USD
+                    </div>
+
+                    {!loadingRifa && rifaActiva?.id && (
+                      <div key={`apppay-wrap-${rifaActiva.id}-${tickets}-${totalPagar}`}>
+                        <AppPayButton
+                          key={`apppay-btn-${rifaActiva.id}-${tickets}-${totalPagar}`}
+                          totalPagar={Number(totalPagar || 0)}
+                          nombreRifa={nombreRifa}
+                          registrarCompra={registrarCompraAppPay}
+                          swalConfig={swalConfig}
+                          disabled={
+                            loadingCompra ||
+                            !rifaActiva?.id ||
+                            tickets < 1 ||
+                            precioPorTicket <= 0 ||
+                            !estaDisponibleParaCompra(rifaActiva?.estado) ||
+                            rifaCompleta
+                          }
+                        />
+                      </div>
+                    )}
 
                     <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
 
@@ -1121,7 +1131,7 @@ export default function HomePageClient() {
                     )}
                   </div>
                 ) : (
-                  <div className="selected-payment-box">
+                  <div className="selected-payment-box premium-card-hover">
                     <h4>{metodoSeleccionado.titulo}</h4>
                     <span className="payment-small-label">{metodoSeleccionado.subtitulo}</span>
 
@@ -1235,32 +1245,37 @@ export default function HomePageClient() {
               )}
 
               <section className="card-section no-border">
-                <button
-                  type="submit"
-                  className={`confirm-main-btn ${rifaCompleta ? "confirm-main-btn-disabled" : ""}`}
-                  disabled={
-                    loadingCompra ||
-                    !rifaActiva?.id ||
-                    !estaDisponibleParaCompra(rifaActiva?.estado) ||
-                    precioPorTicket <= 0 ||
-                    paymentMethod === "App Pay" ||
-                    rifaCompleta
-                  }
-                >
-                  {loadingCompra
-                    ? "PROCESANDO..."
-                    : rifaCompleta
-                    ? "BOLETOS AGOTADOS"
-                    : !rifaActiva?.id
-                    ? "NO HAY RIFA DISPONIBLE"
-                    : !estaDisponibleParaCompra(rifaActiva?.estado)
-                    ? "RIFA NO DISPONIBLE"
-                    : precioPorTicket <= 0
-                    ? "PRECIO NO DISPONIBLE"
-                    : paymentMethod === "App Pay"
-                    ? "USA APP PAY"
-                    : "CONFIRMAR"}
-                </button>
+                {paymentMethod === "App Pay" ? (
+                  <div className="apppay-submit-helper">
+                    <p className="apppay-submit-helper-text">
+                      Usa el botón negro de  Pay para completar tu pago.
+                    </p>
+                  </div>
+                ) : (
+                  <button
+                    type="submit"
+                    className={`confirm-main-btn ${rifaCompleta ? "confirm-main-btn-disabled" : ""}`}
+                    disabled={
+                      loadingCompra ||
+                      !rifaActiva?.id ||
+                      !estaDisponibleParaCompra(rifaActiva?.estado) ||
+                      precioPorTicket <= 0 ||
+                      rifaCompleta
+                    }
+                  >
+                    {loadingCompra
+                      ? "PROCESANDO..."
+                      : rifaCompleta
+                      ? "BOLETOS AGOTADOS"
+                      : !rifaActiva?.id
+                      ? "NO HAY RIFA DISPONIBLE"
+                      : !estaDisponibleParaCompra(rifaActiva?.estado)
+                      ? "RIFA NO DISPONIBLE"
+                      : precioPorTicket <= 0
+                      ? "PRECIO NO DISPONIBLE"
+                      : "CONFIRMAR"}
+                  </button>
+                )}
 
                 {loadingRifa && <p className="loading-text">Actualizando datos...</p>}
               </section>
@@ -1269,7 +1284,7 @@ export default function HomePageClient() {
         </>
       )}
 
-      <section className="verify-section">
+      <section className="verify-section reveal-fade-up reveal-delay-3">
         <h2>¿Quieres verificar tus tickets?</h2>
         <p>Ingresa el correo que usaste en la compra.</p>
 
@@ -1284,7 +1299,7 @@ export default function HomePageClient() {
 
       <HomeEventosPreview rifas={rifasPublicadasOrdenadas} />
 
-      <footer className="footer" id="contacto">
+      <footer className="footer reveal-fade-up reveal-delay-4" id="contacto">
         <h2>Conéctate con nosotros</h2>
         <div className="footer-links">
           <a
@@ -1379,6 +1394,8 @@ export default function HomePageClient() {
           </div>
         </div>
       )}
+
+      <PurchaseGuideFloating onOpenVerifier={() => setShowVerifyModal(true)} />
 
       <a
         href="https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa"

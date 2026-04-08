@@ -302,7 +302,7 @@ export default function PrincipalPageClient() {
           contactoHref="/principal#contacto"
         />
 
-        <section className="principal-hero">
+        <section className="principal-hero reveal-fade-up">
           <div className="principal-hero-inner">
             <div className="principal-hero-image-box">
               <img src="/logo.png" alt="Logo Rifas LSD" className="principal-hero-image" />
@@ -348,7 +348,7 @@ export default function PrincipalPageClient() {
           </div>
         </section>
 
-        <section className="principal-section" id="eventos-disponibles">
+        <section className="principal-section reveal-fade-up reveal-delay-1" id="eventos-disponibles">
           <div className="principal-section-head">
             <p>¡Participa!</p>
             <h2>DISPONIBLES</h2>
@@ -392,7 +392,7 @@ export default function PrincipalPageClient() {
                 const porcentaje = obtenerPorcentajeSeguro(evento);
 
                 return (
-                  <article key={evento.id} className="principal-event-card-mobile">
+                  <article key={evento.id} className="principal-event-card-mobile premium-card-hover reveal-fade-up">
                     {evento.destacada && (
                       <div className="principal-card-badge-left">
                         <div className="principal-destacada-badge">⭐ Destacada</div>
@@ -444,7 +444,7 @@ export default function PrincipalPageClient() {
         </section>
 
         {eventosAgotados.length > 0 && (
-          <section className="principal-section" id="eventos-agotados">
+          <section className="principal-section reveal-fade-up reveal-delay-2" id="eventos-agotados">
             <div className="principal-section-head">
               <h2>AGOTADOS</h2>
             </div>
@@ -456,7 +456,7 @@ export default function PrincipalPageClient() {
                 return (
                   <article
                     key={evento.id}
-                    className="principal-event-card-mobile principal-finalizada-card"
+                    className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
                   >
                     <div className="principal-card-badges-row">
                       {evento.destacada ? (
@@ -502,7 +502,7 @@ export default function PrincipalPageClient() {
           </section>
         )}
 
-        <section className="principal-section" id="eventos-finalizados">
+        <section className="principal-section reveal-fade-up reveal-delay-3" id="eventos-finalizados">
           <div className="principal-section-head">
             <h2>FINALIZADOS</h2>
           </div>
@@ -532,7 +532,7 @@ export default function PrincipalPageClient() {
                 {eventosFinalizadosPaginados.map((evento) => (
                   <article
                     key={evento.id}
-                    className="principal-event-card-mobile principal-finalizada-card"
+                    className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
                   >
                     <div className="principal-card-badges-row">
                       {evento.destacada ? (
@@ -615,7 +615,7 @@ export default function PrincipalPageClient() {
           )}
         </section>
 
-        <section className="principal-section" id="pagos">
+        <section className="principal-section reveal-fade-up reveal-delay-4" id="pagos">
           <div className="principal-section-head">
             <h2>CUENTAS DE PAGO</h2>
           </div>
@@ -627,7 +627,7 @@ export default function PrincipalPageClient() {
               const extras = Array.isArray(method?.extra) ? method.extra : [];
 
               return (
-                <div key={methodName} className="principal-payment-block">
+                <div key={methodName} className="principal-payment-block premium-card-hover">
                   {method.logo && (
                     <img
                       src={method.logo}
@@ -690,12 +690,12 @@ export default function PrincipalPageClient() {
           </div>
         </section>
 
-        <section className="principal-section" id="resultados-oficiales">
+        <section className="principal-section reveal-fade-up" id="resultados-oficiales">
           <div className="principal-section-head">
             <h2>RESULTADOS OFICIALES</h2>
           </div>
 
-          <div className="principal-results-box">
+          <div className="principal-results-box premium-card-hover">
             <div className="principal-results-copy">
               <p className="principal-results-kicker">TRANSPARENCIA Y CONFIANZA</p>
 
@@ -737,12 +737,12 @@ export default function PrincipalPageClient() {
           </div>
         </section>
 
-        <section className="principal-section" id="contacto">
+        <section className="principal-section reveal-fade-up" id="contacto">
           <div className="principal-section-head">
             <h2>CONTACTO</h2>
           </div>
 
-          <div className="principal-contact-box">
+          <div className="principal-contact-box premium-card-hover">
             <a
               href="https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa"
               target="_blank"
@@ -763,7 +763,7 @@ export default function PrincipalPageClient() {
           </div>
         </section>
 
-        <footer className="principal-footer">
+        <footer className="principal-footer reveal-fade-up">
           <div className="principal-footer-grid">
             <div className="principal-footer-col">
               <h3>RIFAS LSD</h3>

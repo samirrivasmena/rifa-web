@@ -4319,3 +4319,1162 @@ a.home-top-link,
   color: #374151;
   margin-top: 6px;
 }
+.apppay-submit-helper {
+  width: 100%;
+  text-align: center;
+  padding: 12px 10px 4px;
+}
+
+.apppay-submit-helper-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+.purchase-guide-float {
+  position: fixed;
+  right: 24px;
+  bottom: 108px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  box-shadow:
+    0 14px 28px rgba(185, 28, 28, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.purchase-guide-float:hover {
+  transform: translateY(-2px) scale(1.03);
+  box-shadow:
+    0 18px 32px rgba(185, 28, 28, 0.32),
+    0 10px 20px rgba(0, 0, 0, 0.22);
+}
+
+.purchase-guide-float-icon {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.purchase-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.purchase-guide-modal {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ffffff, #f8f8f8);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 26px 24px 24px;
+}
+
+.purchase-guide-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #111827;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.purchase-guide-header {
+  padding-right: 50px;
+  margin-bottom: 18px;
+}
+
+.purchase-guide-badge {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  margin-bottom: 12px;
+}
+
+.purchase-guide-header h2 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.05;
+  color: #111827;
+  font-weight: 900;
+}
+
+.purchase-guide-header p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-actions-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.purchase-guide-action-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(185, 28, 28, 0.18);
+}
+
+.purchase-guide-action-btn.secondary {
+  background: linear-gradient(90deg, #111827, #1f2937);
+}
+
+.purchase-guide-highlight-box {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px;
+  border-radius: 22px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid #fde7cf;
+}
+
+.purchase-guide-highlight-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.purchase-guide-highlight-box h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-highlight-box p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-steps {
+  display: grid;
+  gap: 14px;
+}
+
+.purchase-guide-step {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #ececec;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
+}
+
+.purchase-guide-step.special {
+  border: 1px solid #dbeafe;
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+}
+
+.purchase-guide-step-number {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.purchase-guide-step h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-step p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-inline-btn {
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.purchase-guide-errors-box {
+  margin-top: 20px;
+  border-radius: 22px;
+  padding: 18px;
+  background: linear-gradient(135deg, #fff1f2, #ffffff);
+  border: 1px solid #fecdd3;
+}
+
+.purchase-guide-errors-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.purchase-guide-errors-head span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.purchase-guide-errors-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-errors-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #4b5563;
+}
+
+.purchase-guide-errors-list li {
+  margin: 8px 0;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.purchase-guide-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #ececec;
+}
+
+.purchase-guide-footer p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #374151;
+  font-weight: 600;
+}
+
+.purchase-guide-main-btn {
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  padding: 15px 18px;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(185, 28, 28, 0.22);
+}
+
+.purchase-guide-main-btn:hover {
+  filter: brightness(1.03);
+}
+
+@media (max-width: 768px) {
+  .purchase-guide-float {
+    right: 18px;
+    bottom: 98px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .purchase-guide-modal {
+    padding: 22px 16px 18px;
+    border-radius: 22px;
+  }
+
+  .purchase-guide-header h2 {
+    font-size: 28px;
+  }
+
+  .purchase-guide-step,
+  .purchase-guide-highlight-box {
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .purchase-guide-step-number,
+  .purchase-guide-highlight-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .purchase-guide-step h3,
+  .purchase-guide-highlight-box h3,
+  .purchase-guide-errors-head h3 {
+    font-size: 16px;
+  }
+
+  .purchase-guide-step p,
+  .purchase-guide-highlight-box p,
+  .purchase-guide-errors-list li {
+    font-size: 13px;
+  }
+
+  .purchase-guide-actions-top {
+    flex-direction: column;
+  }
+
+  .purchase-guide-action-btn,
+  .purchase-guide-inline-btn {
+    width: 100%;
+  }
+}
+/* =========================================================
+   ANIMACIONES DE ENTRADA SUAVES
+========================================================= */
+
+.reveal-fade-up {
+  animation: revealFadeUp 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform, opacity;
+}
+
+.reveal-delay-1 {
+  animation-delay: 0.08s;
+}
+
+.reveal-delay-2 {
+  animation-delay: 0.16s;
+}
+
+.reveal-delay-3 {
+  animation-delay: 0.24s;
+}
+
+.reveal-delay-4 {
+  animation-delay: 0.32s;
+}
+
+@keyframes revealFadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(26px) scale(0.985);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    filter: blur(0);
+  }
+}
+
+/* =========================================================
+   HOVER PREMIUM PARA CARDS
+========================================================= */
+
+.premium-card-hover {
+  transition:
+    transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.28s ease,
+    border-color 0.28s ease,
+    filter 0.28s ease;
+  will-change: transform, box-shadow;
+}
+
+.premium-card-hover:hover {
+  transform: translateY(-6px);
+  box-shadow:
+    0 22px 44px rgba(0, 0, 0, 0.10),
+    0 10px 20px rgba(220, 38, 38, 0.08);
+  filter: saturate(1.02);
+}
+
+/* =========================================================
+   MICROINTERACCIONES EN BOTONES
+========================================================= */
+
+.confirm-main-btn,
+.verify-btn,
+.principal-red-btn,
+.principal-white-btn,
+.home-event-card-btn,
+.copy-btn,
+.quick-ticket-btn-red,
+.payment-pill,
+.purchase-guide-main-btn,
+.purchase-guide-action-btn,
+.purchase-guide-inline-btn,
+.apppay-fallback-btn,
+.remove-file-btn,
+.verify-modal-btn,
+.principal-pagination-btn,
+.home-pagination-btn,
+.evento-disabled-btn {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease;
+  will-change: transform;
+}
+
+.confirm-main-btn:hover,
+.verify-btn:hover,
+.principal-red-btn:hover,
+.principal-white-btn:hover,
+.home-event-card-btn:hover,
+.copy-btn:hover,
+.quick-ticket-btn-red:hover,
+.payment-pill:hover,
+.purchase-guide-main-btn:hover,
+.purchase-guide-action-btn:hover,
+.purchase-guide-inline-btn:hover,
+.apppay-fallback-btn:hover,
+.remove-file-btn:hover,
+.verify-modal-btn:hover,
+.principal-pagination-btn:hover,
+.home-pagination-btn:hover {
+  transform: translateY(-2px);
+  filter: brightness(1.02);
+}
+
+.confirm-main-btn:active,
+.verify-btn:active,
+.principal-red-btn:active,
+.principal-white-btn:active,
+.home-event-card-btn:active,
+.copy-btn:active,
+.quick-ticket-btn-red:active,
+.payment-pill:active,
+.purchase-guide-main-btn:active,
+.purchase-guide-action-btn:active,
+.purchase-guide-inline-btn:active,
+.apppay-fallback-btn:active,
+.remove-file-btn:active,
+.verify-modal-btn:active,
+.principal-pagination-btn:active,
+.home-pagination-btn:active {
+  transform: translateY(0) scale(0.985);
+}
+
+/* =========================================================
+   BOTONES CIRCULARES
+========================================================= */
+
+.circle-btn {
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.circle-btn:hover:not(:disabled) {
+  transform: translateY(-2px) scale(1.03);
+}
+
+.circle-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+/* =========================================================
+   INPUTS MÁS PREMIUM
+========================================================= */
+
+.purchase-form input,
+.purchase-form select,
+.verify-modal-input {
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease,
+    background 0.2s ease;
+}
+
+.purchase-form input:focus,
+.purchase-form select:focus,
+.verify-modal-input:focus {
+  outline: none;
+  border-color: rgba(220, 38, 38, 0.55);
+  box-shadow:
+    0 0 0 4px rgba(220, 38, 38, 0.08),
+    0 8px 20px rgba(220, 38, 38, 0.06);
+  transform: translateY(-1px);
+}
+
+/* =========================================================
+   HERO Y TARJETAS VISUALES
+========================================================= */
+
+.hero-showcase-image,
+.raffle-dual-image-layer {
+  transition:
+    transform 0.7s ease,
+    opacity 0.5s ease,
+    filter 0.5s ease;
+}
+
+.hero-showcase-image-wrap:hover .hero-showcase-image,
+.raffle-dual-image-wrap:hover .raffle-dual-image-layer.show {
+  transform: scale(1.02);
+}
+
+/* =========================================================
+   CONTENEDORES PREMIUM
+========================================================= */
+
+.mini-progress-card,
+.selected-payment-box,
+.apppay-detail-box,
+.verify-section,
+.footer,
+.form-card,
+.evento-card,
+.principal-payment-block,
+.principal-results-box,
+.principal-contact-box,
+.home-event-card,
+.principal-event-card-mobile,
+.verify-modal-box,
+.purchase-guide-modal {
+  transition:
+    transform 0.28s ease,
+    box-shadow 0.28s ease,
+    border-color 0.28s ease;
+}
+
+.mini-progress-card:hover,
+.selected-payment-box:hover,
+.apppay-detail-box:hover,
+.verify-section:hover,
+.evento-card:hover,
+.principal-payment-block:hover,
+.principal-results-box:hover,
+.principal-contact-box:hover,
+.verify-modal-box:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 18px 36px rgba(0, 0, 0, 0.08),
+    0 8px 18px rgba(220, 38, 38, 0.06);
+}
+
+/* =========================================================
+   SKELETON PREMIUM
+========================================================= */
+
+.home-loading-hero,
+.home-loading-line,
+.principal-skeleton-image,
+.principal-skeleton-line,
+.principal-skeleton-btn,
+.evento-loading-image,
+.evento-loading-line {
+  position: relative;
+  overflow: hidden;
+}
+
+.home-loading-hero::after,
+.home-loading-line::after,
+.principal-skeleton-image::after,
+.principal-skeleton-line::after,
+.principal-skeleton-btn::after,
+.evento-loading-image::after,
+.evento-loading-line::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  animation: skeletonShine 1.6s linear infinite;
+}
+
+@keyframes skeletonShine {
+  to {
+    transform: translateX(100%);
+  }
+}
+
+/* =========================================================
+   APP PAY HELPERS
+========================================================= */
+
+.apppay-submit-helper {
+  width: 100%;
+  text-align: center;
+  padding: 12px 10px 4px;
+}
+
+.apppay-submit-helper-text {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  color: #374151;
+}
+
+.apppay-fallback-wrap {
+  margin-top: 10px;
+}
+
+.apppay-fallback-btn {
+  width: 100%;
+  border: none;
+  border-radius: 16px;
+  padding: 14px 18px;
+  background: linear-gradient(90deg, #111827, #000000);
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.apppay-processing {
+  margin-top: 10px;
+  font-size: 13px;
+  color: #374151;
+  font-weight: 700;
+  text-align: center;
+}
+
+.apppay-debug-amount {
+  margin-top: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* =========================================================
+   BADGES EXTRA
+========================================================= */
+
+.principal-agotado-badge,
+.home-agotado-badge {
+  background: linear-gradient(90deg, #166534, #16a34a);
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  box-shadow: 0 8px 18px rgba(34, 197, 94, 0.22);
+}
+
+.home-event-card-progress {
+  font-size: 14px;
+  font-weight: 800;
+  color: #374151;
+  margin-top: 6px;
+}
+
+/* =========================================================
+   BARRA DE PROGRESO COMPLETA
+========================================================= */
+
+.mini-progress-card.is-complete {
+  border: 1px solid rgba(34, 197, 94, 0.28);
+  box-shadow:
+    0 14px 35px rgba(0, 0, 0, 0.07),
+    0 6px 18px rgba(34, 197, 94, 0.10),
+    inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+
+.mini-progress-fill.is-complete {
+  background: linear-gradient(90deg, #22c55e 0%, #16a34a 45%, #15803d 100%);
+  box-shadow:
+    0 0 14px rgba(34, 197, 94, 0.22),
+    inset 0 1px 2px rgba(255, 255, 255, 0.25);
+}
+
+.mini-progress-complete-text {
+  margin: 10px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: #15803d;
+  font-weight: 700;
+}
+
+/* =========================================================
+   RIFA AGOTADA
+========================================================= */
+
+.home-soldout-banner {
+  margin: 0 0 18px;
+  display: flex;
+  justify-content: center;
+}
+
+.home-soldout-banner span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #166534, #16a34a);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  box-shadow: 0 10px 22px rgba(34, 197, 94, 0.22);
+}
+
+.ticket-controls-disabled {
+  opacity: 0.72;
+  pointer-events: none;
+}
+
+.confirm-main-btn-disabled {
+  background: linear-gradient(90deg, #374151, #1f2937) !important;
+  cursor: not-allowed;
+  box-shadow: none !important;
+}
+
+/* =========================================================
+   GUÍA DE COMPRA FLOTANTE
+========================================================= */
+
+.purchase-guide-float {
+  position: fixed;
+  right: 24px;
+  bottom: 108px;
+  width: 60px;
+  height: 60px;
+  border: none;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  box-shadow:
+    0 14px 28px rgba(185, 28, 28, 0.28),
+    0 8px 18px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  z-index: 999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.purchase-guide-float-icon {
+  font-size: 26px;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.purchase-guide-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(5px);
+  z-index: 1200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.purchase-guide-modal {
+  position: relative;
+  width: 100%;
+  max-width: 820px;
+  max-height: 90vh;
+  overflow-y: auto;
+  border-radius: 28px;
+  background: linear-gradient(180deg, #ffffff, #f8f8f8);
+  box-shadow:
+    0 30px 60px rgba(0, 0, 0, 0.20),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  padding: 26px 24px 24px;
+}
+
+.purchase-guide-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  width: 42px;
+  height: 42px;
+  border: none;
+  border-radius: 50%;
+  background: #111827;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.purchase-guide-header {
+  padding-right: 50px;
+  margin-bottom: 18px;
+}
+
+.purchase-guide-badge {
+  display: inline-block;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #fee2e2, #fecaca);
+  color: #b91c1c;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  margin-bottom: 12px;
+}
+
+.purchase-guide-header h2 {
+  margin: 0 0 10px;
+  font-size: 34px;
+  line-height: 1.05;
+  color: #111827;
+  font-weight: 900;
+}
+
+.purchase-guide-header p {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-actions-top {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.purchase-guide-action-btn {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 16px;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  color: #fff;
+  font-weight: 800;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 10px 20px rgba(185, 28, 28, 0.18);
+}
+
+.purchase-guide-action-btn.secondary {
+  background: linear-gradient(90deg, #111827, #1f2937);
+}
+
+.purchase-guide-highlight-box {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: start;
+  padding: 16px;
+  border-radius: 22px;
+  margin-bottom: 18px;
+  background: linear-gradient(135deg, #fff7ed, #ffffff);
+  border: 1px solid #fde7cf;
+}
+
+.purchase-guide-highlight-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f97316, #ea580c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 22px;
+  font-weight: 900;
+}
+
+.purchase-guide-highlight-box h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-highlight-box p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-steps {
+  display: grid;
+  gap: 14px;
+}
+
+.purchase-guide-step {
+  display: grid;
+  grid-template-columns: 58px 1fr;
+  gap: 14px;
+  align-items: flex-start;
+  padding: 16px;
+  border-radius: 20px;
+  background: #ffffff;
+  border: 1px solid #ececec;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, 0.04);
+}
+
+.purchase-guide-step.special {
+  border: 1px solid #dbeafe;
+  background: linear-gradient(135deg, #eff6ff, #ffffff);
+}
+
+.purchase-guide-step-number {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ef4444, #b91c1c);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 900;
+}
+
+.purchase-guide-step h3 {
+  margin: 0 0 6px;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-step p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #4b5563;
+}
+
+.purchase-guide-inline-btn {
+  margin-top: 10px;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 14px;
+  background: #111827;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.purchase-guide-errors-box {
+  margin-top: 20px;
+  border-radius: 22px;
+  padding: 18px;
+  background: linear-gradient(135deg, #fff1f2, #ffffff);
+  border: 1px solid #fecdd3;
+}
+
+.purchase-guide-errors-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.purchase-guide-errors-head span {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #dc2626;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  font-size: 18px;
+}
+
+.purchase-guide-errors-head h3 {
+  margin: 0;
+  font-size: 18px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.purchase-guide-errors-list {
+  margin: 0;
+  padding-left: 20px;
+  color: #4b5563;
+}
+
+.purchase-guide-errors-list li {
+  margin: 8px 0;
+  line-height: 1.7;
+  font-size: 14px;
+}
+
+.purchase-guide-footer {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid #ececec;
+}
+
+.purchase-guide-footer p {
+  margin: 0 0 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  color: #374151;
+  font-weight: 600;
+}
+
+.purchase-guide-main-btn {
+  width: 100%;
+  border: none;
+  border-radius: 18px;
+  padding: 15px 18px;
+  background: linear-gradient(90deg, #ef4444, #b91c1c);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+  letter-spacing: 0.6px;
+  cursor: pointer;
+  box-shadow: 0 12px 24px rgba(185, 28, 28, 0.22);
+}
+
+/* =========================================================
+   MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+  .purchase-guide-float {
+    right: 18px;
+    bottom: 98px;
+    width: 56px;
+    height: 56px;
+  }
+
+  .purchase-guide-modal {
+    padding: 22px 16px 18px;
+    border-radius: 22px;
+  }
+
+  .purchase-guide-header h2 {
+    font-size: 28px;
+  }
+
+  .purchase-guide-step,
+  .purchase-guide-highlight-box {
+    grid-template-columns: 48px 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .purchase-guide-step-number,
+  .purchase-guide-highlight-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+  }
+
+  .purchase-guide-step h3,
+  .purchase-guide-highlight-box h3,
+  .purchase-guide-errors-head h3 {
+    font-size: 16px;
+  }
+
+  .purchase-guide-step p,
+  .purchase-guide-highlight-box p,
+  .purchase-guide-errors-list li {
+    font-size: 13px;
+  }
+
+  .purchase-guide-actions-top {
+    flex-direction: column;
+  }
+
+  .purchase-guide-action-btn,
+  .purchase-guide-inline-btn {
+    width: 100%;
+  }
+}
+
+/* =========================================================
+   REDUCCIÓN DE MOVIMIENTO
+========================================================= */
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal-fade-up,
+  .premium-card-hover,
+  .circle-btn,
+  .confirm-main-btn,
+  .verify-btn,
+  .principal-red-btn,
+  .principal-white-btn,
+  .home-event-card-btn,
+  .copy-btn,
+  .quick-ticket-btn-red,
+  .payment-pill,
+  .purchase-guide-main-btn,
+  .purchase-guide-action-btn,
+  .purchase-guide-inline-btn,
+  .hero-showcase-image,
+  .raffle-dual-image-layer {
+    animation: none !important;
+    transition: none !important;
+    transform: none !important;
+  }
+}

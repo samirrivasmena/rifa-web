@@ -24,6 +24,7 @@ function AppPayInner({
   const [paymentRequest, setPaymentRequest] = useState(null);
   const [available, setAvailable] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [checkedAvailability, setCheckedAvailability] = useState(false);
 
   const amountInCents = useMemo(() => {
     const total = Number(totalPagar);
@@ -31,180 +32,217 @@ function AppPayInner({
   }, [totalPagar]);
 
   useEffect(() => {
-    if (!stripe || !amountInCents || disabled) {
+    let cancelled = false;
+
+    async function setupPaymentRequest() {
+      if (!stripe || !amountInCents || disabled) {
+        setPaymentRequest(null);
+        setAvailable(false);
+        setCheckedAvailability(true);
+        return;
+      }
+
       setPaymentRequest(null);
       setAvailable(false);
-      return;
-    }
+      setCheckedAvailability(false);
 
-    const pr = stripe.paymentRequest({
-      country: "US",
-      currency: "usd",
-      total: {
-        label: nombreRifa || "Compra de tickets",
-        amount: amountInCents,
-      },
-      requestPayerName: true,
-      requestPayerEmail: true,
-    });
+      console.log("SETUP APPPAY totalPagar:", totalPagar);
+      console.log("SETUP APPPAY amountInCents:", amountInCents);
 
-    let isMounted = true;
+      const pr = stripe.paymentRequest({
+        country: "US",
+        currency: "usd",
+        total: {
+          label: nombreRifa || "Compra de tickets",
+          amount: amountInCents,
+        },
+        requestPayerName: true,
+        requestPayerEmail: true,
+      });
 
-    pr.canMakePayment().then((result) => {
-      if (!isMounted) return;
+      const result = await pr.canMakePayment();
+
+      console.log("APPPAY canMakePayment result:", result);
+
+      if (cancelled) return;
 
       if (result?.applePay) {
+        pr.on("paymentmethod", async (ev) => {
+          try {
+            if (disabled) {
+              ev.complete("fail");
+              return;
+            }
+
+            setProcessing(true);
+
+            console.log("APPPAY paymentmethod event total:", totalPagar);
+            console.log("APPPAY paymentmethod amountInCents:", amountInCents);
+
+            const res = await fetch("/api/create-payment-intent", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                amount: amountInCents,
+                currency: "usd",
+                description: nombreRifa || "Compra de tickets",
+              }),
+            });
+
+            const data = await res.json();
+            console.log("APPPAY create-payment-intent:", data);
+
+            if (!res.ok || !data.clientSecret) {
+              ev.complete("fail");
+              await Swal.fire({
+                ...swalConfig,
+                icon: "error",
+                title: "Error",
+                text: data.error || "No se pudo iniciar el pago",
+              });
+              return;
+            }
+
+            const firstConfirm = await stripe.confirmCardPayment(
+              data.clientSecret,
+              {
+                payment_method: ev.paymentMethod.id,
+              },
+              {
+                handleActions: false,
+              }
+            );
+
+            console.log("APPPAY firstConfirm:", firstConfirm);
+
+            if (firstConfirm.error) {
+              ev.complete("fail");
+              await Swal.fire({
+                ...swalConfig,
+                icon: "error",
+                title: "Pago rechazado",
+                text: firstConfirm.error.message || "No se pudo confirmar el pago",
+              });
+              return;
+            }
+
+            ev.complete("success");
+
+            const finalConfirm = await stripe.confirmCardPayment(data.clientSecret);
+
+            console.log("APPPAY finalConfirm:", finalConfirm);
+
+            if (finalConfirm.error) {
+              await Swal.fire({
+                ...swalConfig,
+                icon: "error",
+                title: "Error",
+                text: finalConfirm.error.message || "No se pudo completar el pago",
+              });
+              return;
+            }
+
+            if (finalConfirm.paymentIntent?.status === "succeeded") {
+              await registrarCompra({
+                referenciaPago: finalConfirm.paymentIntent.id,
+                emailWallet: ev.payerEmail || "",
+                nombreWallet: ev.payerName || "",
+              });
+            } else {
+              await Swal.fire({
+                ...swalConfig,
+                icon: "warning",
+                title: "Pago no completado",
+                text: `Estado actual: ${finalConfirm.paymentIntent?.status || "desconocido"}`,
+              });
+            }
+          } catch (error) {
+            console.error("APPPAY flow error:", error);
+            try {
+              ev.complete("fail");
+            } catch {}
+            await Swal.fire({
+              ...swalConfig,
+              icon: "error",
+              title: "Error inesperado",
+              text: error?.message || "No se pudo procesar el pago",
+            });
+          } finally {
+            setProcessing(false);
+          }
+        });
+
         setPaymentRequest(pr);
         setAvailable(true);
       } else {
         setPaymentRequest(null);
         setAvailable(false);
       }
-    });
 
-    const handlePaymentMethod = async (ev) => {
-      try {
-        if (disabled) {
-          ev.complete("fail");
-          return;
-        }
+      setCheckedAvailability(true);
+    }
 
-        setProcessing(true);
-
-        const res = await fetch("/api/create-payment-intent", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            amount: amountInCents,
-            currency: "usd",
-            description: nombreRifa || "Compra de tickets",
-          }),
-        });
-
-        const data = await res.json();
-
-        if (!res.ok || !data.clientSecret) {
-          ev.complete("fail");
-          await Swal.fire({
-            ...swalConfig,
-            icon: "error",
-            title: "Error",
-            text: data.error || "No se pudo iniciar el pago",
-          });
-          return;
-        }
-
-        const { error: confirmError } = await stripe.confirmCardPayment(
-          data.clientSecret,
-          {
-            payment_method: ev.paymentMethod.id,
-          },
-          {
-            handleActions: false,
-          }
-        );
-
-        if (confirmError) {
-          ev.complete("fail");
-          await Swal.fire({
-            ...swalConfig,
-            icon: "error",
-            title: "Pago rechazado",
-            text: confirmError.message || "No se pudo confirmar el pago",
-          });
-          return;
-        }
-
-        ev.complete("success");
-
-        const { error: finalError, paymentIntent } = await stripe.confirmCardPayment(
-          data.clientSecret
-        );
-
-        if (finalError) {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "error",
-            title: "Error",
-            text: finalError.message || "No se pudo completar el pago",
-          });
-          return;
-        }
-
-        if (paymentIntent?.status === "succeeded") {
-          await registrarCompra({
-            referenciaPago: paymentIntent.id,
-            emailWallet: ev.payerEmail || "",
-            nombreWallet: ev.payerName || "",
-          });
-        } else {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "warning",
-            title: "Pago no completado",
-            text: "El pago no se completó correctamente.",
-          });
-        }
-      } catch (error) {
-        console.error("Apple Pay flow error:", error);
-        try {
-          ev.complete("fail");
-        } catch {}
-        await Swal.fire({
-          ...swalConfig,
-          icon: "error",
-          title: "Error inesperado",
-          text: error?.message || "No se pudo procesar el pago",
-        });
-      } finally {
-        setProcessing(false);
-      }
-    };
-
-    pr.on("paymentmethod", handlePaymentMethod);
+    setupPaymentRequest();
 
     return () => {
-      isMounted = false;
+      cancelled = true;
       setPaymentRequest(null);
       setAvailable(false);
     };
-  }, [
-    stripe,
-    amountInCents,
-    nombreRifa,
-    registrarCompra,
-    swalConfig,
-    disabled,
-  ]);
+  }, [stripe, amountInCents, totalPagar, nombreRifa, registrarCompra, swalConfig, disabled]);
 
-  if (!available || !paymentRequest || disabled) return null;
+  if (disabled) return null;
 
-  return (
-    <div className="apppay-real-wrap">
-      <PaymentRequestButtonElement
-        options={{
-          paymentRequest,
-          style: {
-            paymentRequestButton: {
-              type: "buy",
-              theme: "dark",
-              height: "54px",
+  if (available && paymentRequest) {
+    return (
+      <div className="apppay-real-wrap">
+        <PaymentRequestButtonElement
+          key={`payment-request-${amountInCents}`}
+          options={{
+            paymentRequest,
+            style: {
+              paymentRequestButton: {
+                type: "buy",
+                theme: "dark",
+                height: "54px",
+              },
             },
-          },
-        }}
-      />
+          }}
+        />
 
-      {processing && <p className="apppay-processing">Procesando pago...</p>}
-    </div>
-  );
+        {processing && <p className="apppay-processing">Procesando pago...</p>}
+      </div>
+    );
+  }
+
+  if (checkedAvailability && !available) {
+    return (
+      <div className="apppay-fallback-wrap">
+        <button
+          type="button"
+          className="apppay-fallback-btn"
+          onClick={() =>
+            Swal.fire({
+              ...swalConfig,
+              icon: "info",
+              title: "App Pay no disponible",
+              text: "App Pay no está disponible en este dispositivo o navegador.",
+            })
+          }
+        >
+           App Pay no disponible aquí
+        </button>
+      </div>
+    );
+  }
+
+  return null;
 }
 
 export default function AppPayButton(props) {
-  if (!stripePromise) {
-    return null;
-  }
+  if (!stripePromise) return null;
 
   return (
     <Elements stripe={stripePromise}>

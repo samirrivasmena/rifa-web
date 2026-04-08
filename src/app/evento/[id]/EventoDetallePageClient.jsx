@@ -186,7 +186,7 @@ export default function EventoDetallePageClient() {
             </Link>
           </div>
         ) : (
-          <section className="evento-wrap">
+          <section className="evento-wrap reveal-fade-up">
             <div className="evento-title-row">
               <div className="evento-title-center">
                 {evento.destacada && (
@@ -230,13 +230,13 @@ export default function EventoDetallePageClient() {
               </div>
 
               <div className="evento-side">
-                <div className="evento-card">
+                <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">DETALLE DEL EVENTO</p>
                   <h2>Información general</h2>
                   <p className="evento-description">{descripcion}</p>
                 </div>
 
-                <div className="evento-card">
+                <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">RESUMEN</p>
                   <h2>Datos principales</h2>
 
@@ -283,7 +283,7 @@ export default function EventoDetallePageClient() {
                 </div>
 
                 {estaAgotado && !estaFinalizado && (
-                  <div className="evento-card">
+                  <div className="evento-card premium-card-hover">
                     <p className="evento-kicker">ESTADO DEL EVENTO</p>
                     <h2>Rifa completa</h2>
                     <p className="evento-description">
@@ -293,7 +293,7 @@ export default function EventoDetallePageClient() {
                   </div>
                 )}
 
-                <div className="evento-card">
+                <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">PREMIACIÓN</p>
                   <h2>Premios del evento</h2>
 
@@ -312,7 +312,7 @@ export default function EventoDetallePageClient() {
                   )}
                 </div>
 
-                <div className="evento-card">
+                <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">ACCIONES</p>
                   <h2>Participar</h2>
 
