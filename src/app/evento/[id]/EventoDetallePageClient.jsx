@@ -6,6 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
+import FloatingShareButton from "@/components/shared/ShareButtons/FloatingShareButton";
 
 export default function EventoDetallePageClient() {
   const params = useParams();
@@ -15,6 +16,19 @@ export default function EventoDetallePageClient() {
   const [loading, setLoading] = useState(true);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verificarEmail, setVerificarEmail] = useState("");
+
+  // NUEVO: URL para compartir
+  const [shareUrl, setShareUrl] = useState("");
+
+  useEffect(() => {
+  if (!evento?.id) return setShareUrl("");
+
+  const origin =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (typeof window !== "undefined" ? window.location.origin : "");
+
+  setShareUrl(origin ? `${origin}/evento/${evento.id}` : "");
+}, [evento?.id]);
 
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
@@ -85,6 +99,25 @@ export default function EventoDetallePageClient() {
       setLoading(false);
     }
   }, [params?.id]);
+
+  // NUEVO: construir link final para compartir (no afecta nada del resto)
+  useEffect(() => {
+    if (!evento?.id) {
+      setShareUrl("");
+      return;
+    }
+
+    const origin =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      (typeof window !== "undefined" ? window.location.origin : "");
+
+    if (!origin) {
+      setShareUrl("");
+      return;
+    }
+
+    setShareUrl(`${origin}/evento/${evento.id}`);
+  }, [evento?.id]);
 
   const estaFinalizado = useMemo(() => {
     return esEstadoFinalizado(evento?.estado);
@@ -204,7 +237,9 @@ export default function EventoDetallePageClient() {
                   principalSrc={evento.portada_url}
                   secondarySrc={evento.portada_scroll_url}
                   alt={evento.nombre || "Evento"}
-                  className={`evento-image-dual-wrap ${estaFinalizado || estaAgotado ? "finalizada" : ""}`}
+                  className={`evento-image-dual-wrap ${
+                    estaFinalizado || estaAgotado ? "finalizada" : ""
+                  }`}
                 />
 
                 <div className="evento-overlay" />
@@ -306,9 +341,7 @@ export default function EventoDetallePageClient() {
                       ))}
                     </div>
                   ) : (
-                    <div className="evento-premio-empty">
-                      No hay premios definidos todavía.
-                    </div>
+                    <div className="evento-premio-empty">No hay premios definidos todavía.</div>
                   )}
                 </div>
 
@@ -343,6 +376,15 @@ export default function EventoDetallePageClient() {
               </div>
             </div>
           </section>
+        )}
+
+        {/* NUEVO: Botón flotante de compartir (solo si hay evento cargado) */}
+        {evento?.id && (
+          <FloatingShareButton
+            url={shareUrl}
+            title={evento?.nombre || "Evento"}
+            text={`Participa en este evento: ${evento?.nombre || "Evento"}\n🎟️ Compra aquí:`}
+          />
         )}
       </main>
 

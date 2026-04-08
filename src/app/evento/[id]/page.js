@@ -1,6 +1,7 @@
 import EventoDetallePageClient from "./EventoDetallePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
+
 export async function generateMetadata({ params }) {
   const id = params?.id;
 
