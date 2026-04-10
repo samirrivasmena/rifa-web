@@ -408,205 +408,9 @@ export default function HomePageClient() {
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-
-    if (loadingCompra) return;
-
-    try {
-      setLoadingCompra(true);
-
-      const { nombre, email, telefono, referencia, comprobante, codigoPais } = formData;
-      const telefonoLimpio = telefono.replace(/[^\d]/g, "");
-
-      if (!rifaActiva?.id) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Sin rifa disponible",
-          text: "En este momento no hay una rifa disponible para comprar",
-        });
-        return;
-      }
-
-      if (rifaCompleta) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "info",
-          title: "Boletos agotados",
-          text: "Esta rifa ya alcanzó el 100% y no acepta más compras.",
-        });
-        return;
-      }
-
-      if (!estaDisponibleParaCompra(rifaActiva?.estado)) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Rifa no disponible",
-          text: "Esta rifa no está disponible para compra en este momento",
-        });
-        return;
-      }
-
-      if (precioPorTicket <= 0) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Precio inválido",
-          text: "Esta rifa no tiene un precio válido configurado",
-        });
-        return;
-      }
-
-      if (!nombre.trim() || !email.trim() || !telefono.trim()) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Campos requeridos",
-          text: "Completa todos los campos obligatorios",
-        });
-        return;
-      }
-
-      if (paymentMethod !== "App Pay" && !referencia.trim()) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Referencia requerida",
-          text: "Debes ingresar el número de referencia del pago",
-        });
-        return;
-      }
-
-      if (!validarEmail(email)) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Email inválido",
-          text: "Ingresa un correo electrónico válido",
-        });
-        return;
-      }
-
-      if (telefonoLimpio.length < 8) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Teléfono inválido",
-          text: "Ingresa un número de teléfono válido",
-        });
-        return;
-      }
-
-      if (!tickets || tickets < 1 || tickets > 100) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Cantidad inválida",
-          text: "Debes seleccionar entre 1 y 100 tickets",
-        });
-        return;
-      }
-
-      if (paymentMethod !== "App Pay" && !comprobante) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Comprobante requerido",
-          text: "Debes adjuntar el comprobante de pago",
-        });
-        return;
-      }
-
-      let comprobanteUrl = "";
-
-      if (comprobante) {
-        const extension = comprobante.name.split(".").pop();
-        const nombreArchivo = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-
-        const { error: errorUpload } = await supabase.storage
-          .from("comprobantes")
-          .upload(nombreArchivo, comprobante);
-
-        if (errorUpload) {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "error",
-            title: "Error subiendo comprobante",
-            text: errorUpload.message,
-          });
-          return;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from("comprobantes")
-          .getPublicUrl(nombreArchivo);
-
-        comprobanteUrl = urlData.publicUrl;
-      }
-
-      const response = await fetch("/api/comprar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre: nombre.trim(),
-          email: email.trim(),
-          telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
-          referencia: referencia.trim(),
-          tickets,
-          totalPagar,
-          paymentMethod,
-          comprobanteUrl,
-          rifaId: rifaActiva.id,
-          capturaInmediata,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "error",
-          title: "Error",
-          text: data.error || "No se pudo registrar la compra",
-        });
-        return;
-      }
-
-      await Swal.fire({
-        ...swalConfig,
-        icon: "success",
-        title: "Compra registrada",
-        text: "Tu compra quedó pendiente por aprobación.",
-      });
-
-      setFormData({
-        nombre: "",
-        email: "",
-        telefono: "",
-        referencia: "",
-        comprobante: null,
-        codigoPais: "+58",
-      });
-
-      setCapturaInmediata(false);
-      setTickets(1);
-      limpiarArchivo();
-    } catch (error) {
-      await Swal.fire({
-        ...swalConfig,
-        icon: "error",
-        title: "Error inesperado",
-        text: error?.message || "Ocurrió un error inesperado",
-      });
-    } finally {
-      setLoadingCompra(false);
-    }
-  };
+  const paymentMethods = paymentMethodsList;
+  const metodoSeleccionado = paymentMethodsConfig[paymentMethod];
+  const esPagoDigital = paymentMethod === "App Pay" || paymentMethod === "Google Pay";
 
   const registrarCompraAppPay = async ({
     referenciaPago,
@@ -746,8 +550,356 @@ export default function HomePageClient() {
     }
   };
 
-  const paymentMethods = paymentMethodsList;
-  const metodoSeleccionado = paymentMethodsConfig[paymentMethod];
+  const registrarCompraGooglePay = async ({
+    referenciaPago,
+    emailWallet = "",
+    nombreWallet = "",
+  }) => {
+    if (loadingCompra) return;
+
+    try {
+      setLoadingCompra(true);
+
+      const { nombre, email, telefono, codigoPais } = formData;
+      const telefonoLimpio = telefono.replace(/[^\d]/g, "");
+
+      if (!rifaActiva?.id) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Sin rifa disponible",
+          text: "No hay una rifa disponible para registrar el pago",
+        });
+        return;
+      }
+
+      if (rifaCompleta) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "info",
+          title: "Boletos agotados",
+          text: "Esta rifa ya alcanzó el 100% y no acepta más compras.",
+        });
+        return;
+      }
+
+      if (!estaDisponibleParaCompra(rifaActiva?.estado)) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Rifa no disponible",
+          text: "Esta rifa no está disponible para compra en este momento",
+        });
+        return;
+      }
+
+      if (precioPorTicket <= 0) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Precio inválido",
+          text: "Esta rifa no tiene un precio válido configurado",
+        });
+        return;
+      }
+
+      if (!telefono.trim() || telefonoLimpio.length < 8) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Teléfono requerido",
+          text: "Debes ingresar tu teléfono válido para registrar la compra con Google Pay",
+        });
+        return;
+      }
+
+      const nombreFinal = nombre.trim() || nombreWallet || "Pago Google Pay";
+      const emailFinal = email.trim() || emailWallet;
+
+      if (!emailFinal || !validarEmail(emailFinal)) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Email requerido",
+          text: "Debes ingresar un correo válido para registrar la compra con Google Pay",
+        });
+        return;
+      }
+
+      const response = await fetch("/api/comprar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: nombreFinal,
+          email: emailFinal,
+          telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
+          referencia: referenciaPago || "GOOGLEPAY",
+          tickets,
+          totalPagar,
+          paymentMethod: "Google Pay",
+          comprobanteUrl: "",
+          rifaId: rifaActiva.id,
+          capturaInmediata: true,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "error",
+          title: "Error al registrar compra",
+          text: data.error || "No se pudo registrar la compra",
+        });
+        return;
+      }
+
+      await Swal.fire({
+        ...swalConfig,
+        icon: "success",
+        title: "Compra registrada",
+        text: "Tu compra con Google Pay fue registrada correctamente.",
+      });
+
+      setFormData({
+        nombre: "",
+        email: "",
+        telefono: "",
+        referencia: "",
+        comprobante: null,
+        codigoPais: "+58",
+      });
+
+      setCapturaInmediata(false);
+      setTickets(1);
+      limpiarArchivo();
+    } catch (error) {
+      await Swal.fire({
+        ...swalConfig,
+        icon: "error",
+        title: "Error inesperado",
+        text: error?.message || "Ocurrió un error inesperado",
+      });
+    } finally {
+      setLoadingCompra(false);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (loadingCompra) return;
+
+    if (paymentMethod === "App Pay" || paymentMethod === "Google Pay") {
+      await Swal.fire({
+        ...swalConfig,
+        icon: "info",
+        title: "Usa el botón de pago",
+        text:
+          paymentMethod === "App Pay"
+            ? "Para App Pay debes usar el botón especial de la sección de pago."
+            : "Para Google Pay debes usar el botón especial de la sección de pago.",
+      });
+      return;
+    }
+
+    try {
+      setLoadingCompra(true);
+
+      const { nombre, email, telefono, referencia, comprobante, codigoPais } = formData;
+      const telefonoLimpio = telefono.replace(/[^\d]/g, "");
+
+      if (!rifaActiva?.id) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Sin rifa disponible",
+          text: "En este momento no hay una rifa disponible para comprar",
+        });
+        return;
+      }
+
+      if (rifaCompleta) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "info",
+          title: "Boletos agotados",
+          text: "Esta rifa ya alcanzó el 100% y no acepta más compras.",
+        });
+        return;
+      }
+
+      if (!estaDisponibleParaCompra(rifaActiva?.estado)) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Rifa no disponible",
+          text: "Esta rifa no está disponible para compra en este momento",
+        });
+        return;
+      }
+
+      if (precioPorTicket <= 0) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Precio inválido",
+          text: "Esta rifa no tiene un precio válido configurado",
+        });
+        return;
+      }
+
+      if (!nombre.trim() || !email.trim() || !telefono.trim()) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Campos requeridos",
+          text: "Completa todos los campos obligatorios",
+        });
+        return;
+      }
+
+      if (!esPagoDigital && !referencia.trim()) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Referencia requerida",
+          text: "Debes ingresar el número de referencia del pago",
+        });
+        return;
+      }
+
+      if (!validarEmail(email)) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Email inválido",
+          text: "Ingresa un correo electrónico válido",
+        });
+        return;
+      }
+
+      if (telefonoLimpio.length < 8) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Teléfono inválido",
+          text: "Ingresa un número de teléfono válido",
+        });
+        return;
+      }
+
+      if (!tickets || tickets < 1 || tickets > 100) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Cantidad inválida",
+          text: "Debes seleccionar entre 1 y 100 tickets",
+        });
+        return;
+      }
+
+      if (!esPagoDigital && !comprobante) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "warning",
+          title: "Comprobante requerido",
+          text: "Debes adjuntar el comprobante de pago",
+        });
+        return;
+      }
+
+      let comprobanteUrl = "";
+
+      if (comprobante) {
+        const extension = comprobante.name.split(".").pop();
+        const nombreArchivo = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+
+        const { error: errorUpload } = await supabase.storage
+          .from("comprobantes")
+          .upload(nombreArchivo, comprobante);
+
+        if (errorUpload) {
+          await Swal.fire({
+            ...swalConfig,
+            icon: "error",
+            title: "Error subiendo comprobante",
+            text: errorUpload.message,
+          });
+          return;
+        }
+
+        const { data: urlData } = supabase.storage
+          .from("comprobantes")
+          .getPublicUrl(nombreArchivo);
+
+        comprobanteUrl = urlData.publicUrl;
+      }
+
+      const response = await fetch("/api/comprar", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          nombre: nombre.trim(),
+          email: email.trim(),
+          telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
+          referencia: referencia.trim(),
+          tickets,
+          totalPagar,
+          paymentMethod,
+          comprobanteUrl,
+          rifaId: rifaActiva.id,
+          capturaInmediata,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        await Swal.fire({
+          ...swalConfig,
+          icon: "error",
+          title: "Error",
+          text: data.error || "No se pudo registrar la compra",
+        });
+        return;
+      }
+
+      await Swal.fire({
+        ...swalConfig,
+        icon: "success",
+        title: "Compra registrada",
+        text: "Tu compra quedó pendiente por aprobación.",
+      });
+
+      setFormData({
+        nombre: "",
+        email: "",
+        telefono: "",
+        referencia: "",
+        comprobante: null,
+        codigoPais: "+58",
+      });
+
+      setCapturaInmediata(false);
+      setTickets(1);
+      limpiarArchivo();
+    } catch (error) {
+      await Swal.fire({
+        ...swalConfig,
+        icon: "error",
+        title: "Error inesperado",
+        text: error?.message || "Ocurrió un error inesperado",
+      });
+    } finally {
+      setLoadingCompra(false);
+    }
+  };
 
   if (loadingRifa && !rifaActiva) {
     return (
@@ -1037,7 +1189,7 @@ export default function HomePageClient() {
                     />
                   </div>
 
-                  {paymentMethod !== "App Pay" && (
+                  {!esPagoDigital && (
                     <>
                       <label className="input-label">Número de referencia *</label>
                       <input
@@ -1130,6 +1282,46 @@ export default function HomePageClient() {
                       <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
                     )}
                   </div>
+                ) : paymentMethod === "Google Pay" ? (
+                  <div className="apppay-detail-box premium-card-hover">
+                    <span className="apppay-detail-label">{metodoSeleccionado.subtitulo}</span>
+
+                    <div className="apppay-brand">G Pay</div>
+
+                    <div className="apppay-total">
+                      Total: ${Number(totalPagar || 0).toFixed(2)} USD
+                    </div>
+
+                    <div className="apppay-debug-amount">
+                      Cobro confirmado: ${(Math.round(Number(totalPagar || 0) * 100) / 100).toFixed(2)} USD
+                    </div>
+
+                    <button
+                      type="button"
+                      className="confirm-main-btn"
+                      onClick={() =>
+                        registrarCompraGooglePay({
+                          referenciaPago: "GOOGLEPAY",
+                        })
+                      }
+                      disabled={
+                        loadingCompra ||
+                        !rifaActiva?.id ||
+                        tickets < 1 ||
+                        precioPorTicket <= 0 ||
+                        !estaDisponibleParaCompra(rifaActiva?.estado) ||
+                        rifaCompleta
+                      }
+                    >
+                      CONTINUAR CON GOOGLE PAY
+                    </button>
+
+                    <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
+
+                    {metodoSeleccionado.note && (
+                      <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
+                    )}
+                  </div>
                 ) : (
                   <div className="selected-payment-box premium-card-hover">
                     <h4>{metodoSeleccionado.titulo}</h4>
@@ -1176,7 +1368,7 @@ export default function HomePageClient() {
                 )}
               </section>
 
-              {paymentMethod !== "App Pay" && (
+              {!esPagoDigital && (
                 <section className="card-section">
                   <h3 className="section-heading">📄 COMPROBANTE DE PAGO</h3>
                   <p className="section-soft-text">Foto o Captura de Pantalla</p>
@@ -1249,6 +1441,12 @@ export default function HomePageClient() {
                   <div className="apppay-submit-helper">
                     <p className="apppay-submit-helper-text">
                       Usa el botón negro de  Pay para completar tu pago.
+                    </p>
+                  </div>
+                ) : paymentMethod === "Google Pay" ? (
+                  <div className="apppay-submit-helper">
+                    <p className="apppay-submit-helper-text">
+                      Usa el botón de Google Pay para completar tu registro.
                     </p>
                   </div>
                 ) : (

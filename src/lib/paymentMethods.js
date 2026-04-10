@@ -53,6 +53,20 @@ export const paymentMethodsConfig = {
     note: "Compatible con dispositivos Apple y navegadores compatibles.",
   },
 
+  "Google Pay": {
+    key: "Google Pay",
+    titulo: "GOOGLE PAY",
+    descripcion:
+      "Usa Google Pay en dispositivos y navegadores compatibles para registrar tu compra de forma rápida.",
+    nombre: "Samir Rivas",
+    cuenta: "Google Pay disponible",
+    subtitulo: "PAGO RÁPIDO",
+    logo: "/payment/googlepay.png",
+    bgClass: "googlepay-bg",
+    type: "wallet",
+    note: "Compatible con Android, Chrome y dispositivos compatibles.",
+  },
+
   PayPal: {
     key: "PayPal",
     titulo: "PAYPAL",
@@ -85,6 +99,7 @@ export const paymentMethodsList = [
   "Zelle",
   "Banco de Venezuela",
   "App Pay",
+  "Google Pay",
   "PayPal",
   "Cash App",
 ];
