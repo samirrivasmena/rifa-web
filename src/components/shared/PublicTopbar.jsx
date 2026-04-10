@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 export default function PublicTopbar({
   active = "eventos",
@@ -111,7 +112,14 @@ export default function PublicTopbar({
     <header className={`public-topbar ${hiddenOnMobile ? "mobile-hidden" : ""}`}>
       <div className="public-topbar-inner">
         <Link href={logoHref} className="public-topbar-logo-link" onClick={cerrarMenu}>
-          <img src="/logo.png" alt="Logo Rifas LSD" className="public-topbar-logo" />
+          <Image
+            src="/logo.png"
+            alt="Logo Rifas LSD"
+            width={58}
+            height={58}
+            priority
+            className="public-topbar-logo"
+          />
         </Link>
 
         <button
