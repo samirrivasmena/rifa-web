@@ -1,6 +1,56 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
+import { sendCompraAprobadaEmail } from "../../../lib/sendCompraAprobadaEmail";
+
+export const runtime = "nodejs";
+
+function getBaseUrl(req) {
+  const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
+
+  if (envUrl) {
+    return envUrl.startsWith("http")
+      ? envUrl.replace(/\/$/, "")
+      : `https://${envUrl.replace(/\/$/, "")}`;
+  }
+
+  const protoRaw = req.headers.get("x-forwarded-proto") || "https";
+  const proto = protoRaw.split(",")[0].trim();
+  const host =
+    req.headers.get("x-forwarded-host") ||
+    req.headers.get("host") ||
+    "localhost:3000";
+
+  return `${proto}://${host}`.replace(/\/$/, "");
+}
+
+async function obtenerDatosCliente(compra) {
+  let nombreCliente = "cliente";
+  let emailDestino = "";
+
+  if (compra?.usuario_id) {
+    try {
+      const { data: usuario, error: usuarioError } = await supabaseAdmin
+        .from("usuarios")
+        .select("nombre, email")
+        .eq("id", compra.usuario_id)
+        .maybeSingle();
+
+      if (usuarioError) {
+        console.warn("No se pudo leer el usuario asociado:", usuarioError.message);
+      }
+
+      if (usuario) {
+        nombreCliente = usuario.nombre || nombreCliente;
+        emailDestino = usuario.email || emailDestino;
+      }
+    } catch (error) {
+      console.warn("Error obteniendo datos del cliente:", error.message);
+    }
+  }
+
+  return { nombreCliente, emailDestino };
+}
 
 export async function POST(req) {
   const auth = await requireAdmin(req);
@@ -25,7 +75,7 @@ export async function POST(req) {
 
     const { data: compra, error: compraError } = await supabaseAdmin
       .from("compras")
-      .select("id, usuario_id, estado_pago, cantidad_tickets, rifa_id")
+      .select("id, usuario_id, estado_pago, cantidad_tickets, monto_total, rifa_id")
       .eq("id", compraId)
       .maybeSingle();
 
@@ -137,7 +187,11 @@ export async function POST(req) {
     const numeroInicio = Number(rifa.numero_inicio);
     const numeroFin = Number(rifa.numero_fin);
 
-    if (!Number.isInteger(numeroInicio) || !Number.isInteger(numeroFin) || numeroFin < numeroInicio) {
+    if (
+      !Number.isInteger(numeroInicio) ||
+      !Number.isInteger(numeroFin) ||
+      numeroFin < numeroInicio
+    ) {
       return NextResponse.json(
         { error: "La rifa no tiene un rango de números válido" },
         { status: 400 }
@@ -148,14 +202,16 @@ export async function POST(req) {
       rifa.cantidad_numeros ?? numeroFin - numeroInicio + 1
     );
 
-    const totalNumeros = Number.isFinite(totalNumerosConfigurados) && totalNumerosConfigurados > 0
-      ? totalNumerosConfigurados
-      : numeroFin - numeroInicio + 1;
+    const totalNumeros =
+      Number.isFinite(totalNumerosConfigurados) && totalNumerosConfigurados > 0
+        ? totalNumerosConfigurados
+        : numeroFin - numeroInicio + 1;
 
-    const { data: ticketsExistentes, error: ticketsExistentesError } = await supabaseAdmin
-      .from("tickets")
-      .select("id, numero_ticket")
-      .eq("rifa_id", rifa.id);
+    const { data: ticketsExistentes, error: ticketsExistentesError } =
+      await supabaseAdmin
+        .from("tickets")
+        .select("id, numero_ticket")
+        .eq("rifa_id", rifa.id);
 
     if (ticketsExistentesError) {
       return NextResponse.json(
@@ -164,7 +220,9 @@ export async function POST(req) {
       );
     }
 
-    const ticketsActuales = Array.isArray(ticketsExistentes) ? ticketsExistentes : [];
+    const ticketsActuales = Array.isArray(ticketsExistentes)
+      ? ticketsExistentes
+      : [];
     const ticketsVendidosAntes = ticketsActuales.length;
 
     if (ticketsVendidosAntes >= totalNumeros) {
@@ -267,6 +325,38 @@ export async function POST(req) {
           { status: 500 }
         );
       }
+    }
+
+    // Enviar correo sin bloquear la aprobación si falla
+    try {
+      const baseUrl = getBaseUrl(req);
+      const { nombreCliente, emailDestino } = await obtenerDatosCliente(compra);
+
+      if (emailDestino) {
+        await sendCompraAprobadaEmail({
+          to: emailDestino,
+          nombre: nombreCliente,
+          rifaNombre: rifa.nombre || "Rifa",
+          rifaDescripcion: rifa.descripcion || "",
+          portadaUrl: rifa.portada_url || rifa.portada_scroll_url || "",
+          fechaEvento: rifa.fecha_sorteo || rifa.fecha || rifa.fecha_rifa || "",
+          horaEvento: rifa.hora_sorteo || rifa.hora || rifa.hora_rifa || "",
+          tickets: compra.cantidad_tickets || 0,
+          numerosTickets: (nuevosTickets || [])
+            .map((t) => t.numero_ticket)
+            .sort((a, b) => Number(a) - Number(b)),
+          totalPagar: Number(compra.monto_total ?? 0),
+          eventoUrl: `${baseUrl}/evento/${rifa.id}`,
+          verificarUrl: `${baseUrl}/principal`,
+          padLength: String(rifa.formato) === "3digitos" ? 3 : 4,
+        });
+      } else {
+        console.warn(
+          `La compra ${compra.id} fue aprobada pero no tiene email destino`
+        );
+      }
+    } catch (emailError) {
+      console.error("No se pudo enviar el correo:", emailError);
     }
 
     return NextResponse.json({

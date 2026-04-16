@@ -25,20 +25,6 @@ export const paymentMethodsConfig = {
     type: "standard",
   },
 
-  "Banco de Venezuela": {
-    key: "Banco de Venezuela",
-    titulo: "PAGOMÓVIL BDV",
-    descripcion:
-      "Realiza tu pago y coloca la referencia completa para validar la compra.",
-    nombre: "JEANCORLUIS MALAVE",
-    cuenta: "04242502729",
-    subtitulo: "TELÉFONO",
-    logo: "/payment/bdv.png",
-    bgClass: "bdv-bg",
-    extra: [{ label: "CI", value: "25011847" }],
-    type: "standard",
-  },
-
   "App Pay": {
     key: "App Pay",
     titulo: "APP PAY",
@@ -51,20 +37,6 @@ export const paymentMethodsConfig = {
     bgClass: "apppay-bg",
     type: "wallet",
     note: "Compatible con dispositivos Apple y navegadores compatibles.",
-  },
-
-  "Google Pay": {
-    key: "Google Pay",
-    titulo: "GOOGLE PAY",
-    descripcion:
-      "Usa Google Pay en dispositivos y navegadores compatibles para registrar tu compra de forma rápida.",
-    nombre: "Samir Rivas",
-    cuenta: "Google Pay disponible",
-    subtitulo: "PAGO RÁPIDO",
-    logo: "/payment/googlepay.png",
-    bgClass: "googlepay-bg",
-    type: "wallet",
-    note: "Compatible con Android, Chrome y dispositivos compatibles.",
   },
 
   PayPal: {
@@ -97,9 +69,7 @@ export const paymentMethodsConfig = {
 export const paymentMethodsList = [
   "Binance",
   "Zelle",
-  "Banco de Venezuela",
   "App Pay",
-  "Google Pay",
   "PayPal",
   "Cash App",
 ];

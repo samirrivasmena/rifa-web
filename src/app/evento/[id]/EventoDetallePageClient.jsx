@@ -8,6 +8,8 @@ import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
 import FloatingShareButton from "@/components/shared/ShareButtons/FloatingShareButton";
+import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import { getRifaProgress } from "@/lib/getRifaProgress";
 
 export default function EventoDetallePageClient() {
   const params = useParams();
@@ -25,7 +27,9 @@ export default function EventoDetallePageClient() {
     value === true || value === 1 || value === "1" || value === "true";
 
   const esEstadoFinalizado = (estado) =>
-    ["finalizada", "finalizado", "cerrada"].includes(String(estado || "").toLowerCase());
+    ["finalizada", "finalizado", "cerrada"].includes(
+      String(estado || "").toLowerCase()
+    );
 
   const esEstadoAgotado = (estado) =>
     ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
@@ -92,10 +96,7 @@ export default function EventoDetallePageClient() {
   }, [params?.id]);
 
   /**
-   * ✅ Share URL PRO (sin duplicar dominio/ruta)
-   * - Usa env NEXT_PUBLIC_SITE_URL si existe, sino window.location.origin
-   * - Si env viene sin https://, lo arregla
-   * - Si env viene con path, se queda solo con el origin
+   * Share URL PRO (sin duplicar dominio/ruta)
    */
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -108,12 +109,10 @@ export default function EventoDetallePageClient() {
 
     let base = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin || "").trim();
 
-    // Si viene sin protocolo, lo normalizamos
     if (base && !/^https?:\/\//i.test(base)) {
       base = `https://${base}`;
     }
 
-    // Si base trae path, dejamos solo origin
     try {
       base = new URL(base).origin;
     } catch {
@@ -124,7 +123,9 @@ export default function EventoDetallePageClient() {
   }, [params?.id]);
 
   const estaFinalizado = useMemo(() => esEstadoFinalizado(evento?.estado), [evento]);
-  const estaAgotado = useMemo(() => esEstadoAgotado(evento?.estado), [evento]);
+  const estaAgotada = useMemo(() => esEstadoAgotado(evento?.estado), [evento]);
+
+  const progreso = useMemo(() => getRifaProgress(evento || {}), [evento]);
 
   const premios = useMemo(() => {
     if (!evento) return [];
@@ -141,23 +142,10 @@ export default function EventoDetallePageClient() {
 
   const descripcion = evento?.descripcion || "Sin descripción disponible.";
 
-  const totalNumerosRaw = Number(
-    evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
-  );
-  const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
-
-  const ticketsVendidosRaw = Number(
-    evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
-  );
-  const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
-
-  const porcentajeVendidoRaw = Number(
-    evento?.porcentaje_vendido ??
-      (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
-  );
-  const porcentajeVendido = Number.isFinite(porcentajeVendidoRaw)
-    ? Math.min(porcentajeVendidoRaw, 100)
-    : 0;
+  const totalNumeros = progreso.total;
+  const ticketsVendidos = progreso.vendidos;
+  const porcentajeVendido = progreso.porcentaje;
+  const rifaCompleta = progreso.soldOut || estaFinalizado || estaAgotada;
 
   return (
     <>
@@ -228,18 +216,18 @@ export default function EventoDetallePageClient() {
                   secondarySrc={evento.portada_scroll_url}
                   alt={evento.nombre || "Evento"}
                   className={`evento-image-dual-wrap ${
-                    estaFinalizado || estaAgotado ? "finalizada" : ""
+                    estaFinalizado || estaAgotada ? "finalizada" : ""
                   }`}
                 />
 
                 <div className="evento-overlay" />
 
                 {estaFinalizado && <div className="evento-ribbon">FINALIZADO</div>}
-                {!estaFinalizado && estaAgotado && <div className="evento-ribbon">AGOTADO</div>}
+                {!estaFinalizado && estaAgotada && <div className="evento-ribbon">AGOTADO</div>}
 
                 <div className="evento-image-content">
-                  <div className={`evento-status ${estaFinalizado || estaAgotado ? "off" : "on"}`}>
-                    {estaFinalizado ? "● Finalizada" : estaAgotado ? "● Agotada" : "● Disponible"}
+                  <div className={`evento-status ${estaFinalizado || estaAgotada ? "off" : "on"}`}>
+                    {estaFinalizado ? "● Finalizada" : estaAgotada ? "● Agotada" : "● Disponible"}
                   </div>
 
                   <h1>{evento.nombre || "Evento"}</h1>
@@ -260,7 +248,7 @@ export default function EventoDetallePageClient() {
                   <div className="evento-mini-grid">
                     <div className="evento-mini-box">
                       <span>ESTADO</span>
-                      <strong className={estaFinalizado || estaAgotado ? "text-red" : "text-green"}>
+                      <strong className={estaFinalizado || estaAgotada ? "text-red" : "text-green"}>
                         {evento.estado || "Disponible"}
                       </strong>
                     </div>
@@ -295,7 +283,32 @@ export default function EventoDetallePageClient() {
                   </div>
                 </div>
 
-                {estaAgotado && !estaFinalizado && (
+                <div className="evento-card premium-card-hover">
+                  <p className="evento-kicker">AVANCE DE VENTAS</p>
+                  <h2>Progreso del evento</h2>
+
+                  <ProgressVentaBar
+                    value={porcentajeVendido}
+                    soldOut={rifaCompleta}
+                    text={
+                      totalNumeros > 0
+                        ? `${ticketsVendidos} de ${totalNumeros} boletos vendidos`
+                        : "Progreso de venta"
+                    }
+                  />
+
+                  {rifaCompleta && (
+                    <p className="evento-description" style={{ marginTop: "12px" }}>
+                      {estaFinalizado
+                        ? "Este evento ya finalizó."
+                        : estaAgotada
+                        ? "Todos los boletos fueron vendidos. El evento está agotado y pendiente de sorteo."
+                        : "Todos los boletos fueron vendidos."}
+                    </p>
+                  )}
+                </div>
+
+                {estaAgotada && !estaFinalizado && (
                   <div className="evento-card premium-card-hover">
                     <p className="evento-kicker">ESTADO DEL EVENTO</p>
                     <h2>Rifa completa</h2>
@@ -328,11 +341,11 @@ export default function EventoDetallePageClient() {
                   <h2>Participar</h2>
 
                   <div className="evento-actions">
-                    {!estaFinalizado && !estaAgotado ? (
+                    {!estaFinalizado && !estaAgotada ? (
                       <Link href={`/?rifa=${evento.id}#boletos`} className="principal-red-btn">
                         COMPRAR TICKETS
                       </Link>
-                    ) : estaAgotado ? (
+                    ) : estaAgotada ? (
                       <button type="button" className="evento-disabled-btn" disabled>
                         BOLETOS AGOTADOS
                       </button>
@@ -356,7 +369,7 @@ export default function EventoDetallePageClient() {
           </section>
         )}
 
-        {/* BOTÓN DE COMPARTIR (solo si evento existe y shareUrl está listo) */}
+        {/* BOTÓN DE COMPARTIR */}
         {evento?.id && shareUrl && (
           <FloatingShareButton
             url={shareUrl}

@@ -2,7 +2,10 @@
 
 import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
+import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import { getRifaProgress } from "@/lib/getRifaProgress";
 
 export default function HomeEventosPreview({ rifas = [] }) {
   const router = useRouter();
@@ -28,40 +31,33 @@ export default function HomeEventosPreview({ rifas = [] }) {
     return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
   };
 
-  const obtenerPorcentajeSeguro = (evento) => {
-    const totalNumerosRaw = Number(
-      evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
-    );
+  const ordenarRifas = (lista) => {
+    return [...lista].sort((a, b) => {
+      const destacadaA = Boolean(a.destacada);
+      const destacadaB = Boolean(b.destacada);
 
-    const ticketsVendidosRaw = Number(
-      evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
-    );
+      if (destacadaA !== destacadaB) {
+        return Number(destacadaB) - Number(destacadaA);
+      }
 
-    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
-    const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
+      const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
+      const fechaB = new Date(b.created_at || b.fecha_sorteo || 0).getTime();
 
-    const porcentajeRaw = Number(
-      evento?.porcentaje_vendido ??
-        (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
-    );
-
-    return Number.isFinite(porcentajeRaw) ? porcentajeRaw : 0;
+      return fechaB - fechaA;
+    });
   };
 
-  const eventosDisponibles = useMemo(
-    () => rifas.filter((r) => esEventoDisponible(r.estado)),
-    [rifas]
-  );
+  const eventosDisponibles = useMemo(() => {
+    return ordenarRifas(rifas.filter((r) => esEventoDisponible(r.estado)));
+  }, [rifas]);
 
-  const eventosAgotados = useMemo(
-    () => rifas.filter((r) => esEventoAgotado(r.estado)),
-    [rifas]
-  );
+  const eventosAgotados = useMemo(() => {
+    return ordenarRifas(rifas.filter((r) => esEventoAgotado(r.estado)));
+  }, [rifas]);
 
-  const eventosFinalizados = useMemo(
-    () => rifas.filter((r) => esEventoFinalizado(r.estado)),
-    [rifas]
-  );
+  const eventosFinalizados = useMemo(() => {
+    return ordenarRifas(rifas.filter((r) => esEventoFinalizado(r.estado)));
+  }, [rifas]);
 
   const totalPaginasFinalizados = useMemo(() => {
     return Math.max(
@@ -134,7 +130,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                 evento.hora_rifa ||
                 "";
 
-              const porcentaje = obtenerPorcentajeSeguro(evento);
+              const progreso = getRifaProgress(evento);
 
               return (
                 <article key={evento.id} className="home-event-card">
@@ -156,20 +152,28 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   )}
 
                   <div className="home-event-card-body">
-                    <h3>{evento.nombre}</h3>
+                    <h3>{evento.nombre || "Evento"}</h3>
 
                     {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
                     {hora && <p className="home-event-card-time">⏰ {hora}</p>}
 
-                    {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
+                    {evento.precio_ticket !== null &&
+                    evento.precio_ticket !== undefined ? (
                       <p className="home-event-card-price">
                         💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                       </p>
                     ) : null}
 
-                    <p className="home-event-card-progress">
-                      📊 {porcentaje.toFixed(1)}% vendido
-                    </p>
+                    <ProgressVentaBar
+                      value={progreso.porcentaje}
+                      soldOut={progreso.soldOut}
+                      text={
+                        progreso.total > 0
+                          ? `${progreso.vendidos} de ${progreso.total} boletos vendidos`
+                          : "Progreso de venta"
+                      }
+                      compact
+                    />
 
                     <div className="home-event-card-actions">
                       <button
@@ -212,7 +216,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   evento.fecha_rifa ||
                   "";
 
-                const porcentaje = obtenerPorcentajeSeguro(evento);
+                const progreso = getRifaProgress(evento);
 
                 return (
                   <article key={evento.id} className="home-event-card finalizada">
@@ -238,13 +242,20 @@ export default function HomeEventosPreview({ rifas = [] }) {
                     )}
 
                     <div className="home-event-card-body">
-                      <h3>{evento.nombre}</h3>
+                      <h3>{evento.nombre || "Evento agotado"}</h3>
 
                       {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
 
-                      <p className="home-event-card-progress">
-                        📊 {porcentaje.toFixed(1)}% vendido
-                      </p>
+                      <ProgressVentaBar
+                        value={progreso.porcentaje}
+                        soldOut={progreso.soldOut}
+                        text={
+                          progreso.total > 0
+                            ? `${progreso.vendidos} de ${progreso.total} boletos vendidos`
+                            : "Progreso de venta"
+                        }
+                        compact
+                      />
 
                       <p className="home-event-card-date">⏳ Pendiente de sorteo</p>
 
@@ -284,6 +295,8 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   evento.fecha_rifa ||
                   "";
 
+                const progreso = getRifaProgress(evento);
+
                 return (
                   <article key={evento.id} className="home-event-card finalizada">
                     <div className="home-card-badges-row">
@@ -308,15 +321,27 @@ export default function HomeEventosPreview({ rifas = [] }) {
                     )}
 
                     <div className="home-event-card-body">
-                      <h3>{evento.nombre}</h3>
+                      <h3>{evento.nombre || "Evento finalizado"}</h3>
 
                       {fecha && <p className="home-event-card-date">📅 {fecha}</p>}
 
-                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
+                      {evento.precio_ticket !== null &&
+                      evento.precio_ticket !== undefined ? (
                         <p className="home-event-card-price">
                           💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                         </p>
                       ) : null}
+
+                      <ProgressVentaBar
+                        value={progreso.porcentaje}
+                        soldOut={progreso.soldOut}
+                        text={
+                          progreso.total > 0
+                            ? `${progreso.vendidos} de ${progreso.total} boletos vendidos`
+                            : "Progreso de venta"
+                        }
+                        compact
+                      />
 
                       <div className="home-event-card-actions">
                         <button
@@ -333,10 +358,10 @@ export default function HomeEventosPreview({ rifas = [] }) {
               })}
             </div>
 
-            <div className="home-pagination-wrap premium">
+            <div className="principal-pagination-wrap principal-pagination-premium">
               <button
                 type="button"
-                className="home-pagination-btn"
+                className="principal-pagination-btn premium"
                 onClick={() => setPaginaFinalizados((prev) => Math.max(prev - 1, 1))}
                 disabled={paginaFinalizados === 1}
                 aria-label="Ir a la página anterior de eventos finalizados"
@@ -344,8 +369,8 @@ export default function HomeEventosPreview({ rifas = [] }) {
                 ← Anterior
               </button>
 
-              <div className="home-pagination-current">
-                <span className="home-pagination-label">PÁGINA ACTUAL</span>
+              <div className="principal-pagination-current premium">
+                <span className="principal-pagination-label">PÁGINA ACTUAL</span>
                 <strong>
                   {paginaFinalizados} / {totalPaginasFinalizados}
                 </strong>
@@ -353,7 +378,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
 
               <button
                 type="button"
-                className="home-pagination-btn"
+                className="principal-pagination-btn premium"
                 onClick={() =>
                   setPaginaFinalizados((prev) =>
                     Math.min(prev + 1, totalPaginasFinalizados)

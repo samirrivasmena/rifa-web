@@ -4,11 +4,16 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
+
 import HomeEventosPreview from "@/components/home/HomeEventosPreview";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
+import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+
 import { paymentMethodsConfig, paymentMethodsList } from "@/lib/paymentMethods";
 import { validarEmail } from "@/lib/verifyTickets";
+import { getRifaProgress } from "@/lib/getRifaProgress";
+
 import AppPayButton from "@/components/shared/AppPayButton";
 import PurchaseGuideFloating from "@/components/shared/PurchaseGuideFloating";
 
@@ -52,7 +57,7 @@ export default function HomePageClient() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowSecondImage(window.scrollY > 180);
+      setShowSecondImage(window.scrollY > 110);
     };
 
     const handleEscape = (e) => {
@@ -166,7 +171,9 @@ export default function HomePageClient() {
       section.classList.remove("boletos-highlight");
 
       if (
-        ["inicio", "eventos", "boletos", "pagos", "contacto", "resultados-oficiales"].includes(id)
+        ["inicio", "eventos", "boletos", "pagos", "contacto", "resultados-oficiales"].includes(
+          id
+        )
       ) {
         setTimeout(() => {
           section.classList.add("boletos-highlight");
@@ -233,53 +240,37 @@ export default function HomePageClient() {
   const rifasPublicadasOrdenadas = useMemo(() => {
     const publicadas = rifas.filter((r) => esPublicada(r.publicada));
 
-    return [...publicadas].sort((a, b) => {
-      const destacadaA = Boolean(a.destacada);
-      const destacadaB = Boolean(b.destacada);
+    return [...publicadas]
+      .sort((a, b) => {
+        const destacadaA = Boolean(a.destacada);
+        const destacadaB = Boolean(b.destacada);
 
-      if (destacadaA !== destacadaB) {
-        return Number(destacadaB) - Number(destacadaA);
-      }
+        if (destacadaA !== destacadaB) {
+          return Number(destacadaB) - Number(destacadaA);
+        }
 
-      const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
-      const fechaB = new Date(b.created_at || b.fecha_sorteo || 0).getTime();
+        const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
+        const fechaB = new Date(b.created_at || b.fecha_sorteo || 0).getTime();
 
-      return fechaB - fechaA;
-    });
+        return fechaB - fechaA;
+      })
+      .map((rifa) => ({
+        ...rifa,
+        progreso: getRifaProgress(rifa),
+      }));
   }, [rifas]);
+
+  const progresoRifaActiva = useMemo(() => {
+    return getRifaProgress(rifaActiva || {});
+  }, [rifaActiva]);
 
   const precioPorTicketRaw = Number(rifaActiva?.precio_ticket);
   const precioPorTicket = Number.isFinite(precioPorTicketRaw) ? precioPorTicketRaw : 0;
   const totalPagar = tickets * precioPorTicket;
 
-  const totalNumerosRaw = Number(
-    rifaActiva?.cantidad_numeros ??
-      rifaActiva?.total_tickets ??
-      rifaActiva?.numeros_totales ??
-      0
-  );
-
-  const ticketsVendidosRaw = Number(
-    rifaActiva?.tickets_vendidos ??
-      rifaActiva?.vendidos ??
-      rifaActiva?.ticketsVendidos ??
-      0
-  );
-
-  const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
-  const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
-
-  const porcentajeVendidoRaw = Number(
-    rifaActiva?.porcentaje_vendido ??
-      (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
-  );
-
-  const porcentajeVendido = Number.isFinite(porcentajeVendidoRaw)
-    ? Math.min(porcentajeVendidoRaw, 100)
-    : 0;
-
-  const porcentajeVendidoTexto = `${porcentajeVendido.toFixed(1)}%`;
-  const rifaCompleta = totalNumeros > 0 && ticketsVendidos >= totalNumeros;
+  const totalNumeros = progresoRifaActiva.total;
+  const porcentajeVendido = progresoRifaActiva.porcentaje;
+  const rifaCompleta = progresoRifaActiva.soldOut;
 
   const nombreRifa = rifaActiva?.nombre || "";
   const descripcionRifa = rifaActiva?.descripcion || "";
@@ -410,7 +401,7 @@ export default function HomePageClient() {
 
   const paymentMethods = paymentMethodsList;
   const metodoSeleccionado = paymentMethodsConfig[paymentMethod];
-  const esPagoDigital = paymentMethod === "App Pay" || paymentMethod === "Google Pay";
+  const esPagoDigital = paymentMethod === "App Pay";
 
   const registrarCompraAppPay = async ({
     referenciaPago,
@@ -550,142 +541,10 @@ export default function HomePageClient() {
     }
   };
 
-  const registrarCompraGooglePay = async ({
-    referenciaPago,
-    emailWallet = "",
-    nombreWallet = "",
-  }) => {
-    if (loadingCompra) return;
-
-    try {
-      setLoadingCompra(true);
-
-      const { nombre, email, telefono, codigoPais } = formData;
-      const telefonoLimpio = telefono.replace(/[^\d]/g, "");
-
-      if (!rifaActiva?.id) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Sin rifa disponible",
-          text: "No hay una rifa disponible para registrar el pago",
-        });
-        return;
-      }
-
-      if (rifaCompleta) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "info",
-          title: "Boletos agotados",
-          text: "Esta rifa ya alcanzó el 100% y no acepta más compras.",
-        });
-        return;
-      }
-
-      if (!estaDisponibleParaCompra(rifaActiva?.estado)) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Rifa no disponible",
-          text: "Esta rifa no está disponible para compra en este momento",
-        });
-        return;
-      }
-
-      if (precioPorTicket <= 0) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Precio inválido",
-          text: "Esta rifa no tiene un precio válido configurado",
-        });
-        return;
-      }
-
-      if (!telefono.trim() || telefonoLimpio.length < 8) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Teléfono requerido",
-          text: "Debes ingresar tu teléfono válido para registrar la compra con Google Pay",
-        });
-        return;
-      }
-
-      const nombreFinal = nombre.trim() || nombreWallet || "Pago Google Pay";
-      const emailFinal = email.trim() || emailWallet;
-
-      if (!emailFinal || !validarEmail(emailFinal)) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Email requerido",
-          text: "Debes ingresar un correo válido para registrar la compra con Google Pay",
-        });
-        return;
-      }
-
-      const response = await fetch("/api/comprar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre: nombreFinal,
-          email: emailFinal,
-          telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
-          referencia: referenciaPago || "GOOGLEPAY",
-          tickets,
-          totalPagar,
-          paymentMethod: "Google Pay",
-          comprobanteUrl: "",
-          rifaId: rifaActiva.id,
-          capturaInmediata: true,
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "error",
-          title: "Error al registrar compra",
-          text: data.error || "No se pudo registrar la compra",
-        });
-        return;
-      }
-
-      await Swal.fire({
-        ...swalConfig,
-        icon: "success",
-        title: "Compra registrada",
-        text: "Tu compra con Google Pay fue registrada correctamente.",
-      });
-
-      setFormData({
-        nombre: "",
-        email: "",
-        telefono: "",
-        referencia: "",
-        comprobante: null,
-        codigoPais: "+58",
-      });
-
-      setCapturaInmediata(false);
-      setTickets(1);
-      limpiarArchivo();
-    } catch (error) {
-      await Swal.fire({
-        ...swalConfig,
-        icon: "error",
-        title: "Error inesperado",
-        text: error?.message || "Ocurrió un error inesperado",
-      });
-    } finally {
-      setLoadingCompra(false);
-    }
+  const generarIdUnico = () => {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}-${Math.random()
+      .toString(36)
+      .slice(2)}`;
   };
 
   const handleSubmit = async (e) => {
@@ -693,15 +552,12 @@ export default function HomePageClient() {
 
     if (loadingCompra) return;
 
-    if (paymentMethod === "App Pay" || paymentMethod === "Google Pay") {
+    if (paymentMethod === "App Pay") {
       await Swal.fire({
         ...swalConfig,
         icon: "info",
         title: "Usa el botón de pago",
-        text:
-          paymentMethod === "App Pay"
-            ? "Para App Pay debes usar el botón especial de la sección de pago."
-            : "Para Google Pay debes usar el botón especial de la sección de pago.",
+        text: "Para App Pay debes usar el botón especial de la sección de pago.",
       });
       return;
     }
@@ -816,7 +672,7 @@ export default function HomePageClient() {
 
       if (comprobante) {
         const extension = comprobante.name.split(".").pop();
-        const nombreArchivo = `${Date.now()}-${crypto.randomUUID()}.${extension}`;
+        const nombreArchivo = `${Date.now()}-${generarIdUnico()}.${extension}`;
 
         const { error: errorUpload } = await supabase.storage
           .from("comprobantes")
@@ -983,7 +839,9 @@ export default function HomePageClient() {
                 <img
                   src={imagenRifaPrincipal}
                   alt={nombreRifa || "Rifa"}
-                  className={`hero-showcase-image fade-image ${showSecondImage ? "hide" : "show"}`}
+                  className={`hero-showcase-image fade-image ${
+                    showSecondImage ? "hide" : "show"
+                  }`}
                 />
               )}
 
@@ -991,7 +849,9 @@ export default function HomePageClient() {
                 <img
                   src={imagenRifaScroll}
                   alt={`${nombreRifa || "Rifa"} scroll`}
-                  className={`hero-showcase-image fade-image ${showSecondImage ? "show" : "hide"}`}
+                  className={`hero-showcase-image fade-image ${
+                    showSecondImage ? "show" : "hide"
+                  }`}
                 />
               )}
 
@@ -1017,45 +877,25 @@ export default function HomePageClient() {
                   ))}
 
                   {precioPorTicket > 0 && (
-                    <p className="hero-price-highlight">Valor: ${precioPorTicket.toFixed(2)}</p>
+                    <p className="hero-price-highlight">
+                      Valor: ${precioPorTicket.toFixed(2)}
+                    </p>
                   )}
                 </div>
               )}
             </div>
           </section>
 
-          {totalNumeros > 0 && (
-            <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
-              <div className={`mini-progress-card ${rifaCompleta ? "is-complete" : ""}`}>
-                <div className="mini-progress-head">
-                  <span className="mini-progress-label">
-                    {rifaCompleta ? "RIFA COMPLETA" : "AVANCE DE VENTA"}
-                  </span>
-                  <span className="mini-progress-value">{porcentajeVendidoTexto}</span>
-                </div>
-
-                <div
-                  className="mini-progress-bar"
-                  role="progressbar"
-                  aria-valuenow={Math.round(porcentajeVendido)}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label="Porcentaje de boletos vendidos"
-                >
-                  <div
-                    className={`mini-progress-fill ${rifaCompleta ? "is-complete" : ""}`}
-                    style={{ width: `${porcentajeVendido}%` }}
-                  />
-                </div>
-
-                {rifaCompleta && (
-                  <p className="mini-progress-complete-text">
-                    Todos los boletos fueron vendidos. La rifa está cerrada y pendiente de sorteo.
-                  </p>
-                )}
-              </div>
-            </section>
-          )}
+{totalNumeros > 0 && (
+  <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
+    <div className="mini-progress-inner">
+      <ProgressVentaBar
+        value={porcentajeVendido}
+        soldOut={rifaCompleta}
+      />
+    </div>
+  </section>
+)}
 
           <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
             <section className="card-section">
@@ -1253,7 +1093,9 @@ export default function HomePageClient() {
                     </div>
 
                     <div className="apppay-debug-amount">
-                      Cobro confirmado: ${(Math.round(Number(totalPagar || 0) * 100) / 100).toFixed(2)} USD
+                      Cobro confirmado: ${(
+                        Math.round(Number(totalPagar || 0) * 100) / 100
+                      ).toFixed(2)} USD
                     </div>
 
                     {!loadingRifa && rifaActiva?.id && (
@@ -1282,46 +1124,6 @@ export default function HomePageClient() {
                       <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
                     )}
                   </div>
-                ) : paymentMethod === "Google Pay" ? (
-                  <div className="apppay-detail-box premium-card-hover">
-                    <span className="apppay-detail-label">{metodoSeleccionado.subtitulo}</span>
-
-                    <div className="apppay-brand">G Pay</div>
-
-                    <div className="apppay-total">
-                      Total: ${Number(totalPagar || 0).toFixed(2)} USD
-                    </div>
-
-                    <div className="apppay-debug-amount">
-                      Cobro confirmado: ${(Math.round(Number(totalPagar || 0) * 100) / 100).toFixed(2)} USD
-                    </div>
-
-                    <button
-                      type="button"
-                      className="confirm-main-btn"
-                      onClick={() =>
-                        registrarCompraGooglePay({
-                          referenciaPago: "GOOGLEPAY",
-                        })
-                      }
-                      disabled={
-                        loadingCompra ||
-                        !rifaActiva?.id ||
-                        tickets < 1 ||
-                        precioPorTicket <= 0 ||
-                        !estaDisponibleParaCompra(rifaActiva?.estado) ||
-                        rifaCompleta
-                      }
-                    >
-                      CONTINUAR CON GOOGLE PAY
-                    </button>
-
-                    <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
-
-                    {metodoSeleccionado.note && (
-                      <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
-                    )}
-                  </div>
                 ) : (
                   <div className="selected-payment-box premium-card-hover">
                     <h4>{metodoSeleccionado.titulo}</h4>
@@ -1343,7 +1145,10 @@ export default function HomePageClient() {
 
                     {Array.isArray(metodoSeleccionado.extra) &&
                       metodoSeleccionado.extra.map((item) => (
-                        <div key={`${item.label}-${item.value}`} className="payment-account-row">
+                        <div
+                          key={`${item.label}-${item.value}`}
+                          className="payment-account-row"
+                        >
                           <div className="payment-account">
                             {item.label}: {item.value}
                           </div>
@@ -1405,7 +1210,11 @@ export default function HomePageClient() {
 
                   {formData.comprobante && (
                     <div className="file-actions-row">
-                      <button type="button" className="remove-file-btn" onClick={limpiarArchivo}>
+                      <button
+                        type="button"
+                        className="remove-file-btn"
+                        onClick={limpiarArchivo}
+                      >
                         Quitar archivo
                       </button>
                     </div>
@@ -1441,12 +1250,6 @@ export default function HomePageClient() {
                   <div className="apppay-submit-helper">
                     <p className="apppay-submit-helper-text">
                       Usa el botón negro de  Pay para completar tu pago.
-                    </p>
-                  </div>
-                ) : paymentMethod === "Google Pay" ? (
-                  <div className="apppay-submit-helper">
-                    <p className="apppay-submit-helper-text">
-                      Usa el botón de Google Pay para completar tu registro.
                     </p>
                   </div>
                 ) : (

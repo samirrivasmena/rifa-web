@@ -43,9 +43,9 @@ export async function POST(req) {
     const metodosPermitidos = [
       "Binance",
       "Zelle",
-      "Banco de Venezuela",
-      "Bancolombia",
       "App Pay",
+      "PayPal",
+      "Cash App",
     ];
 
     if (!metodosPermitidos.includes(metodoPago)) {
@@ -149,12 +149,19 @@ export async function POST(req) {
 
     if (ticketsError) {
       return NextResponse.json(
-        { error: ticketsError.message || "No se pudo validar la disponibilidad de tickets" },
+        {
+          error:
+            ticketsError.message ||
+            "No se pudo validar la disponibilidad de tickets",
+        },
         { status: 500 }
       );
     }
 
-    const ticketsVendidos = Array.isArray(ticketsExistentes) ? ticketsExistentes.length : 0;
+    const ticketsVendidos = Array.isArray(ticketsExistentes)
+      ? ticketsExistentes.length
+      : 0;
+
     const ticketsDisponibles = Math.max(totalNumeros - ticketsVendidos, 0);
 
     if (ticketsVendidos >= totalNumeros) {
@@ -205,7 +212,8 @@ export async function POST(req) {
       if (compraDuplicada) {
         return NextResponse.json(
           {
-            error: "Ya existe una compra registrada con esa referencia para esta rifa",
+            error:
+              "Ya existe una compra registrada con esa referencia para esta rifa",
           },
           { status: 409 }
         );

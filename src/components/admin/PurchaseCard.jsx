@@ -71,10 +71,7 @@ export default function PurchaseCard({
 
   const monto = Number(compra?.monto_total ?? compra?.total ?? 0);
 
-  const fechaVisible =
-    compra?.fecha_compra ||
-    compra?.created_at ||
-    null;
+  const fechaVisible = compra?.fecha_compra || null;
 
   const abrirPreviewRapida = () => {
     if (!comprobanteUrl) return;
@@ -105,15 +102,27 @@ export default function PurchaseCard({
       </div>
 
       <div className="adminpro-purchase-body">
-        <p><strong>Email:</strong> {compra.usuarios?.email || "Sin email"}</p>
-        <p><strong>Teléfono:</strong> {compra.usuarios?.telefono || "Sin teléfono"}</p>
-        <p><strong>Tickets comprados:</strong> {compra.cantidad_tickets ?? 0}</p>
-        <p><strong>Monto:</strong> ${monto.toFixed(2)}</p>
-        <p><strong>Referencia:</strong> {compra.referencia || "Sin referencia"}</p>
-        <p><strong>Método:</strong> {compra.metodo_pago || "Sin método"}</p>
+        <p>
+          <strong>Email:</strong> {compra.usuarios?.email || "Sin email"}
+        </p>
+        <p>
+          <strong>Teléfono:</strong> {compra.usuarios?.telefono || "Sin teléfono"}
+        </p>
+        <p>
+          <strong>Tickets comprados:</strong> {compra.cantidad_tickets ?? 0}
+        </p>
+        <p>
+          <strong>Monto:</strong> ${monto.toFixed(2)}
+        </p>
+        <p>
+          <strong>Referencia:</strong> {compra.referencia || "Sin referencia"}
+        </p>
+        <p>
+          <strong>Método:</strong> {compra.metodo_pago || "Sin método"}
+        </p>
         <p>
           <strong>Fecha:</strong>{" "}
-          {formatearFecha?.(fechaVisible) || fechaVisible || "Sin fecha"}
+          {formatearFecha?.(fechaVisible) || "Sin fecha"}
         </p>
 
         <div className="adminpro-tickets-box">

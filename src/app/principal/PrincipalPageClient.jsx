@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
+import Link from "next/link";
+
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
-import { paymentMethodsConfig } from "@/lib/paymentMethods";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
-import Link from "next/link";
+import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+
+import { paymentMethodsConfig } from "@/lib/paymentMethods";
+import { getRifaProgress } from "@/lib/getRifaProgress";
 
 export default function PrincipalPageClient() {
   const [rifas, setRifas] = useState([]);
@@ -44,26 +48,6 @@ export default function PrincipalPageClient() {
   const formatearPrecioSeguro = (valor) => {
     const numero = Number(valor);
     return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
-  };
-
-  const obtenerPorcentajeSeguro = (evento) => {
-    const totalNumerosRaw = Number(
-      evento?.cantidad_numeros ?? evento?.total_tickets ?? evento?.numeros_totales ?? 0
-    );
-
-    const ticketsVendidosRaw = Number(
-      evento?.tickets_vendidos ?? evento?.vendidos ?? evento?.ticketsVendidos ?? 0
-    );
-
-    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
-    const ticketsVendidos = Number.isFinite(ticketsVendidosRaw) ? ticketsVendidosRaw : 0;
-
-    const porcentajeRaw = Number(
-      evento?.porcentaje_vendido ??
-        (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
-    );
-
-    return Number.isFinite(porcentajeRaw) ? porcentajeRaw : 0;
   };
 
   useEffect(() => {
@@ -324,31 +308,30 @@ export default function PrincipalPageClient() {
                 disciplina, esfuerzo y la decisión firme de nunca RENDIRSE🛑.
               </p>
 
-              <div className="principal-actions hero-actions">
-                <Link
-                  href={
-                    primerEventoDisponible?.id
-                      ? `/evento/${primerEventoDisponible.id}`
-                      : "/principal#eventos-disponibles"
-                  }
-                  className="principal-red-btn"
-                >
-                  ENTRAR AL EVENTO
-                </Link>
+<div className="principal-actions hero-actions">
+  <Link href="/" className="principal-red-btn">
+    COMPRAR AHORA
+  </Link>
 
-                <button
-                  type="button"
-                  className="principal-white-btn"
-                  onClick={() => setShowVerifyModal(true)}
-                >
-                  VERIFICADOR
-                </button>
-              </div>
+  <Link
+    href={
+      primerEventoDisponible?.id
+        ? `/evento/${primerEventoDisponible.id}`
+        : "/principal#eventos-disponibles"
+    }
+    className="principal-white-btn"
+  >
+    ENTRAR AL EVENTO
+  </Link>
+</div>
             </div>
           </div>
         </section>
 
-        <section className="principal-section reveal-fade-up reveal-delay-1" id="eventos-disponibles">
+        <section
+          className="principal-section reveal-fade-up reveal-delay-1"
+          id="eventos-disponibles"
+        >
           <div className="principal-section-head">
             <p>¡Participa!</p>
             <h2>DISPONIBLES</h2>
@@ -389,10 +372,13 @@ export default function PrincipalPageClient() {
                   evento.hora_rifa ||
                   "";
 
-                const porcentaje = obtenerPorcentajeSeguro(evento);
+                const progreso = getRifaProgress(evento);
 
                 return (
-                  <article key={evento.id} className="principal-event-card-mobile premium-card-hover reveal-fade-up">
+                  <article
+                    key={evento.id}
+                    className="principal-event-card-mobile premium-card-hover reveal-fade-up"
+                  >
                     {evento.destacada && (
                       <div className="principal-card-badge-left">
                         <div className="principal-destacada-badge">⭐ Destacada</div>
@@ -417,15 +403,17 @@ export default function PrincipalPageClient() {
                         <p className="principal-event-meta-mobile">⏰ {hora}</p>
                       ) : null}
 
-                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
+                      {evento.precio_ticket !== null &&
+                      evento.precio_ticket !== undefined ? (
                         <p className="principal-event-meta-mobile">
                           💰 ${formatearPrecioSeguro(evento.precio_ticket)}
                         </p>
                       ) : null}
 
-                      <p className="principal-event-meta-mobile">
-                        📊 {porcentaje.toFixed(1)}% vendido
-                      </p>
+                      <ProgressVentaBar
+                        value={progreso.porcentaje}
+                        soldOut={progreso.soldOut}
+                      />
 
                       <div className="principal-event-actions-mobile">
                         <Link
@@ -444,14 +432,17 @@ export default function PrincipalPageClient() {
         </section>
 
         {eventosAgotados.length > 0 && (
-          <section className="principal-section reveal-fade-up reveal-delay-2" id="eventos-agotados">
+          <section
+            className="principal-section reveal-fade-up reveal-delay-2"
+            id="eventos-agotados"
+          >
             <div className="principal-section-head">
               <h2>AGOTADOS</h2>
             </div>
 
             <div className="principal-events-list">
               {eventosAgotados.map((evento) => {
-                const porcentaje = obtenerPorcentajeSeguro(evento);
+                const progreso = getRifaProgress(evento);
 
                 return (
                   <article
@@ -478,13 +469,12 @@ export default function PrincipalPageClient() {
                     <div className="principal-event-content-mobile">
                       <h3>{evento.nombre || "Evento agotado"}</h3>
 
-                      <p className="principal-event-meta-mobile">
-                        📊 {porcentaje.toFixed(1)}% vendido
-                      </p>
+                      <ProgressVentaBar
+                        value={progreso.porcentaje}
+                        soldOut={progreso.soldOut}
+                      />
 
-                      <p className="principal-event-meta-mobile">
-                        ⏳ Pendiente de sorteo
-                      </p>
+                      <p className="principal-event-meta-mobile">⏳ Pendiente de sorteo</p>
 
                       <div className="principal-event-actions-mobile">
                         <Link
@@ -502,7 +492,10 @@ export default function PrincipalPageClient() {
           </section>
         )}
 
-        <section className="principal-section reveal-fade-up reveal-delay-3" id="eventos-finalizados">
+        <section
+          className="principal-section reveal-fade-up reveal-delay-3"
+          id="eventos-finalizados"
+        >
           <div className="principal-section-head">
             <h2>FINALIZADOS</h2>
           </div>
@@ -529,54 +522,64 @@ export default function PrincipalPageClient() {
           ) : (
             <>
               <div className="principal-events-list">
-                {eventosFinalizadosPaginados.map((evento) => (
-                  <article
-                    key={evento.id}
-                    className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
-                  >
-                    <div className="principal-card-badges-row">
-                      {evento.destacada ? (
-                        <div className="principal-destacada-badge">⭐ Destacada</div>
-                      ) : (
-                        <div className="principal-badge-placeholder" />
-                      )}
+                {eventosFinalizadosPaginados.map((evento) => {
+                  const progreso = getRifaProgress(evento);
 
-                      <div className="principal-finalizado-badge">Finalizado</div>
-                    </div>
+                  return (
+                    <article
+                      key={evento.id}
+                      className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
+                    >
+                      <div className="principal-card-badges-row">
+                        {evento.destacada ? (
+                          <div className="principal-destacada-badge">⭐ Destacada</div>
+                        ) : (
+                          <div className="principal-badge-placeholder" />
+                        )}
 
-                    <RaffleDualImage
-                      principalSrc={evento.portada_url}
-                      secondarySrc={evento.portada_scroll_url}
-                      alt={evento.nombre || "Evento finalizado"}
-                      className="principal-event-image-mobile-wrap finalizada"
-                    />
-
-                    <div className="principal-event-content-mobile">
-                      <h3>{evento.nombre || "Evento finalizado"}</h3>
-
-                      {evento.fecha_sorteo ? (
-                        <p className="principal-event-meta-mobile">
-                          📅 {evento.fecha_sorteo}
-                        </p>
-                      ) : null}
-
-                      {evento.precio_ticket !== null && evento.precio_ticket !== undefined ? (
-                        <p className="principal-event-meta-mobile">
-                          💰 ${formatearPrecioSeguro(evento.precio_ticket)}
-                        </p>
-                      ) : null}
-
-                      <div className="principal-event-actions-mobile">
-                        <Link
-                          href={`/evento/${evento.id}`}
-                          className="principal-white-btn small-btn"
-                        >
-                          VER EVENTO
-                        </Link>
+                        <div className="principal-finalizado-badge">Finalizado</div>
                       </div>
-                    </div>
-                  </article>
-                ))}
+
+                      <RaffleDualImage
+                        principalSrc={evento.portada_url}
+                        secondarySrc={evento.portada_scroll_url}
+                        alt={evento.nombre || "Evento finalizado"}
+                        className="principal-event-image-mobile-wrap finalizada"
+                      />
+
+                      <div className="principal-event-content-mobile">
+                        <h3>{evento.nombre || "Evento finalizado"}</h3>
+
+                        {evento.fecha_sorteo ? (
+                          <p className="principal-event-meta-mobile">
+                            📅 {evento.fecha_sorteo}
+                          </p>
+                        ) : null}
+
+                        {evento.precio_ticket !== null &&
+                        evento.precio_ticket !== undefined ? (
+                          <p className="principal-event-meta-mobile">
+                            💰 ${formatearPrecioSeguro(evento.precio_ticket)}
+                          </p>
+                        ) : null}
+
+                        <ProgressVentaBar
+                          value={progreso.porcentaje}
+                          soldOut={progreso.soldOut}
+                        />
+
+                        <div className="principal-event-actions-mobile">
+                          <Link
+                            href={`/evento/${evento.id}`}
+                            className="principal-white-btn small-btn"
+                          >
+                            VER EVENTO
+                          </Link>
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
 
               <div className="principal-pagination-wrap principal-pagination-premium">

@@ -1,8 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
+
+function mapHashToActive(hash) {
+  const clean = String(hash || "").replace("#", "").toLowerCase();
+
+  if (!clean || clean === "inicio") return "inicio";
+  if (clean.includes("eventos-disponibles")) return "eventos";
+  if (clean.includes("resultados-oficiales")) return "resultados";
+  if (clean.includes("pagos")) return "pagos";
+  if (clean.includes("contacto")) return "contacto";
+
+  return "inicio";
+}
 
 export default function PublicTopbar({
   active = "eventos",
@@ -14,9 +27,48 @@ export default function PublicTopbar({
   pagosHref = "/principal#pagos",
   contactoHref = "/principal#contacto",
 }) {
+  const pathname = usePathname();
+
   const [hiddenOnMobile, setHiddenOnMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [currentActive, setCurrentActive] = useState(active);
+
   const navRef = useRef(null);
+
+  const cerrarMenu = () => {
+    setMobileMenuOpen(false);
+    setHiddenOnMobile(false);
+
+    if (typeof document !== "undefined") {
+      document.body.style.overflow = "";
+    }
+  };
+
+  const marcarActivo = (id) => {
+    setCurrentActive(id);
+    cerrarMenu();
+  };
+
+  useEffect(() => {
+    setCurrentActive(active);
+  }, [active]);
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setCurrentActive(mapHashToActive(window.location.hash));
+      cerrarMenu();
+    };
+
+    handleHashChange();
+    window.addEventListener("hashchange", handleHashChange);
+
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  useEffect(() => {
+    // Cerrar menú al cambiar de ruta
+    cerrarMenu();
+  }, [pathname]);
 
   useEffect(() => {
     let lastScrollY = window.scrollY;
@@ -31,9 +83,16 @@ export default function PublicTopbar({
         return;
       }
 
+      // Si el menú está abierto, no ocultar el topbar
+      if (mobileMenuOpen) {
+        setHiddenOnMobile(false);
+        lastScrollY = currentScrollY;
+        return;
+      }
+
       if (currentScrollY <= 20) {
         setHiddenOnMobile(false);
-      } else if (currentScrollY > lastScrollY && currentScrollY > 80 && !mobileMenuOpen) {
+      } else if (currentScrollY > lastScrollY && currentScrollY > 80) {
         setHiddenOnMobile(true);
       } else if (currentScrollY < lastScrollY) {
         setHiddenOnMobile(false);
@@ -61,7 +120,7 @@ export default function PublicTopbar({
 
   useEffect(() => {
     const handleEscape = (e) => {
-      if (e.key === "Escape") setMobileMenuOpen(false);
+      if (e.key === "Escape") cerrarMenu();
     };
 
     window.addEventListener("keydown", handleEscape);
@@ -93,7 +152,7 @@ export default function PublicTopbar({
       const clickedMenuButton = menuButton?.contains(event.target);
 
       if (!clickedInsideNav && !clickedMenuButton) {
-        setMobileMenuOpen(false);
+        cerrarMenu();
       }
     };
 
@@ -106,12 +165,14 @@ export default function PublicTopbar({
     };
   }, [mobileMenuOpen]);
 
-  const cerrarMenu = () => setMobileMenuOpen(false);
-
   return (
     <header className={`public-topbar ${hiddenOnMobile ? "mobile-hidden" : ""}`}>
       <div className="public-topbar-inner">
-        <Link href={logoHref} className="public-topbar-logo-link" onClick={cerrarMenu}>
+        <Link
+          href={logoHref}
+          className="public-topbar-logo-link"
+          onClick={() => marcarActivo("inicio")}
+        >
           <Image
             src="/logo.png"
             alt="Logo Rifas LSD"
@@ -142,49 +203,56 @@ export default function PublicTopbar({
         >
           <Link
             href={inicioHref}
-            className={`public-topbar-link ${active === "inicio" ? "active" : ""}`}
-            onClick={cerrarMenu}
+            className={`public-topbar-link ${currentActive === "inicio" ? "active" : ""}`}
+            onClick={() => marcarActivo("inicio")}
+            aria-current={currentActive === "inicio" ? "page" : undefined}
           >
             INICIO
           </Link>
 
           <Link
             href={eventosHref}
-            className={`public-topbar-link ${active === "eventos" ? "active" : ""}`}
-            onClick={cerrarMenu}
+            className={`public-topbar-link ${currentActive === "eventos" ? "active" : ""}`}
+            onClick={() => marcarActivo("eventos")}
+            aria-current={currentActive === "eventos" ? "page" : undefined}
           >
             EVENTOS
           </Link>
 
           <Link
             href={resultadosHref}
-            className={`public-topbar-link ${active === "resultados" ? "active" : ""}`}
-            onClick={cerrarMenu}
+            className={`public-topbar-link ${currentActive === "resultados" ? "active" : ""}`}
+            onClick={() => marcarActivo("resultados")}
+            aria-current={currentActive === "resultados" ? "page" : undefined}
           >
             RESULTADOS
           </Link>
 
           <Link
             href={pagosHref}
-            className={`public-topbar-link ${active === "pagos" ? "active" : ""}`}
-            onClick={cerrarMenu}
+            className={`public-topbar-link ${currentActive === "pagos" ? "active" : ""}`}
+            onClick={() => marcarActivo("pagos")}
+            aria-current={currentActive === "pagos" ? "page" : undefined}
           >
             CUENTAS DE PAGO
           </Link>
 
           <Link
             href={contactoHref}
-            className={`public-topbar-link ${active === "contacto" ? "active" : ""}`}
-            onClick={cerrarMenu}
+            className={`public-topbar-link ${currentActive === "contacto" ? "active" : ""}`}
+            onClick={() => marcarActivo("contacto")}
+            aria-current={currentActive === "contacto" ? "page" : undefined}
           >
             CONTACTO
           </Link>
 
           <button
             type="button"
-            className="public-topbar-link public-topbar-verifier"
+            className={`public-topbar-link public-topbar-verifier ${
+              currentActive === "verificador" ? "active" : ""
+            }`}
             onClick={() => {
-              cerrarMenu();
+              marcarActivo("verificador");
               onOpenVerifier?.();
             }}
           >

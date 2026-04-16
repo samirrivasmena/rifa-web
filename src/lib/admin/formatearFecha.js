@@ -2,20 +2,33 @@ export function formatearFecha(fecha) {
   if (!fecha) return "Sin fecha";
 
   try {
-    const date = new Date(fecha);
-    if (Number.isNaN(date.getTime())) return fecha;
+    let valor = String(fecha).trim();
 
-    const dia = String(date.getDate()).padStart(2, "0");
-    const mes = String(date.getMonth() + 1).padStart(2, "0");
-    const anio = date.getFullYear();
+    const tieneZonaHoraria = /([zZ]|[+-]\d{2}:?\d{2})$/.test(valor);
 
-    let horas = date.getHours();
-    const minutos = String(date.getMinutes()).padStart(2, "0");
-    const ampm = horas >= 12 ? "PM" : "AM";
-    horas = horas % 12 || 12;
+    if (!tieneZonaHoraria) {
+      valor = valor.replace(" ", "T") + "Z";
+    } else {
+      valor = valor.replace(" ", "T");
+    }
 
-    return `${dia}/${mes}/${anio} - ${String(horas).padStart(2, "0")}:${minutos} ${ampm}`;
+    const date = new Date(valor);
+
+    if (Number.isNaN(date.getTime())) return String(fecha);
+
+    return new Intl.DateTimeFormat("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+      second: "2-digit",
+      hour12: true,
+      timeZone: "America/Chicago",
+    })
+      .format(date)
+      .replace(", ", " - ");
   } catch {
-    return fecha;
+    return String(fecha);
   }
 }
