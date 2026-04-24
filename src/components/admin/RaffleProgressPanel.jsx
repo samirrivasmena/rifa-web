@@ -133,12 +133,41 @@ export default function RaffleProgressPanel({
     return null;
   };
 
-  const numeroGanadorFormateado =
-    extraerNumeroGanadorProfundo(resultadoGanador) ||
-    extraerNumeroGanadorProfundo(numeroGanador) ||
-    extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_ganador) ||
-    extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_oficial) ||
-    null;
+  /**
+   * IMPORTANTE:
+   * Solo debe considerarse ganador oficial si:
+   * - resultadoGanador realmente es ganador, o
+   * - ya existe un ganador guardado en la rifa
+   *
+   * Así evitamos que una búsqueda de un número vendido lo pinte en dorado.
+   */
+  const numeroGanadorFormateado = useMemo(() => {
+    const ganadorPersistido =
+      extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_ganador) ||
+      extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_oficial) ||
+      extraerNumeroGanadorProfundo(rifaSeleccionada?.sorteo?.numero_ganador) ||
+      extraerNumeroGanadorProfundo(rifaSeleccionada?.sorteo?.numero_oficial) ||
+      null;
+
+    const resultadoEsGanador =
+      Boolean(resultadoGanador?.esGanador) || Boolean(resultadoGanador?.oficial);
+
+    if (resultadoEsGanador) {
+      return (
+        extraerNumeroGanadorProfundo(resultadoGanador) ||
+        ganadorPersistido ||
+        null
+      );
+    }
+
+    return ganadorPersistido;
+  }, [
+    resultadoGanador,
+    rifaSeleccionada?.numero_ganador,
+    rifaSeleccionada?.numero_oficial,
+    rifaSeleccionada?.sorteo?.numero_ganador,
+    rifaSeleccionada?.sorteo?.numero_oficial,
+  ]);
 
   const esNumeroGanador = (numero) => {
     const numeroFormateado = String(numero).padStart(padLength, "0");
