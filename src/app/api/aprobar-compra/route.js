@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomInt } from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 import { sendCompraAprobadaEmail } from "../../../lib/sendCompraAprobadaEmail";
@@ -22,6 +23,17 @@ function getBaseUrl(req) {
     "localhost:3000";
 
   return `${proto}://${host}`.replace(/\/$/, "");
+}
+
+function mezclarSeguro(array) {
+  const arr = [...array];
+
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = randomInt(0, i + 1);
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+
+  return arr;
 }
 
 async function obtenerDatosCliente(compra) {
@@ -184,8 +196,15 @@ export async function POST(req) {
       );
     }
 
-    const numeroInicio = Number(rifa.numero_inicio);
-    const numeroFin = Number(rifa.numero_fin);
+    const numeroInicio = Number.isFinite(Number(rifa.numero_inicio))
+      ? Number(rifa.numero_inicio)
+      : 0;
+
+    const numeroFin = Number.isFinite(Number(rifa.numero_fin))
+      ? Number(rifa.numero_fin)
+      : String(rifa.formato) === "3digitos"
+      ? 999
+      : 9999;
 
     if (
       !Number.isInteger(numeroInicio) ||
@@ -198,6 +217,7 @@ export async function POST(req) {
       );
     }
 
+    const padLength = String(rifa.formato) === "3digitos" ? 3 : 4;
     const totalNumerosConfigurados = Number(
       rifa.cantidad_numeros ?? numeroFin - numeroInicio + 1
     );
@@ -273,7 +293,8 @@ export async function POST(req) {
       );
     }
 
-    const disponiblesMezclados = [...disponibles].sort(() => Math.random() - 0.5);
+    // Aleatorización real y uniforme
+    const disponiblesMezclados = mezclarSeguro(disponibles);
     const seleccionados = disponiblesMezclados.slice(0, cantidadTickets);
 
     const ticketsParaInsertar = seleccionados.map((numero) => ({
@@ -327,7 +348,6 @@ export async function POST(req) {
       }
     }
 
-    // Enviar correo sin bloquear la aprobación si falla
     try {
       const baseUrl = getBaseUrl(req);
       const { nombreCliente, emailDestino } = await obtenerDatosCliente(compra);
@@ -348,7 +368,7 @@ export async function POST(req) {
           totalPagar: Number(compra.monto_total ?? 0),
           eventoUrl: `${baseUrl}/evento/${rifa.id}`,
           verificarUrl: `${baseUrl}/principal`,
-          padLength: String(rifa.formato) === "3digitos" ? 3 : 4,
+          padLength,
         });
       } else {
         console.warn(

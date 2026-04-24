@@ -3,15 +3,14 @@
 import HeroRifa from "../HeroRifa";
 import KpiGrid from "../KpiGrid";
 import PurchaseCard from "../PurchaseCard";
-import RaffleProgressPanel from "../RaffleProgressPanel";
 
 export default function AdminDashboardSection({
   dashboardRef,
   dashboardFilterRef,
-  mapaTicketsRef,
   comprasSectionRef,
   ganadorRef,
   rankingRef,
+  premioRef,
   rifaSeleccionada,
   padLength,
   formatearFecha,
@@ -31,8 +30,8 @@ export default function AdminDashboardSection({
   loadingAprobacion,
   loadingRechazo,
   loadingEliminacion,
-  comprasPendientes,
-  abrirAprobacionManualDesdeCuadricula,
+  numeroGanador,
+  resultadoGanador,
 }) {
   const comprasPorFiltro = {
     total: comprasFiltradasPorRifa,
@@ -41,33 +40,43 @@ export default function AdminDashboardSection({
     rechazadas: comprasFiltradasPorRifa.filter((c) => c.estado_pago === "rechazado"),
   };
 
+  const titulosFiltro = {
+    total: "Todas las compras de la rifa",
+    pendientes: "Compras pendientes de la rifa",
+    aprobadas: "Compras aprobadas de la rifa",
+    rechazadas: "Compras rechazadas de la rifa",
+    tickets: "Tickets vendidos de la rifa",
+  };
+
   return (
     <>
       {rifaSeleccionada && (
         <>
-          <HeroRifa
-            rifaSeleccionada={rifaSeleccionada}
-            padLength={padLength}
-            formatearFecha={formatearFecha}
-            totalCompras={comprasFiltradasPorRifa.length}
-            totalTicketsVendidos={ticketsFiltradosPorRifa.length}
-            totalComprasAprobadas={
-              comprasFiltradasPorRifa.filter((c) => c.estado_pago === "aprobado").length
-            }
-            showSecondImage={showSecondImage}
-            onIrCompras={() => {
-              setSeccionActiva("compras");
-              scrollToRef(comprasSectionRef, 180);
-            }}
-            onIrGanador={() => {
-              setSeccionActiva("ganador");
-              scrollToRef(ganadorRef, 180);
-            }}
-            onIrRanking={() => {
-              setSeccionActiva("ranking");
-              scrollToRef(rankingRef, 180);
-            }}
-          />
+          <div ref={premioRef}>
+            <HeroRifa
+              rifaSeleccionada={rifaSeleccionada}
+              padLength={padLength}
+              formatearFecha={formatearFecha}
+              totalCompras={comprasFiltradasPorRifa.length}
+              totalTicketsVendidos={ticketsFiltradosPorRifa.length}
+              totalComprasAprobadas={
+                comprasFiltradasPorRifa.filter((c) => c.estado_pago === "aprobado").length
+              }
+              showSecondImage={showSecondImage}
+              onIrCompras={() => {
+                setSeccionActiva("compras");
+                scrollToRef(comprasSectionRef, 180);
+              }}
+              onIrGanador={() => {
+                setSeccionActiva("ganador");
+                scrollToRef(ganadorRef, 180);
+              }}
+              onIrRanking={() => {
+                setSeccionActiva("ranking");
+                scrollToRef(rankingRef, 180);
+              }}
+            />
+          </div>
 
           <KpiGrid
             compras={comprasFiltradasPorRifa}
@@ -83,15 +92,7 @@ export default function AdminDashboardSection({
             <div className="adminpro-card">
               <div className="adminpro-section-head">
                 <div>
-                  <h2>
-                    {{
-                      total: "Todas las compras de la rifa",
-                      pendientes: "Compras pendientes de la rifa",
-                      aprobadas: "Compras aprobadas de la rifa",
-                      rechazadas: "Compras rechazadas de la rifa",
-                      tickets: "Tickets vendidos de la rifa",
-                    }[filtroDashboard]}
-                  </h2>
+                  <h2>{titulosFiltro[filtroDashboard] || "Detalle de la rifa"}</h2>
                   <p>Detalle filtrado de la rifa seleccionada</p>
                 </div>
 
@@ -119,8 +120,13 @@ export default function AdminDashboardSection({
                         loadingAprobacion={loadingAprobacion}
                         loadingRechazo={loadingRechazo}
                         loadingEliminacion={loadingEliminacion}
-                        mostrarEliminar={filtroDashboard === "rechazadas"}
+                        mostrarEliminar={
+                          String(compra.estado_pago || "").toLowerCase() === "rechazado"
+                        }
                         formatearFecha={formatearFecha}
+                        numeroGanador={numeroGanador}
+                        resultadoGanador={resultadoGanador}
+                        padLength={padLength}
                       />
                     ))}
                   </div>
@@ -158,20 +164,6 @@ export default function AdminDashboardSection({
               )}
             </div>
           )}
-        </div>
-
-        <div ref={mapaTicketsRef}>
-          <RaffleProgressPanel
-            tickets={ticketsFiltradosPorRifa}
-            compras={comprasFiltradasPorRifa}
-            rifaSeleccionada={rifaSeleccionada}
-            tieneComprasPendientes={comprasPendientes.length > 0}
-            onOpenManualFromGrid={abrirAprobacionManualDesdeCuadricula}
-            onOpenCompra={() => {
-              setSeccionActiva("compras");
-              scrollToRef(comprasSectionRef, 180);
-            }}
-          />
         </div>
       </div>
     </>

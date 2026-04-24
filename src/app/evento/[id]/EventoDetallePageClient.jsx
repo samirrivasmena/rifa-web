@@ -235,11 +235,6 @@ export default function EventoDetallePageClient() {
               </div>
 
               <div className="evento-side">
-                <div className="evento-card premium-card-hover">
-                  <p className="evento-kicker">DETALLE DEL EVENTO</p>
-                  <h2>Información general</h2>
-                  <p className="evento-description">{descripcion}</p>
-                </div>
 
                 <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">RESUMEN</p>
@@ -371,11 +366,19 @@ export default function EventoDetallePageClient() {
 
         {/* BOTÓN DE COMPARTIR */}
         {evento?.id && shareUrl && (
-          <FloatingShareButton
-            url={shareUrl}
-            title={evento?.nombre || "Evento"}
-            text={`Participa en este evento: ${evento?.nombre || "Evento"}\n🎟️ Compra aquí:`}
-          />
+<FloatingShareButton
+  url={shareUrl}
+  title={evento?.nombre || "Evento"}
+  text={`🔥 *${evento?.nombre || "Evento"}*
+
+🎉 *¡No te quedes por fuera!*
+🏆 *Premio:* ${premios.length > 0 ? premios[0] : "Disponible"}
+🎟️ *Valor del ticket:* $${precio.toFixed(2)}
+📈 *Ventas del evento:* ${porcentajeVendido.toFixed(1)}%
+
+✅ *Compra tus tickets en la PAGINA OFICIAL*
+👇 Mira todos los detalles aquí:`}
+/>
         )}
       </main>
 

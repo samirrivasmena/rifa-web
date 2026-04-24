@@ -10,18 +10,9 @@ import {
   Tooltip,
 } from "recharts";
 
-import CompactDashboardSummary from "../CompactDashboardSummary";
-
 export default function AdminRankingSection({
   rankingRef,
   rankingDetalleRef,
-  rifaSeleccionada,
-  dashboardCompactSummary,
-  irADashboardTotal,
-  irAPendientes,
-  irAAprobadas,
-  irARechazadas,
-  irAMapaTickets,
   resumenRanking,
   irARankingDetallado,
   abrirDetalleParticipante,
@@ -42,16 +33,6 @@ export default function AdminRankingSection({
 }) {
   return (
     <div className="adminpro-page-stack" ref={rankingRef}>
-      <CompactDashboardSummary
-        rifaSeleccionada={rifaSeleccionada}
-        resumen={dashboardCompactSummary}
-        onIrDashboard={irADashboardTotal}
-        onIrPendientes={irAPendientes}
-        onIrAprobadas={irAAprobadas}
-        onIrRechazadas={irARechazadas}
-        onIrMapaTickets={irAMapaTickets}
-      />
-
       <div className="adminpro-ranking-kpis adminpro-ranking-kpis-premium">
         <button
           type="button"

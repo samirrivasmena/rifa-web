@@ -30,6 +30,8 @@ export default function RaffleProgressPanel({
   tieneComprasPendientes,
   onOpenManualFromGrid,
   onOpenCompra,
+  numeroGanador = null,
+  resultadoGanador = null,
 }) {
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [ticketDetalle, setTicketDetalle] = useState(null);
@@ -73,11 +75,78 @@ export default function RaffleProgressPanel({
     return map;
   }, [compras]);
 
-  const numeroGanador =
-    rifaSeleccionada?.numero_ganador !== undefined &&
-    rifaSeleccionada?.numero_ganador !== null
-      ? Number(rifaSeleccionada.numero_ganador)
-      : null;
+  const normalizarNumero = (valor) => {
+    if (valor === undefined || valor === null || valor === "") return null;
+
+    const texto = String(valor).trim();
+    const soloNumeros = texto.replace(/\D/g, "");
+    if (!soloNumeros) return null;
+
+    return String(Number(soloNumeros)).padStart(padLength, "0");
+  };
+
+  const extraerNumeroGanadorProfundo = (valor, visitados = new Set()) => {
+    if (valor === undefined || valor === null) return null;
+
+    if (typeof valor === "number" || typeof valor === "string") {
+      return normalizarNumero(valor);
+    }
+
+    if (Array.isArray(valor)) {
+      for (const item of valor) {
+        const encontrado = extraerNumeroGanadorProfundo(item, visitados);
+        if (encontrado) return encontrado;
+      }
+      return null;
+    }
+
+    if (typeof valor === "object") {
+      if (visitados.has(valor)) return null;
+      visitados.add(valor);
+
+      const clavesPrioritarias = [
+        "numero_ganador",
+        "numeroGanador",
+        "numero_ticket",
+        "numeroTicket",
+        "numero",
+        "ganador",
+        "winner",
+        "ticket",
+        "resultado",
+        "data",
+      ];
+
+      for (const key of clavesPrioritarias) {
+        if (Object.prototype.hasOwnProperty.call(valor, key)) {
+          const encontrado = extraerNumeroGanadorProfundo(valor[key], visitados);
+          if (encontrado) return encontrado;
+        }
+      }
+
+      for (const [, v] of Object.entries(valor)) {
+        const encontrado = extraerNumeroGanadorProfundo(v, visitados);
+        if (encontrado) return encontrado;
+      }
+    }
+
+    return null;
+  };
+
+  const numeroGanadorFormateado =
+    extraerNumeroGanadorProfundo(resultadoGanador) ||
+    extraerNumeroGanadorProfundo(numeroGanador) ||
+    extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_ganador) ||
+    extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_oficial) ||
+    null;
+
+  const esNumeroGanador = (numero) => {
+    const numeroFormateado = String(numero).padStart(padLength, "0");
+    return (
+      numeroGanadorFormateado !== null &&
+      numeroFormateado === numeroGanadorFormateado
+    );
+  };
 
   const vendidos = tickets.length;
   const disponibles = Math.max(totalNumeros - vendidos, 0);
@@ -105,11 +174,13 @@ export default function RaffleProgressPanel({
 
   const abrirDetalleNumero = (numero) => {
     const ticket = ticketsMap.get(Number(numero));
+    const esGanador = esNumeroGanador(numero);
 
     if (!ticket) {
       setTicketDetalle({
         tipo: "disponible",
         numero,
+        esGanador,
       });
       setDetalleOpen(true);
       return;
@@ -122,7 +193,7 @@ export default function RaffleProgressPanel({
       numero,
       ticket,
       compra,
-      esGanador: numeroGanador !== null && Number(numero) === numeroGanador,
+      esGanador,
     });
     setDetalleOpen(true);
   };
@@ -133,8 +204,8 @@ export default function RaffleProgressPanel({
     return numeros.filter((numero) => {
       const ticket = ticketsMap.get(Number(numero));
       const vendido = Boolean(ticket);
-      const esGanador = numeroGanador !== null && Number(numero) === numeroGanador;
       const numeroFormateado = String(numero).padStart(padLength, "0");
+      const esGanador = esNumeroGanador(numero);
 
       const coincideBusqueda =
         !numeroBuscadoNormalizado || numeroFormateado.includes(numeroBuscadoNormalizado);
@@ -150,10 +221,10 @@ export default function RaffleProgressPanel({
   }, [
     numeros,
     ticketsMap,
-    numeroGanador,
     numeroBuscadoNormalizado,
     filtroVista,
     padLength,
+    numeroGanadorFormateado,
   ]);
 
   const numeroExactoEncontrado = useMemo(() => {
@@ -175,12 +246,12 @@ export default function RaffleProgressPanel({
         <div className="adminpro-section-head">
           <div>
             <h2>Estado visual de la rifa</h2>
-            <p>Consulta qué números ya están ocupados, cuáles siguen disponibles y cuál fue el ganador</p>
+            <p>
+              Consulta qué números ya están ocupados, cuáles siguen disponibles y cuál fue el ganador
+            </p>
           </div>
 
-          <div className="adminpro-badge-box">
-            🎯 Avance: {porcentajeVendido}%
-          </div>
+          <div className="adminpro-badge-box">🎯 Avance: {porcentajeVendido}%</div>
         </div>
 
         <div className="adminpro-raffle-stats-grid">
@@ -244,8 +315,7 @@ export default function RaffleProgressPanel({
                 tipo: "resumen",
                 titulo: "Falta por vender",
                 valor: `${porcentajeDisponible}%`,
-                descripcion:
-                  "Porcentaje restante de números que todavía no han sido vendidos.",
+                descripcion: "Porcentaje restante de números que todavía no han sido vendidos.",
               });
               setDetalleOpen(true);
             }}
@@ -278,7 +348,7 @@ export default function RaffleProgressPanel({
             <input
               type="text"
               className="adminpro-input"
-              placeholder={padLength === 3 ? "Buscar número: 001" : "Buscar número: 0001"}
+              placeholder={padLength === 3 ? "Buscar número: 000" : "Buscar número: 0000"}
               value={busquedaNumero}
               onChange={(e) =>
                 setBusquedaNumero(e.target.value.replace(/\D/g, "").slice(0, padLength))
@@ -310,7 +380,9 @@ export default function RaffleProgressPanel({
 
             <button
               type="button"
-              className={`adminpro-raffle-filter-btn ${filtroVista === "disponibles" ? "active" : ""}`}
+              className={`adminpro-raffle-filter-btn ${
+                filtroVista === "disponibles" ? "active" : ""
+              }`}
               onClick={() => setFiltroVista("disponibles")}
             >
               Disponibles
@@ -339,14 +411,21 @@ export default function RaffleProgressPanel({
         )}
 
         <div className="adminpro-legend">
-          <div><span className="legend-box sold" /> Vendido / aprobado</div>
-          <div><span className="legend-box free" /> Disponible</div>
-          <div><span className="legend-box winner" /> Ganador oficial</div>
+          <div>
+            <span className="legend-box sold" /> Vendido / aprobado
+          </div>
+          <div>
+            <span className="legend-box free" /> Disponible
+          </div>
+          <div>
+            <span className="legend-box winner" /> Ganador oficial
+          </div>
         </div>
 
         <div className="adminpro-raffle-results-meta">
           <span>
-            Mostrando {numerosFiltrados.length} número{numerosFiltrados.length !== 1 ? "s" : ""}
+            Mostrando {numerosFiltrados.length} número
+            {numerosFiltrados.length !== 1 ? "s" : ""}
           </span>
 
           {busquedaNumero && (
@@ -365,8 +444,8 @@ export default function RaffleProgressPanel({
             {numerosFiltrados.map((numero) => {
               const ticket = ticketsMap.get(Number(numero));
               const vendido = Boolean(ticket);
-              const esGanador = numeroGanador !== null && Number(numero) === numeroGanador;
               const numeroFormateado = String(numero).padStart(padLength, "0");
+              const esGanador = esNumeroGanador(numero);
               const esBusquedaExacta =
                 busquedaNumero.length === padLength &&
                 numeroFormateado === numeroBuscadoNormalizado;
@@ -374,6 +453,16 @@ export default function RaffleProgressPanel({
               let className = "free";
               if (esGanador) className = "winner";
               else if (vendido) className = "sold";
+
+              const winnerStyle = esGanador
+                ? {
+                    background: "linear-gradient(135deg, #facc15 0%, #f59e0b 100%)",
+                    color: "#111827",
+                    border: "1px solid #fde047",
+                    boxShadow: "0 0 12px rgba(250, 204, 21, 0.45)",
+                    fontWeight: 700,
+                  }
+                : undefined;
 
               return (
                 <button
@@ -390,6 +479,7 @@ export default function RaffleProgressPanel({
                       ? `Número vendido ${numeroFormateado}`
                       : `Número disponible ${numeroFormateado}`
                   }
+                  style={winnerStyle}
                 >
                   {numeroFormateado}
                 </button>
@@ -442,9 +532,7 @@ export default function RaffleProgressPanel({
                     ticketDetalle.tickets.map((item) => (
                       <div key={item.id} className="adminpro-raffle-sold-item">
                         <div>
-                          <strong>
-                            Nº {String(item.numero_ticket).padStart(padLength, "0")}
-                          </strong>
+                          <strong>Nº {String(item.numero_ticket).padStart(padLength, "0")}</strong>
                           <p>Compra #{item.compra_id}</p>
                         </div>
 
@@ -471,6 +559,7 @@ export default function RaffleProgressPanel({
                   <span>Número disponible</span>
                   <strong>{String(ticketDetalle.numero).padStart(padLength, "0")}</strong>
                 </div>
+
                 <p>
                   Este número todavía no ha sido vendido. Si hay compras pendientes,
                   puedes usarlo para aprobación manual.
@@ -540,7 +629,10 @@ export default function RaffleProgressPanel({
                   <div>
                     <span>Monto</span>
                     <strong>
-                      ${Number(ticketDetalle.compra?.monto_total ?? ticketDetalle.compra?.total ?? 0).toFixed(2)}
+                      $
+                      {Number(
+                        ticketDetalle.compra?.monto_total ?? ticketDetalle.compra?.total ?? 0
+                      ).toFixed(2)}
                     </strong>
                   </div>
 

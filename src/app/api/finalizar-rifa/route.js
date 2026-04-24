@@ -23,16 +23,29 @@ export async function POST(req) {
       );
     }
 
-    if (numeroGanador === undefined || numeroGanador === null) {
+    if (
+      numeroGanador === undefined ||
+      numeroGanador === null ||
+      String(numeroGanador).trim() === ""
+    ) {
       return NextResponse.json(
         { error: "Falta el número ganador" },
         { status: 400 }
       );
     }
 
-    const numero = Number(numeroGanador);
+    const numeroLimpio = String(numeroGanador).trim().replace(/\D/g, "");
 
-    if (Number.isNaN(numero)) {
+    if (!numeroLimpio) {
+      return NextResponse.json(
+        { error: "Número ganador inválido" },
+        { status: 400 }
+      );
+    }
+
+    const numero = Number(numeroLimpio);
+
+    if (!Number.isFinite(numero)) {
       return NextResponse.json(
         { error: "Número ganador inválido" },
         { status: 400 }
@@ -41,9 +54,9 @@ export async function POST(req) {
 
     const { data: rifaData, error: rifaError } = await supabaseAdmin
       .from("rifas")
-      .select("id, nombre, numero_inicio, numero_fin, estado")
+      .select("id, nombre, numero_inicio, numero_fin, estado, formato")
       .eq("id", rifaId)
-      .single();
+      .maybeSingle();
 
     if (rifaError || !rifaData) {
       console.error("Error buscando rifa:", rifaError);
@@ -53,9 +66,20 @@ export async function POST(req) {
       );
     }
 
+    const numeroInicio = Number(
+      rifaData.numero_inicio ?? 0
+    );
+
+    const numeroFin = Number(
+      rifaData.numero_fin ??
+        (String(rifaData.formato) === "3digitos" ? 999 : 9999)
+    );
+
     if (
-      numero < Number(rifaData.numero_inicio) ||
-      numero > Number(rifaData.numero_fin)
+      Number.isNaN(numeroInicio) ||
+      Number.isNaN(numeroFin) ||
+      numero < numeroInicio ||
+      numero > numeroFin
     ) {
       return NextResponse.json(
         { error: "El número ganador está fuera del rango de la rifa" },
@@ -63,11 +87,16 @@ export async function POST(req) {
       );
     }
 
-    const { data: sorteoExistente, error: sorteoExistenteError } = await supabaseAdmin
-      .from("sorteos")
-      .select("id, numero_ganador, rifa_id")
-      .eq("rifa_id", rifaId)
-      .maybeSingle();
+    const padLength = String(rifaData.formato) === "3digitos" ? 3 : 4;
+    const numeroFormateado = String(numero).padStart(padLength, "0");
+    const fechaSorteo = new Date().toISOString();
+
+    const { data: sorteoExistente, error: sorteoExistenteError } =
+      await supabaseAdmin
+        .from("sorteos")
+        .select("id, numero_ganador, numero_oficial, rifa_id")
+        .eq("rifa_id", rifaId)
+        .maybeSingle();
 
     if (sorteoExistenteError) {
       console.error("Error verificando sorteo existente:", sorteoExistenteError);
@@ -77,17 +106,39 @@ export async function POST(req) {
       );
     }
 
-    let numeroFinal = numero;
-    let sorteoFinal = sorteoExistente || null;
+    let sorteoFinal = null;
 
-    if (!sorteoExistente) {
+    if (sorteoExistente) {
+      const { data: sorteoActualizado, error: updateSorteoError } =
+        await supabaseAdmin
+          .from("sorteos")
+          .update({
+            numero_ganador: numero,
+            numero_oficial: numeroFormateado,
+            fecha_sorteo: fechaSorteo,
+            fuente: rifaData.nombre || "Rifa",
+          })
+          .eq("rifa_id", rifaId)
+          .select()
+          .single();
+
+      if (updateSorteoError) {
+        console.error("Error actualizando sorteo:", updateSorteoError);
+        return NextResponse.json(
+          { error: "No se pudo actualizar el sorteo" },
+          { status: 500 }
+        );
+      }
+
+      sorteoFinal = sorteoActualizado;
+    } else {
       const { data: sorteoCreado, error: insertError } = await supabaseAdmin
         .from("sorteos")
         .insert([
           {
             numero_ganador: numero,
-            numero_oficial: String(numero),
-            fecha_sorteo: new Date().toISOString(),
+            numero_oficial: numeroFormateado,
+            fecha_sorteo: fechaSorteo,
             fuente: rifaData.nombre || "Rifa",
             rifa_id: rifaId,
           },
@@ -104,12 +155,15 @@ export async function POST(req) {
       }
 
       sorteoFinal = sorteoCreado;
-      numeroFinal = Number(sorteoCreado.numero_ganador);
     }
 
+    // IMPORTANTE:
+    // solo cambiamos el estado para evitar errores por columnas inexistentes
     const { data: rifaActualizada, error: updateError } = await supabaseAdmin
       .from("rifas")
-      .update({ estado: "finalizada" })
+      .update({
+        estado: "finalizada",
+      })
       .eq("id", rifaId)
       .select()
       .single();
@@ -125,7 +179,8 @@ export async function POST(req) {
     return NextResponse.json({
       ok: true,
       mensaje: "Rifa finalizada correctamente",
-      numero_ganador: numeroFinal,
+      numero_ganador: numero,
+      numero_oficial: numeroFormateado,
       sorteo: sorteoFinal,
       rifa: rifaActualizada,
     });

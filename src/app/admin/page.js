@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback } from "react";
+import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import Swal from "sweetalert2";
 
 import { getAdminAuthHeaders } from "../../lib/getAdminAuthHeaders";
@@ -12,6 +12,7 @@ import HeaderPanel from "../../components/admin/HeaderPanel";
 import ManualApprovalModal from "../../components/admin/ManualApprovalModal";
 
 import AdminDashboardSection from "../../components/admin/sections/AdminDashboardSection";
+import AdminNumerosSection from "../../components/admin/sections/AdminNumerosSection";
 import AdminComprasSection from "../../components/admin/sections/AdminComprasSection";
 import AdminGanadorSection from "../../components/admin/sections/AdminGanadorSection";
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
@@ -29,16 +30,16 @@ export default function Admin() {
   const { authLoading, accesoPermitido, adminEmail, cerrarSesion } = useAdminAuth();
 
   const {
-    refs: {
-      topRef,
-      dashboardRef,
-      mapaTicketsRef,
-      dashboardFilterRef,
-      comprasSectionRef,
-      ganadorRef,
-      rankingRef,
-      rankingDetalleRef,
-    },
+refs: {
+  topRef,
+  dashboardRef,
+  mapaTicketsRef,
+  dashboardFilterRef,
+  comprasSectionRef,
+  ganadorRef,
+  rankingRef,
+  rankingDetalleRef,
+},
     seccionActiva,
     setSeccionActiva,
     filtroDashboard,
@@ -274,18 +275,24 @@ export default function Admin() {
 
   const padLength = rifaSeleccionada?.formato === "3digitos" ? 3 : 4;
 
+  const premioRef = useRef(null);
+  const numeroRef = useRef(null);
+
   const {
     numeroGanador,
     setNumeroGanador,
     resultadoGanador,
     setResultadoGanador,
+    numeroGanadorOficial,
     mensajeBusqueda,
     setMensajeBusqueda,
     esNumeroGanador,
     setEsNumeroGanador,
     guardandoGanador,
+    quitandoGanador,
     buscarGanador,
     guardarGanadorOficial,
+    quitarGanadorOficial,
     resetGanadorState,
   } = useAdminGanador({
     rifaSeleccionada,
@@ -293,15 +300,37 @@ export default function Admin() {
     recargarTodo,
   });
 
-  const comprasFiltradasPorRifa = useMemo(() => {
-    if (!rifaSeleccionadaId) return compras;
-    return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
-  }, [compras, rifaSeleccionadaId]);
+  const ganadorPersistido = useMemo(() => {
+    const raw =
+      rifaSeleccionada?.numero_ganador ??
+      rifaSeleccionada?.numero_oficial ??
+      rifaSeleccionada?.sorteo?.numero_ganador ??
+      rifaSeleccionada?.sorteo?.numero_oficial ??
+      null;
 
-  const ticketsFiltradosPorRifa = useMemo(() => {
-    if (!rifaSeleccionadaId) return tickets;
-    return tickets.filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId));
-  }, [tickets, rifaSeleccionadaId]);
+    if (raw === null || raw === undefined || raw === "") return null;
+
+    const soloNumeros = String(raw).replace(/\D/g, "");
+    if (!soloNumeros) return null;
+
+    return String(Number(soloNumeros)).padStart(padLength, "0");
+  }, [rifaSeleccionada, padLength]);
+
+  const ganadorParaUI = ganadorPersistido || numeroGanadorOficial || null;
+
+  const resultadoGanadorParaUI = useMemo(() => {
+    return resultadoGanador || rifaSeleccionada?.sorteo || null;
+  }, [resultadoGanador, rifaSeleccionada]);
+
+const comprasFiltradasPorRifa = useMemo(() => {
+  if (!rifaSeleccionadaId) return [];
+  return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
+}, [compras, rifaSeleccionadaId]);
+
+const ticketsFiltradosPorRifa = useMemo(() => {
+  if (!rifaSeleccionadaId) return [];
+  return tickets.filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId));
+}, [tickets, rifaSeleccionadaId]);
 
   const {
     filtrosCompras,
@@ -359,10 +388,6 @@ export default function Admin() {
       const key = String(ticket.compra_id);
       if (!map[key]) map[key] = [];
       map[key].push(String(ticket.numero_ticket).padStart(padLength, "0"));
-    });
-
-    Object.keys(map).forEach((key) => {
-      map[key].sort((a, b) => Number(a) - Number(b));
     });
 
     return map;
@@ -964,8 +989,8 @@ export default function Admin() {
   };
 
   const irAMapaTickets = () => {
-    setSeccionActiva("dashboard");
-    scrollToRef(mapaTicketsRef, 180);
+    setSeccionActiva("numero");
+    scrollToRef(numeroRef, 180);
   };
 
   if (authLoading) {
@@ -984,13 +1009,19 @@ export default function Admin() {
 
             if (id === "dashboard") {
               setSeccionActiva("dashboard");
-              scrollToRef(dashboardRef, 120);
+              scrollToRef(premioRef, 160);
               return;
             }
 
-            if (id === "mapa-tickets") {
-              setSeccionActiva("dashboard");
-              scrollToRef(mapaTicketsRef, 180);
+            if (id === "numero") {
+              setSeccionActiva("numero");
+              scrollToRef(numeroRef, 160);
+              return;
+            }
+
+            if (id === "rifas") {
+              setSeccionActiva("rifas");
+              scrollToRef(topRef, 120);
               return;
             }
 
@@ -1010,11 +1041,6 @@ export default function Admin() {
               setSeccionActiva("ranking");
               scrollToRef(rankingRef, 180);
               return;
-            }
-
-            if (id === "rifas") {
-              setSeccionActiva("rifas");
-              scrollToRef(topRef, 120);
             }
           }}
           onLogout={cerrarSesion}
@@ -1040,10 +1066,10 @@ export default function Admin() {
             <AdminDashboardSection
               dashboardRef={dashboardRef}
               dashboardFilterRef={dashboardFilterRef}
-              mapaTicketsRef={mapaTicketsRef}
               comprasSectionRef={comprasSectionRef}
               ganadorRef={ganadorRef}
               rankingRef={rankingRef}
+              premioRef={premioRef}
               rifaSeleccionada={rifaSeleccionada}
               padLength={padLength}
               formatearFecha={formatearFecha}
@@ -1069,8 +1095,24 @@ export default function Admin() {
               loadingAprobacion={loadingAprobacion}
               loadingRechazo={loadingRechazo}
               loadingEliminacion={loadingEliminacion}
+              numeroGanador={ganadorParaUI}
+              resultadoGanador={resultadoGanadorParaUI}
+            />
+          )}
+
+          {seccionActiva === "numero" && (
+            <AdminNumerosSection
+              numeroRef={numeroRef}
+              ticketsFiltradosPorRifa={ticketsFiltradosPorRifa}
+              comprasFiltradasPorRifa={comprasFiltradasPorRifa}
+              rifaSeleccionada={rifaSeleccionada}
               comprasPendientes={comprasPendientes}
               abrirAprobacionManualDesdeCuadricula={abrirAprobacionManualDesdeCuadricula}
+              setSeccionActiva={setSeccionActiva}
+              scrollToRef={scrollToRef}
+              comprasSectionRef={comprasSectionRef}
+              numeroGanador={ganadorParaUI}
+              resultadoGanador={resultadoGanadorParaUI}
             />
           )}
 
@@ -1111,7 +1153,9 @@ export default function Admin() {
                 esNumeroGanador={esNumeroGanador}
                 mensajeBusqueda={mensajeBusqueda}
                 guardarGanadorOficial={guardarGanadorOficial}
+                quitarGanadorOficial={quitarGanadorOficial}
                 guardandoGanador={guardandoGanador}
+                quitandoGanador={quitandoGanador}
                 formatearFecha={formatearFecha}
               />
             </div>
@@ -1123,12 +1167,6 @@ export default function Admin() {
                 rankingRef={rankingRef}
                 rankingDetalleRef={rankingDetalleRef}
                 rifaSeleccionada={rifaSeleccionada}
-                dashboardCompactSummary={dashboardCompactSummary}
-                irADashboardTotal={irADashboardTotal}
-                irAPendientes={irAPendientes}
-                irAAprobadas={irAAprobadas}
-                irARechazadas={irARechazadas}
-                irAMapaTickets={irAMapaTickets}
                 resumenRanking={resumenRanking}
                 irARankingDetallado={irARankingDetallado}
                 abrirDetalleParticipante={abrirDetalleParticipante}
@@ -1186,6 +1224,9 @@ export default function Admin() {
               setPaginaCompras={setPaginaCompras}
               paginaCompras={paginaCompras}
               totalPaginasCompras={totalPaginasCompras}
+              numeroGanador={ganadorParaUI}
+              resultadoGanador={resultadoGanadorParaUI}
+              padLength={padLength}
             />
           )}
         </main>
@@ -1264,7 +1305,8 @@ export default function Admin() {
                 <strong>
                   {resumenRanking.totalTicketsAprobados > 0
                     ? (
-                        (participanteSeleccionado.cantidad / resumenRanking.totalTicketsAprobados) *
+                        (participanteSeleccionado.cantidad /
+                          resumenRanking.totalTicketsAprobados) *
                         100
                       ).toFixed(2)
                     : "0.00"}

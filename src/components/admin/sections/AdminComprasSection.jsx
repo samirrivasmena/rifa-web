@@ -40,6 +40,9 @@ export default function AdminComprasSection({
   setPaginaCompras,
   paginaCompras,
   totalPaginasCompras,
+  numeroGanador,
+  resultadoGanador,
+  padLength,
 }) {
   return (
     <div className="adminpro-page-stack" ref={comprasSectionRef}>
@@ -84,10 +87,7 @@ export default function AdminComprasSection({
           metodosPago={metodosPagoDisponibles}
         />
 
-        <FilterChips
-          filtros={filtrosCompras}
-          onRemove={eliminarFiltroIndividual}
-        />
+        <FilterChips filtros={filtrosCompras} onRemove={eliminarFiltroIndividual} />
 
         <div className="adminpro-sort-row">
           <div className="adminpro-sort-box">
@@ -168,8 +168,11 @@ export default function AdminComprasSection({
                     loadingAprobacion={loadingAprobacion}
                     loadingRechazo={loadingRechazo}
                     loadingEliminacion={loadingEliminacion}
-                    mostrarEliminar={false}
+                    mostrarEliminar={String(compra.estado_pago || "").toLowerCase() === "rechazado"}
                     formatearFecha={formatearFecha}
+                    numeroGanador={numeroGanador}
+                    resultadoGanador={resultadoGanador}
+                    padLength={padLength}
                   />
                 ))}
               </div>

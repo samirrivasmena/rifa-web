@@ -791,20 +791,23 @@ export default function PrincipalPageClient() {
             <div className="principal-footer-col">
               <h3>ACCESOS</h3>
 
-              <div className="principal-footer-links">
-                <a href="/principal#inicio" className="principal-footer-link">
-                  Inicio
-                </a>
-                <a href="/principal#eventos-disponibles" className="principal-footer-link">
-                  Eventos
-                </a>
-                <a href="/principal#pagos" className="principal-footer-link">
-                  Pagos
-                </a>
-                <a href="/principal#contacto" className="principal-footer-link">
-                  Contacto
-                </a>
-              </div>
+<div className="principal-footer-links">
+  <a href="/principal#inicio" className="principal-footer-link">
+    Inicio
+  </a>
+  <a href="/principal#eventos-disponibles" className="principal-footer-link">
+    Eventos
+  </a>
+  <a href="/principal#resultados-oficiales" className="principal-footer-link">
+    Resultados
+  </a>
+  <a href="/principal#pagos" className="principal-footer-link">
+    Pagos
+  </a>
+  <a href="/principal#contacto" className="principal-footer-link">
+    Contacto
+  </a>
+</div>
             </div>
           </div>
         </footer>

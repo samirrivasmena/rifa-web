@@ -1,17 +1,9 @@
 "use client";
 
-import CompactDashboardSummary from "../CompactDashboardSummary";
 import WinnerCard from "../WinnerCard";
 
 export default function AdminGanadorSection({
   ganadorRef,
-  rifaSeleccionada,
-  dashboardCompactSummary,
-  irADashboardTotal,
-  irAPendientes,
-  irAAprobadas,
-  irARechazadas,
-  irAMapaTickets,
   padLength,
   numeroGanador,
   setNumeroGanador,
@@ -23,21 +15,14 @@ export default function AdminGanadorSection({
   esNumeroGanador,
   mensajeBusqueda,
   guardarGanadorOficial,
+  quitarGanadorOficial,
   guardandoGanador,
+  quitandoGanador,
+  numeroGanadorOficial,
   formatearFecha,
 }) {
   return (
     <div className="adminpro-page-stack" ref={ganadorRef}>
-      <CompactDashboardSummary
-        rifaSeleccionada={rifaSeleccionada}
-        resumen={dashboardCompactSummary}
-        onIrDashboard={irADashboardTotal}
-        onIrPendientes={irAPendientes}
-        onIrAprobadas={irAAprobadas}
-        onIrRechazadas={irARechazadas}
-        onIrMapaTickets={irAMapaTickets}
-      />
-
       <div className="adminpro-card">
         <div className="adminpro-section-head">
           <div>
@@ -50,7 +35,7 @@ export default function AdminGanadorSection({
           <div className="adminpro-search-input">
             <input
               type="text"
-              placeholder={padLength === 3 ? "001 - 999" : "0001 - 9999"}
+              placeholder={padLength === 3 ? "000 - 999" : "0000 - 9999"}
               value={numeroGanador}
               maxLength={padLength}
               onChange={(e) => {
@@ -60,10 +45,16 @@ export default function AdminGanadorSection({
                 setMensajeBusqueda("");
                 setEsNumeroGanador(false);
               }}
+              disabled={guardandoGanador || quitandoGanador}
             />
           </div>
 
-          <button className="adminpro-primary-btn" onClick={buscarGanador} type="button">
+          <button
+            className="adminpro-primary-btn"
+            onClick={buscarGanador}
+            type="button"
+            disabled={guardandoGanador || quitandoGanador}
+          >
             Buscar
           </button>
         </div>
@@ -73,9 +64,12 @@ export default function AdminGanadorSection({
           esGanador={esNumeroGanador}
           mensaje={mensajeBusqueda}
           onGuardar={guardarGanadorOficial}
+          onQuitar={quitarGanadorOficial}
           guardando={guardandoGanador}
+          quitando={quitandoGanador}
           padLength={padLength}
           formatearFecha={formatearFecha}
+          numeroGanadorOficial={numeroGanadorOficial}
         />
       </div>
     </div>

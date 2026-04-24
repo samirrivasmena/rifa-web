@@ -64,14 +64,14 @@ export async function POST(req) {
       );
     }
 
-    let numero_inicio = 1;
+    let numero_inicio = 0;
     let numero_fin = 9999;
 
     if (formato === "3digitos") {
-      numero_inicio = 1;
+      numero_inicio = 0;
       numero_fin = 999;
     } else if (formato === "4digitos") {
-      numero_inicio = 1;
+      numero_inicio = 0;
       numero_fin = 9999;
     } else {
       return NextResponse.json(

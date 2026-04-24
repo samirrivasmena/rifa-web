@@ -13,6 +13,28 @@ function IconDashboard() {
   );
 }
 
+function IconNumero() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
+      <rect
+        x="3"
+        y="4"
+        width="18"
+        height="16"
+        rx="4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M8 8h8M8 12h5M8 16h3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
 function IconRifas() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
@@ -148,6 +170,7 @@ export default function Sidebar({ activa, onNavigate, onLogout, adminEmail }) {
 
   const items = [
     { id: "dashboard", icon: <IconDashboard />, label: "Dashboard" },
+    { id: "numero", icon: <IconNumero />, label: "Números" },
     { id: "rifas", icon: <IconRifas />, label: "Crear Rifas" },
     { id: "compras", icon: <IconCompras />, label: "Gestión de Compras" },
     { id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },

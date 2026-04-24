@@ -13,21 +13,71 @@ export async function GET(req) {
   }
 
   try {
-    const { data, error } = await supabaseAdmin
-      .from("rifas")
-      .select("*")
-      .order("created_at", { ascending: false });
+    const [
+      { data: rifasData, error: rifasError },
+      { data: sorteosData, error: sorteosError },
+    ] = await Promise.all([
+      supabaseAdmin
+        .from("rifas")
+        .select("*")
+        .order("created_at", { ascending: false }),
 
-    if (error) {
+      supabaseAdmin
+        .from("sorteos")
+        .select("id, rifa_id, numero_ganador, numero_oficial, fecha_sorteo, fuente")
+        .order("fecha_sorteo", { ascending: false }),
+    ]);
+
+    if (rifasError) {
       return NextResponse.json(
-        { error: error.message || "No se pudieron listar las rifas" },
+        { error: rifasError.message || "No se pudieron listar las rifas" },
         { status: 500 }
       );
     }
 
+    if (sorteosError) {
+      return NextResponse.json(
+        { error: sorteosError.message || "No se pudieron listar los sorteos" },
+        { status: 500 }
+      );
+    }
+
+    const sorteoPorRifa = {};
+
+    (sorteosData || []).forEach((sorteo) => {
+      const key = String(sorteo.rifa_id);
+
+      if (!sorteoPorRifa[key]) {
+        sorteoPorRifa[key] = sorteo;
+      }
+    });
+
+    const rifas = (rifasData || []).map((rifa) => {
+      const sorteo = sorteoPorRifa[String(rifa.id)] || null;
+
+      const numeroGanador =
+        rifa.numero_ganador ??
+        rifa.numero_oficial ??
+        sorteo?.numero_ganador ??
+        sorteo?.numero_oficial ??
+        null;
+
+      const numeroGanadorFormateado =
+        numeroGanador !== null && numeroGanador !== undefined && numeroGanador !== ""
+          ? String(numeroGanador)
+          : null;
+
+      return {
+        ...rifa,
+        numero_ganador: numeroGanador,
+        numero_oficial: numeroGanadorFormateado,
+        sorteo,
+      };
+    });
+
     return NextResponse.json({
       ok: true,
-      rifas: data || [],
+      rifas,
     });
   } catch (error) {
     return NextResponse.json(

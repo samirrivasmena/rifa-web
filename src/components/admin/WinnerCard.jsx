@@ -1,160 +1,310 @@
 "use client";
 
+import Swal from "sweetalert2";
+
+async function copiarTextoSeguro(texto) {
+  const valor = String(texto ?? "").trim();
+  if (!valor) return false;
+
+  try {
+    if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(valor);
+      return true;
+    }
+  } catch {
+    // fallback abajo
+  }
+
+  try {
+    const area = document.createElement("textarea");
+    area.value = valor;
+    area.setAttribute("readonly", "true");
+    area.style.position = "fixed";
+    area.style.opacity = "0";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.focus();
+    area.select();
+
+    const ok = document.execCommand("copy");
+    document.body.removeChild(area);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
 export default function WinnerCard({
   resultado,
   esGanador,
   mensaje,
   onGuardar,
+  onQuitar,
   guardando,
+  quitando,
   padLength,
   formatearFecha,
+  numeroGanadorOficial,
 }) {
-  if (!resultado) {
-    return mensaje ? <p className="adminpro-message-error">{mensaje}</p> : null;
-  }
+  const ganadorOficial = Boolean(
+    esGanador ||
+      resultado?.oficial ||
+      resultado?.persistido ||
+      numeroGanadorOficial !== undefined &&
+      numeroGanadorOficial !== null &&
+      String(numeroGanadorOficial).trim() !== ""
+  );
+
+  const numeroBase =
+    resultado?.numero_ticket ??
+    resultado?.numero_ganador ??
+    resultado?.numero_oficial ??
+    numeroGanadorOficial ??
+    null;
 
   const numeroSeguro =
-    resultado?.numero_ticket !== undefined &&
-    resultado?.numero_ticket !== null &&
-    resultado?.numero_ticket !== ""
-      ? Number(resultado.numero_ticket)
+    numeroBase !== undefined && numeroBase !== null && numeroBase !== ""
+      ? Number(String(numeroBase).replace(/\D/g, ""))
       : null;
 
   const numeroFormateado =
     numeroSeguro !== null && !Number.isNaN(numeroSeguro)
       ? String(numeroSeguro).padStart(padLength, "0")
+      : ganadorOficial && numeroGanadorOficial
+      ? String(numeroGanadorOficial).padStart(padLength, "0")
       : "Sin número";
 
-  const tieneSorteoValido =
-    resultado?.sorteo &&
-    (
-      resultado?.sorteo?.id ||
-      resultado?.sorteo?.numero_ganador !== undefined &&
-      resultado?.sorteo?.numero_ganador !== null &&
-      resultado?.sorteo?.numero_ganador !== ""
-    );
+  const tieneUsuario = Boolean(
+    resultado?.usuario &&
+      (resultado.usuario.nombre || resultado.usuario.email || resultado.usuario.telefono)
+  );
 
-  const ganadorOficial = Boolean(esGanador || tieneSorteoValido);
+  const estadoKey = ganadorOficial ? "official" : resultado?.existe ? "sold" : "empty";
+
+  const titulo = ganadorOficial
+    ? "🏆 Número ganador oficial"
+    : resultado?.existe
+    ? "✅ Número vendido"
+    : "❌ Número no vendido";
+
+  const descripcion = ganadorOficial
+    ? "Este número ya quedó registrado como ganador oficial."
+    : resultado?.existe
+    ? "El número fue vendido y puede convertirse en ganador."
+    : "No existe una compra asociada a ese número.";
+
+  const mensajeClase = ganadorOficial
+    ? "adminpro-message-warn"
+    : resultado?.existe
+    ? "adminpro-message-success"
+    : "adminpro-message-error";
+
+  const copiarDato = async (valor, etiqueta) => {
+    const ok = await copiarTextoSeguro(valor);
+
+    if (ok) {
+      await Swal.fire({
+        icon: "success",
+        title: "Copiado",
+        text: `${etiqueta} copiado al portapapeles.`,
+        timer: 1100,
+        showConfirmButton: false,
+      });
+    } else {
+      await Swal.fire({
+        icon: "error",
+        title: "No se pudo copiar",
+        text: `No fue posible copiar ${etiqueta.toLowerCase()}.`,
+      });
+    }
+  };
+
+  const renderValorUsuario = (value) => (value ? value : "No disponible");
+
+  const mostrarEmpty = !resultado && !ganadorOficial;
+
+  if (mostrarEmpty) {
+    return (
+      <div className="adminpro-result-stack">
+        {mensaje ? <p className={mensajeClase}>{mensaje}</p> : null}
+
+        <div className="adminpro-card adminpro-winner-card adminpro-winner-empty-card">
+          <div className="adminpro-winner-empty-emoji">🔎</div>
+          <h3>Resultado del número</h3>
+          <p>
+            Busca un número para ver aquí su estado, los datos del comprador y las acciones
+            disponibles.
+          </p>
+
+          <div className="adminpro-winner-empty-tip">
+            <strong>Tip:</strong> cuando el número sea vendido podrás registrarlo como ganador
+            oficial o quitarlo si hace falta.
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <>
-      {mensaje && (
-        <p
-          className={
-            ganadorOficial
-              ? "adminpro-message-warn"
-              : resultado.existe
-              ? "adminpro-message-success"
-              : "adminpro-message-error"
-          }
-        >
-          {mensaje}
-        </p>
-      )}
+    <div className="adminpro-result-stack">
+      {mensaje ? <p className={mensajeClase}>{mensaje}</p> : null}
 
-      <div
-        className="adminpro-card"
-        style={{
-          background: ganadorOficial
-            ? "#fff7ed"
-            : resultado.existe
-            ? "#ecfdf5"
-            : "#fef2f2",
-          border: ganadorOficial
-            ? "1px solid #fdba74"
-            : resultado.existe
-            ? "1px solid #bbf7d0"
-            : "1px solid #fecaca",
-        }}
-      >
-        {ganadorOficial ? (
-          <>
-            <h3 style={{ color: "#b45309", marginBottom: "14px" }}>
-              🏆 Número ganador oficial
-            </h3>
+      <div className={`adminpro-card adminpro-winner-card adminpro-winner-${estadoKey}`}>
+        <div className="adminpro-winner-card-head">
+          <div className="adminpro-winner-title-block">
+            <div className={`adminpro-winner-icon ${estadoKey}`}>
+              {ganadorOficial ? "🏆" : resultado?.existe ? "✅" : "❌"}
+            </div>
 
-            <p style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-              Número ganador: {numeroFormateado}
-            </p>
+            <div>
+              <span className={`adminpro-winner-badge ${estadoKey}`}>
+                {ganadorOficial
+                  ? "Ganador oficial"
+                  : resultado?.existe
+                  ? "Vendido"
+                  : "No vendido"}
+              </span>
 
-            <p><strong>Estado:</strong> Ganador oficial</p>
+              <h3>{titulo}</h3>
+              <p>{descripcion}</p>
+            </div>
+          </div>
+
+          <div className="adminpro-winner-number-box">
+            <span>{ganadorOficial ? "Número ganador" : "Número consultado"}</span>
+            <strong>{numeroFormateado}</strong>
+          </div>
+        </div>
+
+        <div className="adminpro-winner-info-grid">
+          <div className="adminpro-winner-info-box">
+            <div className="adminpro-winner-info-item">
+              <span>Estado</span>
+              <strong>
+                {ganadorOficial ? "Ganador oficial" : resultado?.existe ? "Vendido" : "No vendido"}
+              </strong>
+            </div>
 
             {resultado?.compra_id && (
-              <p><strong>Compra ID:</strong> {resultado.compra_id}</p>
+              <div className="adminpro-winner-info-item">
+                <span>Compra ID</span>
+                <strong>{resultado.compra_id}</strong>
+              </div>
             )}
 
             {resultado?.sorteo?.fecha_sorteo && (
-              <p>
-                <strong>Fecha sorteo:</strong>{" "}
-                {formatearFecha?.(resultado.sorteo.fecha_sorteo) ||
-                  resultado.sorteo.fecha_sorteo}
-              </p>
+              <div className="adminpro-winner-info-item">
+                <span>Fecha sorteo</span>
+                <strong>
+                  {formatearFecha?.(resultado.sorteo.fecha_sorteo) ||
+                    resultado.sorteo.fecha_sorteo}
+                </strong>
+              </div>
             )}
 
             {resultado?.sorteo?.fuente && (
-              <p><strong>Fuente:</strong> {resultado.sorteo.fuente}</p>
+              <div className="adminpro-winner-info-item">
+                <span>Fuente</span>
+                <strong>{resultado.sorteo.fuente}</strong>
+              </div>
             )}
 
-            {resultado.usuario ? (
+            {ganadorOficial && (
+              <div className="adminpro-winner-info-item">
+                <span>Guardado</span>
+                <strong>En base de datos</strong>
+              </div>
+            )}
+          </div>
+
+          <div className="adminpro-winner-info-box">
+            {tieneUsuario ? (
               <>
-                <p><strong>Nombre:</strong> {resultado.usuario.nombre || "Sin nombre"}</p>
-                <p><strong>Email:</strong> {resultado.usuario.email || "Sin email"}</p>
-                <p><strong>Teléfono:</strong> {resultado.usuario.telefono || "Sin teléfono"}</p>
+                <div className="adminpro-winner-user-card">
+                  <div className="adminpro-winner-avatar">
+                    {String(resultado.usuario?.nombre || resultado.usuario?.email || "?")
+                      .charAt(0)
+                      .toUpperCase()}
+                  </div>
+
+                  <div className="adminpro-winner-user-main">
+                    <strong>{renderValorUsuario(resultado.usuario?.nombre)}</strong>
+                    <p>{renderValorUsuario(resultado.usuario?.email)}</p>
+                    <p>{renderValorUsuario(resultado.usuario?.telefono)}</p>
+                  </div>
+                </div>
+
+                <div className="adminpro-winner-copy-row">
+                  {resultado.usuario?.nombre && (
+                    <button
+                      type="button"
+                      className="adminpro-winner-copy-btn"
+                      onClick={() => copiarDato(resultado.usuario.nombre, "Nombre")}
+                    >
+                      📋 Nombre
+                    </button>
+                  )}
+
+                  {resultado.usuario?.email && (
+                    <button
+                      type="button"
+                      className="adminpro-winner-copy-btn"
+                      onClick={() => copiarDato(resultado.usuario.email, "Email")}
+                    >
+                      📧 Email
+                    </button>
+                  )}
+
+                  {resultado.usuario?.telefono && (
+                    <button
+                      type="button"
+                      className="adminpro-winner-copy-btn"
+                      onClick={() => copiarDato(resultado.usuario.telefono, "Teléfono")}
+                    >
+                      📞 Teléfono
+                    </button>
+                  )}
+                </div>
               </>
             ) : (
-              <p>No se encontraron los datos del usuario.</p>
+              <div className="adminpro-winner-empty-user">
+                <strong>Usuario no disponible</strong>
+                <p>
+                  {ganadorOficial
+                    ? "El ganador ya fue guardado, pero no se cargaron los datos del cliente en esta vista."
+                    : "La compra existe, pero no se pudieron cargar los datos del cliente."}
+                </p>
+              </div>
             )}
-          </>
-        ) : resultado.existe ? (
-          <>
-            <h3 style={{ color: "#166534", marginBottom: "14px" }}>
-              ✅ Número vendido
-            </h3>
+          </div>
+        </div>
 
-            <p style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-              Número consultado: {numeroFormateado}
-            </p>
-
-            <p><strong>Estado:</strong> Vendido</p>
-
-            {resultado?.compra_id && (
-              <p><strong>Compra ID:</strong> {resultado.compra_id}</p>
-            )}
-
-            {resultado.usuario ? (
-              <>
-                <p><strong>Nombre:</strong> {resultado.usuario.nombre || "Sin nombre"}</p>
-                <p><strong>Email:</strong> {resultado.usuario.email || "Sin email"}</p>
-                <p><strong>Teléfono:</strong> {resultado.usuario.telefono || "Sin teléfono"}</p>
-              </>
-            ) : (
-              <p>No se encontraron los datos del usuario.</p>
-            )}
-
+        <div className="adminpro-winner-actions">
+          {resultado?.existe && !ganadorOficial && onGuardar && (
             <button
-              className="adminpro-primary-btn"
+              className="adminpro-primary-btn adminpro-winner-main-btn"
               onClick={onGuardar}
               disabled={guardando}
               type="button"
-              style={{ marginTop: "18px" }}
             >
+              <span className="btn-icon">🏆</span>
               {guardando ? "Registrando..." : "Registrar ganador oficial"}
             </button>
-          </>
-        ) : (
-          <>
-            <h3 style={{ color: "#991b1b", marginBottom: "14px" }}>
-              ❌ Número no vendido
-            </h3>
+          )}
 
-            <p style={{ fontSize: "20px", fontWeight: "700", marginBottom: "8px" }}>
-              Número consultado: {numeroFormateado}
-            </p>
-
-            <p><strong>Estado:</strong> No vendido</p>
-          </>
-        )}
+          {ganadorOficial && onQuitar && (
+            <button
+              className="adminpro-soft-btn danger adminpro-winner-main-btn"
+              onClick={onQuitar}
+              disabled={quitando || guardando}
+              type="button"
+            >
+              <span className="btn-icon">🗑️</span>
+              {quitando ? "Quitando..." : "Quitar ganador oficial"}
+            </button>
+          )}
+        </div>
       </div>
-    </>
+    </div>
   );
 }

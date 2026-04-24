@@ -10,7 +10,9 @@ export async function POST(req) {
     const body = await req.json();
     const { rifaId, numero } = body;
 
-    if (!rifaId) {
+    const rifaIdLimpio = String(rifaId ?? "").trim();
+
+    if (!rifaIdLimpio) {
       return Response.json({ error: "Falta rifaId" }, { status: 400 });
     }
 
@@ -27,7 +29,7 @@ export async function POST(req) {
     const { data: ticketData, error: ticketError } = await supabase
       .from("tickets")
       .select("id, numero_ticket, compra_id, rifa_id")
-      .eq("rifa_id", rifaId)
+      .eq("rifa_id", rifaIdLimpio)
       .eq("numero_ticket", numeroBuscado)
       .maybeSingle();
 
@@ -48,17 +50,7 @@ export async function POST(req) {
 
     const { data: compraData, error: compraError } = await supabase
       .from("compras")
-      .select(`
-        id,
-        rifa_id,
-        usuario_id,
-        usuarios (
-          id,
-          nombre,
-          email,
-          telefono
-        )
-      `)
+      .select("id, rifa_id, usuario_id")
       .eq("id", ticketData.compra_id)
       .maybeSingle();
 
@@ -66,10 +58,26 @@ export async function POST(req) {
       return Response.json({ error: compraError.message }, { status: 500 });
     }
 
+    let usuario = null;
+
+    if (compraData?.usuario_id) {
+      const { data: usuarioData, error: usuarioError } = await supabase
+        .from("usuarios")
+        .select("id, nombre, email, telefono")
+        .eq("id", compraData.usuario_id)
+        .maybeSingle();
+
+      if (usuarioError) {
+        return Response.json({ error: usuarioError.message }, { status: 500 });
+      }
+
+      usuario = usuarioData || null;
+    }
+
     const { data: sorteoData, error: sorteoError } = await supabase
       .from("sorteos")
       .select("id, numero_ganador, numero_oficial, rifa_id, fecha_sorteo, fuente")
-      .eq("rifa_id", rifaId)
+      .eq("rifa_id", rifaIdLimpio)
       .or(`numero_ganador.eq.${numeroBuscado},numero_oficial.eq.${numeroBuscado}`)
       .maybeSingle();
 
@@ -81,7 +89,7 @@ export async function POST(req) {
       existe: true,
       numero_ticket: ticketData.numero_ticket,
       compra_id: ticketData.compra_id,
-      usuario: compraData?.usuarios || null,
+      usuario,
       sorteo: sorteoData || null,
       esGanador: Boolean(sorteoData),
     });

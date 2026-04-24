@@ -3,27 +3,31 @@
 export default function ProgressVentaBar({
   value = 0,
   soldOut = false,
+  text = "",
   className = "",
 }) {
   const porcentaje = Math.min(Math.max(Number(value) || 0, 0), 100);
 
-  const getTone = () => {
-    if (soldOut || porcentaje >= 100) return "complete";
-    if (porcentaje >= 80) return "high";
-    if (porcentaje >= 50) return "mid";
-    return "low";
-  };
-
-  const tone = getTone();
+  const estado =
+    soldOut || porcentaje >= 100
+      ? "complete"
+      : porcentaje >= 80
+      ? "high"
+      : porcentaje >= 50
+      ? "mid"
+      : "low";
 
   return (
-    <div className={["smart-progress", tone, className].filter(Boolean).join(" ")}>
-      <div className="smart-progress-head">
-        <strong className="smart-progress-value">{porcentaje.toFixed(1)}%</strong>
+    <div className={["progress-white-red", estado, className].filter(Boolean).join(" ")}>
+      <div className="progress-white-red__top">
+        <strong className="progress-white-red__value">{porcentaje.toFixed(0)}%</strong>
+        <span className="progress-white-red__text">
+          {text || (soldOut || porcentaje >= 100 ? "agotado" : "vendido")}
+        </span>
       </div>
 
       <div
-        className="smart-progress-track"
+        className="progress-white-red__track"
         role="progressbar"
         aria-valuenow={Math.round(porcentaje)}
         aria-valuemin={0}
@@ -31,7 +35,7 @@ export default function ProgressVentaBar({
         aria-label="Porcentaje de boletos vendidos"
       >
         <span
-          className="smart-progress-fill"
+          className="progress-white-red__fill"
           style={{ width: `${porcentaje}%` }}
         />
       </div>

@@ -4201,3 +4201,1079 @@ body {
     gap: 12px;
   }
 }
+/* GANADOR OFICIAL */
+.adminpro-ticket-grid .adminpro-ticket-cell.winner,
+.adminpro-ticket-grid .adminpro-ticket-cell.winner.clickable {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  color: #111827 !important;
+  border: 1px solid #fde047 !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset,
+    0 0 14px rgba(250, 204, 21, 0.55) !important;
+  font-weight: 800 !important;
+  text-shadow: none !important;
+}
+
+/* Hover del ganador */
+.adminpro-ticket-grid .adminpro-ticket-cell.winner:hover {
+  background: linear-gradient(135deg, #fde047 0%, #f59e0b 100%) !important;
+  transform: translateY(-1px);
+  filter: brightness(1.05);
+}
+
+/* Si está buscado / resaltado */
+.adminpro-ticket-grid .adminpro-ticket-cell.winner.highlighted {
+  outline: 2px solid #fff7cc !important;
+  outline-offset: 2px;
+}
+
+/* Evitar que el estilo sold pise al winner */
+.adminpro-ticket-grid .adminpro-ticket-cell.winner.sold,
+.adminpro-ticket-grid .adminpro-ticket-cell.winner.free {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  color: #111827 !important;
+}
+
+/* Leyenda */
+.legend-box.winner {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.35);
+}
+
+/* Texto del detalle cuando es ganador */
+.adminpro-raffle-detail-state .winner {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  color: #111827 !important;
+  border: 1px solid #fde047 !important;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-weight: 800;
+}
+.purchase-ticket-pill.winner {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  color: #111827 !important;
+  border: 1px solid #fde047 !important;
+  font-weight: 800;
+  box-shadow: 0 0 12px rgba(250, 204, 21, 0.45);
+}
+
+.adminpro-purchase-card.winner-card {
+  border: 1px solid #fde047;
+  box-shadow: 0 0 16px rgba(250, 204, 21, 0.18);
+}
+.adminpro-ticket-cell.winner,
+.adminpro-ticket-cell.winner.clickable,
+.purchase-ticket-pill.winner {
+  background: linear-gradient(135deg, #facc15 0%, #f59e0b 100%) !important;
+  color: #111827 !important;
+  border: 1px solid #fde047 !important;
+  box-shadow: 0 0 14px rgba(250, 204, 21, 0.45) !important;
+  font-weight: 800 !important;
+}
+
+.adminpro-purchase-card.winner-card {
+  border: 1px solid #fde047 !important;
+  box-shadow: 0 0 18px rgba(250, 204, 21, 0.18) !important;
+}
+.adminpro-actions-row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+.adminpro-soft-btn.danger {
+  background: #7f1d1d;
+  color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.adminpro-soft-btn.danger:hover {
+  background: #991b1b;
+}
+/* =========================================
+   VALIDAR GANADOR - DARK PREMIUM
+   Misma estructura, estilo oscuro
+========================================= */
+
+.adminpro-winner-card {
+  position: relative;
+  overflow: hidden;
+  border-radius: 26px;
+  padding: 22px;
+  background: linear-gradient(180deg, #171923 0%, #10131a 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.34);
+  animation: winnerCardIn 0.45s ease-out;
+}
+
+.adminpro-winner-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 26px;
+  pointer-events: none;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.04),
+    rgba(255, 255, 255, 0)
+  );
+}
+
+.adminpro-winner-card::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 5px;
+  background: linear-gradient(90deg, #475569, #64748b, #475569);
+}
+
+/* ================================
+   ESTADO DORADO OSCURO
+================================ */
+.adminpro-winner-official {
+  background: linear-gradient(180deg, #24180b 0%, #10131a 100%);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  box-shadow: 0 18px 60px rgba(245, 158, 11, 0.14);
+}
+
+.adminpro-winner-official::after {
+  background: linear-gradient(90deg, #8a5a12, #d48b12, #fbbf24, #fde68a);
+}
+
+.adminpro-winner-official .adminpro-winner-title-block h3,
+.adminpro-winner-official .adminpro-winner-title-block p,
+.adminpro-winner-official .adminpro-winner-info-item strong,
+.adminpro-winner-official .adminpro-winner-user-main strong,
+.adminpro-winner-official .adminpro-winner-user-main p,
+.adminpro-winner-official .adminpro-winner-empty-user strong,
+.adminpro-winner-official .adminpro-winner-empty-user p,
+.adminpro-winner-official .adminpro-winner-number-box strong,
+.adminpro-winner-official .adminpro-winner-number-box span {
+  color: #fffaf0;
+}
+
+.adminpro-winner-official .adminpro-winner-info-box,
+.adminpro-winner-official .adminpro-winner-user-card,
+.adminpro-winner-official .adminpro-winner-empty-user {
+  background: #18140e;
+  border: 1px solid rgba(245, 158, 11, 0.22);
+}
+
+.adminpro-winner-official .adminpro-winner-number-box {
+  background: linear-gradient(180deg, #3a260a 0%, #1c1409 100%);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #fffaf0;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.16);
+}
+
+.adminpro-winner-official .adminpro-winner-badge {
+  background: linear-gradient(180deg, #c8921c, #9a6711);
+  color: #fff7d1;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 8px 18px rgba(245, 158, 11, 0.12);
+}
+
+.adminpro-winner-official .adminpro-winner-icon {
+  background: linear-gradient(180deg, #ffd95a 0%, #f5b21b 48%, #b87408 100%);
+  color: #2a1600;
+  box-shadow: 0 12px 30px rgba(245, 158, 11, 0.28);
+}
+
+.adminpro-winner-official .adminpro-winner-info-item span {
+  color: #f0c76b;
+}
+
+.adminpro-winner-official .adminpro-winner-copy-btn {
+  background: linear-gradient(180deg, #2a1b08, #1a140e);
+  color: #ffe08a;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+/* ================================
+   ESTADO VERDE OSCURO
+================================ */
+.adminpro-winner-sold {
+  background: linear-gradient(180deg, #102019 0%, #10131a 100%);
+  border: 1px solid rgba(34, 197, 94, 0.26);
+  box-shadow: 0 18px 60px rgba(34, 197, 94, 0.08);
+}
+
+.adminpro-winner-sold::after {
+  background: linear-gradient(90deg, #1f4d34, #24663d, #4f8d67);
+}
+
+.adminpro-winner-sold .adminpro-winner-title-block h3,
+.adminpro-winner-sold .adminpro-winner-title-block p,
+.adminpro-winner-sold .adminpro-winner-info-item strong,
+.adminpro-winner-sold .adminpro-winner-user-main strong,
+.adminpro-winner-sold .adminpro-winner-user-main p,
+.adminpro-winner-sold .adminpro-winner-empty-user strong,
+.adminpro-winner-sold .adminpro-winner-empty-user p,
+.adminpro-winner-sold .adminpro-winner-number-box strong,
+.adminpro-winner-sold .adminpro-winner-number-box span {
+  color: #f8fafc;
+}
+
+.adminpro-winner-sold .adminpro-winner-info-box,
+.adminpro-winner-sold .adminpro-winner-user-card,
+.adminpro-winner-sold .adminpro-winner-empty-user {
+  background: #141b16;
+  border: 1px solid rgba(34, 197, 94, 0.16);
+}
+
+.adminpro-winner-sold .adminpro-winner-number-box {
+  background: linear-gradient(180deg, #173021 0%, #101816 100%);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  color: #f8fafc;
+}
+
+.adminpro-winner-sold .adminpro-winner-badge {
+  background: linear-gradient(180deg, #24533b, #1f4d34);
+  color: #d1fae5;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+.adminpro-winner-sold .adminpro-winner-icon {
+  background: linear-gradient(180deg, #4ade80, #24663d);
+  color: #f8fafc;
+  box-shadow: 0 10px 28px rgba(34, 197, 94, 0.2);
+}
+
+.adminpro-winner-sold .adminpro-winner-info-item span {
+  color: #cdeed8;
+}
+
+.adminpro-winner-sold .adminpro-winner-copy-btn {
+  background: #132218;
+  color: #bbf7d0;
+  border: 1px solid rgba(34, 197, 94, 0.22);
+}
+
+/* ================================
+   ESTADO ROJO OSCURO
+================================ */
+.adminpro-winner-empty {
+  background: linear-gradient(180deg, #1f1214 0%, #10131a 100%);
+  border: 1px solid rgba(239, 68, 68, 0.24);
+  box-shadow: 0 18px 60px rgba(239, 68, 68, 0.08);
+}
+
+.adminpro-winner-empty::after {
+  background: linear-gradient(90deg, #7f2d2f, #b23a3e, #d36b6f);
+}
+
+.adminpro-winner-empty .adminpro-winner-title-block h3,
+.adminpro-winner-empty .adminpro-winner-title-block p,
+.adminpro-winner-empty .adminpro-winner-info-item strong,
+.adminpro-winner-empty .adminpro-winner-user-main strong,
+.adminpro-winner-empty .adminpro-winner-user-main p,
+.adminpro-winner-empty .adminpro-winner-empty-user strong,
+.adminpro-winner-empty .adminpro-winner-empty-user p,
+.adminpro-winner-empty .adminpro-winner-number-box strong,
+.adminpro-winner-empty .adminpro-winner-number-box span {
+  color: #f8fafc;
+}
+
+.adminpro-winner-empty .adminpro-winner-info-box,
+.adminpro-winner-empty .adminpro-winner-user-card,
+.adminpro-winner-empty .adminpro-winner-empty-user {
+  background: #17131a;
+  border: 1px solid rgba(239, 68, 68, 0.16);
+}
+
+.adminpro-winner-empty .adminpro-winner-number-box {
+  background: linear-gradient(180deg, #2a1718 0%, #161117 100%);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  color: #f8fafc;
+}
+
+.adminpro-winner-empty .adminpro-winner-badge {
+  background: linear-gradient(180deg, #7f2d2f, #5b2225);
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+.adminpro-winner-empty .adminpro-winner-icon {
+  background: linear-gradient(180deg, #f87171, #dc2626);
+  color: #fff1f2;
+  box-shadow: 0 10px 28px rgba(239, 68, 68, 0.2);
+}
+
+.adminpro-winner-empty .adminpro-winner-info-item span {
+  color: #fecaca;
+}
+
+.adminpro-winner-empty .adminpro-winner-copy-btn {
+  background: #231416;
+  color: #fecaca;
+  border: 1px solid rgba(239, 68, 68, 0.22);
+}
+
+/* ================================
+   SIN RESULTADO
+================================ */
+.adminpro-winner-empty-card {
+  background: linear-gradient(180deg, #141420 0%, #0b1020 100%);
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  text-align: center;
+  gap: 10px;
+  animation: winnerCardIn 0.45s ease-out;
+}
+
+.adminpro-winner-empty-emoji {
+  width: 74px;
+  height: 74px;
+  border-radius: 22px;
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  background: linear-gradient(180deg, #1f2937, #0f172a);
+  color: #fbbf24;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+  animation: winnerFloat 3s ease-in-out infinite;
+}
+
+.adminpro-winner-empty-card h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.25rem;
+}
+
+.adminpro-winner-empty-card p {
+  margin: 0;
+  max-width: 560px;
+  color: #cbd5e1;
+  line-height: 1.6;
+}
+
+.adminpro-winner-empty-tip {
+  margin-top: 6px;
+  padding: 14px 16px;
+  border-radius: 16px;
+  background: #111827;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  color: #f8fafc;
+  line-height: 1.5;
+}
+
+/* ================================
+   ESTRUCTURA GENERAL
+================================ */
+.adminpro-winner-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: flex-start;
+  margin-bottom: 18px;
+}
+
+.adminpro-winner-title-block {
+  display: flex;
+  gap: 14px;
+  align-items: flex-start;
+  min-width: 0;
+}
+
+.adminpro-winner-icon {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 1.45rem;
+  flex: 0 0 56px;
+  animation: winnerPulse 2.8s ease-in-out infinite;
+}
+
+.adminpro-winner-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 8px 13px;
+  border-radius: 999px;
+  margin-bottom: 8px;
+}
+
+.adminpro-winner-title-block h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.35rem;
+  line-height: 1.15;
+}
+
+.adminpro-winner-title-block p {
+  margin: 8px 0 0;
+  color: rgba(226, 232, 240, 0.82);
+  line-height: 1.5;
+}
+
+.adminpro-winner-number-box {
+  min-width: 168px;
+  text-align: center;
+  padding: 16px 18px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.14);
+  animation: winnerFloat 3.2s ease-in-out infinite;
+}
+
+.adminpro-winner-number-box span {
+  display: block;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.adminpro-winner-number-box strong {
+  display: block;
+  font-size: 2.3rem;
+  font-weight: 900;
+  line-height: 1;
+  letter-spacing: 0.1em;
+  color: #fff;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 18px rgba(255, 255, 255, 0.06);
+}
+
+.adminpro-winner-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.adminpro-winner-info-box {
+  border-radius: 18px;
+  padding: 16px;
+  background: #121722;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  display: grid;
+  gap: 10px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+}
+
+.adminpro-winner-info-item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.adminpro-winner-info-item:last-child {
+  padding-bottom: 0;
+  border-bottom: 0;
+}
+
+.adminpro-winner-info-item span {
+  color: #94a3b8;
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  flex: 0 0 auto;
+  font-weight: 800;
+}
+
+.adminpro-winner-info-item strong {
+  color: #f8fafc;
+  text-align: right;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.adminpro-winner-user-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: #121722;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.adminpro-winner-avatar {
+  width: 54px;
+  height: 54px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  font-weight: 900;
+  color: #fff;
+  background: linear-gradient(180deg, #7c3aed, #2563eb);
+  box-shadow: 0 10px 26px rgba(37, 99, 235, 0.18);
+  flex: 0 0 54px;
+  animation: winnerPulse 3.2s ease-in-out infinite;
+}
+
+.adminpro-winner-user-main {
+  display: grid;
+  gap: 4px;
+}
+
+.adminpro-winner-user-main strong {
+  color: #f8fafc;
+  font-size: 1rem;
+}
+
+.adminpro-winner-user-main p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.45;
+}
+
+.adminpro-winner-empty-user {
+  padding: 14px;
+  border-radius: 16px;
+  background: #111827;
+  border: 1px dashed rgba(148, 163, 184, 0.18);
+  display: grid;
+  gap: 6px;
+}
+
+.adminpro-winner-empty-user strong {
+  color: #f8fafc;
+}
+
+.adminpro-winner-empty-user p {
+  margin: 0;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.adminpro-winner-copy-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.adminpro-winner-copy-btn {
+  border-radius: 999px;
+  padding: 9px 14px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.adminpro-winner-copy-btn:hover {
+  transform: translateY(-1px) scale(1.02);
+  filter: brightness(1.05);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.16);
+}
+
+.adminpro-winner-actions {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 6px;
+  padding-top: 6px;
+}
+
+.adminpro-winner-main-btn {
+  min-width: 250px;
+  min-height: 48px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.adminpro-winner-main-btn .btn-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.adminpro-primary-btn.adminpro-winner-main-btn {
+  background: linear-gradient(180deg, #16a34a, #15803d);
+  box-shadow: 0 12px 28px rgba(22, 163, 74, 0.22);
+  color: #fff;
+}
+
+.adminpro-primary-btn.adminpro-winner-main-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+.adminpro-soft-btn.danger.adminpro-winner-main-btn {
+  background: linear-gradient(180deg, #ef4444, #b91c1c);
+  box-shadow: 0 12px 28px rgba(239, 68, 68, 0.18);
+  color: #fff;
+}
+
+.adminpro-soft-btn.danger.adminpro-winner-main-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
+}
+
+/* ================================
+   MENSAJES
+================================ */
+.adminpro-message-success,
+.adminpro-message-warn,
+.adminpro-message-error {
+  border-radius: 14px;
+  padding: 12px 14px;
+  font-weight: 800;
+  margin-bottom: 12px;
+  animation: winnerMessageIn 0.35s ease-out;
+}
+
+.adminpro-message-success {
+  background: #132218;
+  color: #bbf7d0;
+  border: 1px solid #23442f;
+}
+
+.adminpro-message-warn {
+  background: #2c2416;
+  color: #fde68a;
+  border: 1px solid #5b4420;
+}
+
+.adminpro-message-error {
+  background: #231416;
+  color: #fecaca;
+  border: 1px solid #5a2225;
+}
+
+/* ================================
+   ANIMACIONES
+================================ */
+@keyframes winnerCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes winnerPulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+
+@keyframes winnerFloat {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+
+@keyframes winnerMessageIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ================================
+   RESPONSIVE
+================================ */
+@media (max-width: 980px) {
+  .adminpro-winner-card-head {
+    flex-direction: column;
+  }
+
+  .adminpro-winner-number-box {
+    width: 100%;
+  }
+
+  .adminpro-winner-info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .adminpro-winner-card {
+    padding: 18px;
+  }
+
+  .adminpro-winner-title-block {
+    gap: 12px;
+  }
+
+  .adminpro-winner-icon {
+    width: 52px;
+    height: 52px;
+    flex-basis: 52px;
+  }
+
+  .adminpro-winner-number-box strong {
+    font-size: 2rem;
+  }
+
+  .adminpro-winner-main-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}
+/* =========================================
+   SWEETALERT EDITAR RIFA - DARK PREMIUM
+========================================= */
+
+.swal-edit-rifa-popup {
+  background: linear-gradient(180deg, #161820 0%, #0f1117 100%) !important;
+  color: #f8fafc !important;
+  border: 1px solid rgba(148, 163, 184, 0.14) !important;
+  border-radius: 26px !important;
+  box-shadow: 0 35px 100px rgba(0, 0, 0, 0.45) !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+}
+
+.swal-edit-rifa-title {
+  color: #fff !important;
+  font-size: 1.7rem !important;
+  font-weight: 900 !important;
+  padding: 24px 26px 0 !important;
+  margin: 0 !important;
+}
+
+.swal-edit-rifa-html {
+  margin: 0 !important;
+  padding: 18px 26px 0 !important;
+}
+
+.swal-edit-rifa-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 18px;
+  padding-bottom: 10px;
+}
+
+.swal-edit-rifa-panel,
+.swal-edit-rifa-preview {
+  background: #121520;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  border-radius: 22px;
+  padding: 18px;
+}
+
+.swal-edit-rifa-panel-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.swal-edit-rifa-panel-head h3 {
+  margin: 0;
+  color: #fff;
+  font-size: 1.1rem;
+}
+
+.swal-edit-rifa-panel-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 7px 12px;
+  border-radius: 999px;
+  background: #1f2937;
+  color: #fbbf24;
+  font-size: 0.78rem;
+  font-weight: 800;
+  border: 1px solid rgba(245, 158, 11, 0.18);
+}
+
+.swal-edit-rifa-panel-badge.dark {
+  background: #151923;
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+.swal-edit-rifa-field {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.swal-edit-rifa-field label {
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+}
+
+.swal-edit-rifa-input,
+.swal-edit-rifa-textarea {
+  width: 100%;
+  border-radius: 16px !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  background: #0f131b !important;
+  color: #f8fafc !important;
+  padding: 14px 16px !important;
+  outline: none !important;
+  font-size: 0.98rem !important;
+  box-shadow: none !important;
+}
+
+.swal-edit-rifa-textarea {
+  min-height: 120px;
+  resize: vertical;
+}
+
+.swal-edit-rifa-input:focus,
+.swal-edit-rifa-textarea:focus {
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12) !important;
+}
+
+.swal-edit-rifa-input::placeholder,
+.swal-edit-rifa-textarea::placeholder {
+  color: #64748b !important;
+}
+
+.swal-edit-rifa-switches {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.swal-edit-rifa-switch {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+  border-radius: 18px;
+  background: #0f131b;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+  cursor: pointer;
+  user-select: none;
+}
+
+.swal-edit-rifa-switch input {
+  display: none;
+}
+
+.swal-edit-rifa-switch-track {
+  width: 54px;
+  height: 30px;
+  border-radius: 999px;
+  background: #334155;
+  border: 1px solid rgba(148, 163, 184, 0.16);
+  position: relative;
+  flex: 0 0 54px;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.swal-edit-rifa-switch-thumb {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: #fff;
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.18s ease, background 0.18s ease;
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.2);
+}
+
+.swal-edit-rifa-switch input:checked + .swal-edit-rifa-switch-track {
+  background: linear-gradient(180deg, #16a34a, #15803d);
+  border-color: rgba(34, 197, 94, 0.25);
+}
+
+.swal-edit-rifa-switch input:checked + .swal-edit-rifa-switch-track .swal-edit-rifa-switch-thumb {
+  transform: translateX(24px);
+}
+
+.swal-edit-rifa-switch div strong {
+  display: block;
+  color: #f8fafc;
+  font-size: 0.95rem;
+}
+
+.swal-edit-rifa-switch div p {
+  margin: 2px 0 0;
+  color: #94a3b8;
+  font-size: 0.86rem;
+}
+
+.swal-edit-rifa-sidebar {
+  display: grid;
+  gap: 18px;
+}
+
+.swal-edit-rifa-preview {
+  background: linear-gradient(180deg, #10151f 0%, #0f1117 100%);
+}
+
+.swal-edit-rifa-preview-kicker {
+  margin: 0 0 8px;
+  color: #94a3b8;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.swal-edit-rifa-preview h4 {
+  margin: 0 0 8px;
+  font-size: 1.2rem;
+  color: #fff;
+}
+
+.swal-edit-rifa-preview-text {
+  margin: 0 0 16px;
+  color: #cbd5e1;
+  line-height: 1.55;
+}
+
+.swal-edit-rifa-preview-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.swal-edit-rifa-preview-grid > div {
+  padding: 12px;
+  border-radius: 16px;
+  background: #121722;
+  border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.swal-edit-rifa-preview-grid span {
+  display: block;
+  font-size: 0.76rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  margin-bottom: 6px;
+  font-weight: 800;
+}
+
+.swal-edit-rifa-preview-grid strong {
+  color: #fff;
+  line-height: 1.35;
+}
+
+.swal-edit-rifa-preview-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.swal-edit-rifa-preview-badges span {
+  display: inline-flex;
+  align-items: center;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  background: #1f2937;
+  color: #cbd5e1;
+  border: 1px solid rgba(148, 163, 184, 0.12);
+}
+
+.swal-edit-rifa-preview-badges span.active {
+  background: rgba(34, 197, 94, 0.12);
+  color: #bbf7d0;
+  border-color: rgba(34, 197, 94, 0.18);
+}
+
+.swal-edit-rifa-preview-badges span.highlight {
+  background: rgba(245, 158, 11, 0.12);
+  color: #fde68a;
+  border-color: rgba(245, 158, 11, 0.18);
+}
+
+.swal-edit-rifa-actions {
+  padding: 0 26px 24px !important;
+  gap: 12px !important;
+  justify-content: flex-end !important;
+  margin: 0 !important;
+}
+
+.swal-edit-rifa-confirm {
+  background: linear-gradient(180deg, #2563eb, #1d4ed8) !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 12px 18px !important;
+  font-weight: 800 !important;
+  box-shadow: 0 12px 28px rgba(37, 99, 235, 0.2) !important;
+}
+
+.swal-edit-rifa-cancel {
+  background: #4b5563 !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 12px 18px !important;
+  font-weight: 800 !important;
+  color: #fff !important;
+}
+
+@media (max-width: 980px) {
+  .swal-edit-rifa-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .swal-edit-rifa-popup {
+    width: calc(100vw - 18px) !important;
+    border-radius: 22px !important;
+  }
+
+  .swal-edit-rifa-title {
+    font-size: 1.4rem !important;
+    padding: 18px 18px 0 !important;
+  }
+
+  .swal-edit-rifa-html {
+    padding: 14px 18px 0 !important;
+  }
+
+  .swal-edit-rifa-actions {
+    padding: 0 18px 18px !important;
+    flex-direction: column-reverse !important;
+  }
+
+  .swal-edit-rifa-confirm,
+  .swal-edit-rifa-cancel {
+    width: 100% !important;
+  }
+
+  .swal-edit-rifa-preview-grid {
+    grid-template-columns: 1fr;
+  }
+}
