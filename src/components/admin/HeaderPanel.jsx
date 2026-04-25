@@ -1,5 +1,7 @@
 "use client";
 
+import RifaSearchSelect from "./RifaSearchSelect";
+
 function IconRefresh() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="adminpro-header-icon">
@@ -33,38 +35,35 @@ export default function HeaderPanel({
 
   const estado = String(rifaSeleccionada?.estado || "").toLowerCase();
 
-  const estadoLabel = {
-    activa: "ACTIVA",
-    cerrada: "CERRADA",
-    finalizada: "FINALIZADA",
-    borrador: "BORRADOR",
-    inactiva: "INACTIVA",
-  }[estado] || "SIN RIFA";
+  const estadoLabel =
+    {
+      activa: "ACTIVA",
+      cerrada: "CERRADA",
+      finalizada: "FINALIZADA",
+      borrador: "BORRADOR",
+      inactiva: "INACTIVA",
+      agotada: "AGOTADA",
+    }[estado] || "SIN RIFA";
 
-  const estadoClase = {
-    activa: "activa",
-    cerrada: "cerrada",
-    finalizada: "finalizada",
-    borrador: "borrador",
-    inactiva: "inactiva",
-  }[estado] || "default";
+  const estadoClase =
+    {
+      activa: "activa",
+      cerrada: "cerrada",
+      finalizada: "finalizada",
+      borrador: "borrador",
+      inactiva: "inactiva",
+      agotada: "agotada",
+    }[estado] || "default";
 
   return (
     <section className="adminpro-header adminpro-header-premium">
       <div className="adminpro-header-left">
         <div className="adminpro-header-select-wrap">
-          <select
-            value={rifaSeleccionadaId}
-            onChange={(e) => setRifaSeleccionadaId(e.target.value)}
-            className="adminpro-header-select"
-          >
-            <option value="">Selecciona una rifa</option>
-            {rifas.map((rifa) => (
-              <option key={rifa.id} value={rifa.id}>
-                {rifa.nombre} - {rifa.estado}
-              </option>
-            ))}
-          </select>
+          <RifaSearchSelect
+            rifas={rifas}
+            rifaSeleccionadaId={rifaSeleccionadaId}
+            setRifaSeleccionadaId={setRifaSeleccionadaId}
+          />
         </div>
 
         <div className={`adminpro-header-status ${estadoClase}`}>
@@ -83,11 +82,6 @@ export default function HeaderPanel({
           <IconRefresh />
           {dataLoading ? "Actualizando..." : "Actualizar"}
         </button>
-
-        <div className="adminpro-header-panelinfo">
-          <strong>Panel de Control</strong>
-          <small>v24.3.1 • LIVE</small>
-        </div>
       </div>
     </section>
   );
