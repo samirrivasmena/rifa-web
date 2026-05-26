@@ -15,12 +15,16 @@ import { getRifaProgress } from "@/lib/getRifaProgress";
 export default function PrincipalPageClient() {
   const [rifas, setRifas] = useState([]);
   const [loadingRifas, setLoadingRifas] = useState(true);
+  // CORRECCIÓN #5: estado de error de red separado
+  const [errorRed, setErrorRed] = useState(false);
   const [verificarEmail, setVerificarEmail] = useState("");
   const [showVerifyModal, setShowVerifyModal] = useState(false);
+  // CORRECCIÓN #5: rifaActiva se deriva de las rifas ya cargadas, sin fetch extra
   const [rifaActiva, setRifaActiva] = useState(null);
 
+  // CORRECCIÓN #8: paginación de 3 en lugar de 1
   const [paginaFinalizados, setPaginaFinalizados] = useState(1);
-  const itemsPorPaginaFinalizados = 1;
+  const itemsPorPaginaFinalizados = 3;
 
   const swalConfig = {
     background: "#1f1f1f",
@@ -123,10 +127,12 @@ export default function PrincipalPageClient() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
+  // CORRECCIÓN #5: un solo fetch, rifaActiva se deriva de los datos cargados
   useEffect(() => {
     const cargarRifas = async () => {
       try {
         setLoadingRifas(true);
+        setErrorRed(false);
 
         const res = await fetch("/api/rifas-publicas", {
           method: "GET",
@@ -141,59 +147,36 @@ export default function PrincipalPageClient() {
         } catch {
           console.error("Respuesta inválida en /api/rifas-publicas");
           setRifas([]);
+          setErrorRed(true);
           return;
         }
 
         if (!res.ok) {
           console.error(data.error || "No se pudieron cargar las rifas");
           setRifas([]);
+          // CORRECCIÓN #7: distinguir error de red vs lista vacía
+          setErrorRed(true);
           return;
         }
 
-        setRifas(Array.isArray(data.rifas) ? data.rifas : []);
+        const lista = Array.isArray(data.rifas) ? data.rifas : [];
+        setRifas(lista);
+
+        // Derivar rifaActiva del mismo fetch
+        const activa = lista.find(
+          (r) => String(r.estado || "").toLowerCase() === "activa"
+        );
+        setRifaActiva(activa || null);
       } catch (error) {
         console.error("Error cargando rifas:", error);
         setRifas([]);
+        setErrorRed(true);
       } finally {
         setLoadingRifas(false);
       }
     };
 
     cargarRifas();
-  }, []);
-
-  useEffect(() => {
-    const cargarRifaActiva = async () => {
-      try {
-        const res = await fetch("/api/rifa-activa", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const raw = await res.text();
-        let data;
-
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          console.error("Respuesta inválida en /api/rifa-activa");
-          setRifaActiva(null);
-          return;
-        }
-
-        if (!res.ok) {
-          setRifaActiva(null);
-          return;
-        }
-
-        setRifaActiva(data.rifa || null);
-      } catch (error) {
-        console.error("Error cargando rifa activa:", error);
-        setRifaActiva(null);
-      }
-    };
-
-    cargarRifaActiva();
   }, []);
 
   const rifasPublicadas = useMemo(() => {
@@ -308,22 +291,22 @@ export default function PrincipalPageClient() {
                 disciplina, esfuerzo y la decisión firme de nunca RENDIRSE🛑.
               </p>
 
-<div className="principal-actions hero-actions">
-  <Link href="/" className="principal-red-btn">
-    COMPRAR AHORA
-  </Link>
+              <div className="principal-actions hero-actions">
+                <Link href="/" className="principal-red-btn">
+                  COMPRAR AHORA
+                </Link>
 
-  <Link
-    href={
-      primerEventoDisponible?.id
-        ? `/evento/${primerEventoDisponible.id}`
-        : "/principal#eventos-disponibles"
-    }
-    className="principal-white-btn"
-  >
-    ENTRAR AL EVENTO
-  </Link>
-</div>
+                <Link
+                  href={
+                    primerEventoDisponible?.id
+                      ? `/evento/${primerEventoDisponible.id}`
+                      : "/principal#eventos-disponibles"
+                  }
+                  className="principal-white-btn"
+                >
+                  ENTRAR AL EVENTO
+                </Link>
+              </div>
             </div>
           </div>
         </section>
@@ -337,7 +320,24 @@ export default function PrincipalPageClient() {
             <h2>DISPONIBLES</h2>
           </div>
 
-          {loadingRifas ? (
+          {/* CORRECCIÓN #7: mensaje diferenciado para error de red */}
+          {errorRed ? (
+            <div className="principal-empty-box premium">
+              <div className="principal-empty-icon">⚠️</div>
+              <h3>Error al cargar eventos</h3>
+              <p>
+                No se pudieron cargar los eventos en este momento. Verifica tu
+                conexión e intenta recargar la página.
+              </p>
+              <button
+                type="button"
+                className="principal-red-btn"
+                onClick={() => window.location.reload()}
+              >
+                Recargar página
+              </button>
+            </div>
+          ) : loadingRifas ? (
             <div className="principal-loading-state-grid">
               {[1, 2].map((item) => (
                 <div key={item} className="principal-skeleton-card">
@@ -791,28 +791,29 @@ export default function PrincipalPageClient() {
             <div className="principal-footer-col">
               <h3>ACCESOS</h3>
 
-<div className="principal-footer-links">
-  <a href="/principal#inicio" className="principal-footer-link">
-    Inicio
-  </a>
-  <a href="/principal#eventos-disponibles" className="principal-footer-link">
-    Eventos
-  </a>
-  <a href="/principal#resultados-oficiales" className="principal-footer-link">
-    Resultados
-  </a>
-  <a href="/principal#pagos" className="principal-footer-link">
-    Pagos
-  </a>
-  <a href="/principal#contacto" className="principal-footer-link">
-    Contacto
-  </a>
-</div>
+              <div className="principal-footer-links">
+                <a href="/principal#inicio" className="principal-footer-link">
+                  Inicio
+                </a>
+                <a href="/principal#eventos-disponibles" className="principal-footer-link">
+                  Eventos
+                </a>
+                <a href="/principal#resultados-oficiales" className="principal-footer-link">
+                  Resultados
+                </a>
+                <a href="/principal#pagos" className="principal-footer-link">
+                  Pagos
+                </a>
+                <a href="/principal#contacto" className="principal-footer-link">
+                  Contacto
+                </a>
+              </div>
             </div>
           </div>
         </footer>
       </main>
 
+      {/* CORRECCIÓN #4: modal de verificar muestra mensaje claro si no hay rifaActiva */}
       <VerifyTicketsModal
         open={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}

@@ -36,6 +36,19 @@ function mezclarSeguro(array) {
   return arr;
 }
 
+function limpiarTexto(valor) {
+  return String(valor || "").trim();
+}
+
+function validarId(valor) {
+  const id = limpiarTexto(valor);
+  return Boolean(id) && /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 100;
+}
+
+function errorResponse(mensaje, status = 400) {
+  return NextResponse.json({ error: mensaje }, { status });
+}
+
 async function obtenerDatosCliente(compra) {
   let nombreCliente = "cliente";
   let emailDestino = "";
@@ -64,6 +77,40 @@ async function obtenerDatosCliente(compra) {
   return { nombreCliente, emailDestino };
 }
 
+async function rollbackAprobacion({
+  compraId,
+  estadoAnteriorCompra,
+  rifaIdOriginal,
+  ticketIds = [],
+}) {
+  const errores = [];
+
+  if (ticketIds.length > 0) {
+    const { error: deleteTicketsError } = await supabaseAdmin
+      .from("tickets")
+      .delete()
+      .in("id", ticketIds);
+
+    if (deleteTicketsError) {
+      errores.push(deleteTicketsError.message || "No se pudieron eliminar los tickets");
+    }
+  }
+
+  const { error: rollbackCompraError } = await supabaseAdmin
+    .from("compras")
+    .update({
+      estado_pago: estadoAnteriorCompra,
+      rifa_id: rifaIdOriginal || null,
+    })
+    .eq("id", compraId);
+
+  if (rollbackCompraError) {
+    errores.push(rollbackCompraError.message || "No se pudo revertir la compra");
+  }
+
+  return errores;
+}
+
 export async function POST(req) {
   const auth = await requireAdmin(req);
 
@@ -75,133 +122,107 @@ export async function POST(req) {
   }
 
   try {
-    const body = await req.json();
-    const { compraId } = body;
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("Cuerpo de la solicitud inválido", 400);
+    }
 
-    if (!compraId) {
-      return NextResponse.json(
-        { error: "Falta el ID de la compra" },
-        { status: 400 }
-      );
+    const { compraId } = body;
+    const compraIdLimpio = limpiarTexto(compraId);
+
+    if (!validarId(compraIdLimpio)) {
+      return errorResponse("Falta el ID de la compra", 400);
     }
 
     const { data: compra, error: compraError } = await supabaseAdmin
       .from("compras")
-      .select("id, usuario_id, estado_pago, cantidad_tickets, monto_total, rifa_id")
-      .eq("id", compraId)
+      .select("id, usuario_id, estado_pago, cantidad_tickets, monto_total, rifa_id, referencia")
+      .eq("id", compraIdLimpio)
       .maybeSingle();
 
     if (compraError) {
-      return NextResponse.json(
-        { error: compraError.message },
-        { status: 500 }
-      );
+      console.error("Error consultando compra:", compraError);
+      return errorResponse("No se pudo consultar la compra", 500);
     }
 
     if (!compra) {
-      return NextResponse.json(
-        { error: "La compra no existe" },
-        { status: 404 }
-      );
+      return errorResponse("La compra no existe", 404);
     }
 
     if (compra.estado_pago === "aprobado") {
-      return NextResponse.json(
-        { error: "La compra ya fue aprobada" },
-        { status: 400 }
-      );
+      return errorResponse("La compra ya fue aprobada", 400);
     }
 
     if (compra.estado_pago === "rechazado") {
-      return NextResponse.json(
-        { error: "La compra fue rechazada y no puede aprobarse" },
-        { status: 400 }
-      );
+      return errorResponse("La compra fue rechazada y no puede aprobarse", 400);
     }
 
     const cantidadTickets = Number(compra.cantidad_tickets) || 0;
 
-    if (cantidadTickets <= 0) {
-      return NextResponse.json(
-        { error: "La compra no tiene una cantidad válida de tickets" },
-        { status: 400 }
-      );
+    if (!Number.isInteger(cantidadTickets) || cantidadTickets <= 0) {
+      return errorResponse("La compra no tiene una cantidad válida de tickets", 400);
     }
+
+    const estadoAnteriorCompra = compra.estado_pago || "pendiente";
+    const rifaIdOriginal = compra.rifa_id || null;
 
     let rifaId = compra.rifa_id;
 
     if (!rifaId) {
       const { data: rifaActiva, error: rifaActivaError } = await supabaseAdmin
         .from("rifas")
-        .select("*")
+        .select("id, estado, cantidad_numeros, total_tickets, numeros_totales, precio_ticket, numero_inicio, numero_fin, formato, nombre, descripcion, portada_url, portada_scroll_url, fecha_sorteo, fecha, fecha_rifa, hora_sorteo, hora, hora_rifa")
         .eq("estado", "activa")
         .limit(1)
         .maybeSingle();
 
       if (rifaActivaError) {
-        return NextResponse.json(
-          { error: rifaActivaError.message },
-          { status: 500 }
-        );
+        console.error("Error buscando rifa activa:", rifaActivaError);
+        return errorResponse("No se pudo buscar una rifa activa", 500);
       }
 
       if (!rifaActiva) {
-        return NextResponse.json(
-          { error: "No hay una rifa activa disponible" },
-          { status: 400 }
-        );
+        return errorResponse("No hay una rifa activa disponible", 400);
       }
 
       rifaId = rifaActiva.id;
-
-      const { error: updateCompraRifaError } = await supabaseAdmin
-        .from("compras")
-        .update({ rifa_id: rifaId })
-        .eq("id", compra.id);
-
-      if (updateCompraRifaError) {
-        return NextResponse.json(
-          { error: updateCompraRifaError.message },
-          { status: 500 }
-        );
-      }
     }
 
     const { data: rifa, error: rifaError } = await supabaseAdmin
       .from("rifas")
-      .select("*")
+      .select("id, estado, cantidad_numeros, total_tickets, numeros_totales, precio_ticket, numero_inicio, numero_fin, formato, nombre, descripcion, portada_url, portada_scroll_url, fecha_sorteo, fecha, fecha_rifa, hora_sorteo, hora, hora_rifa")
       .eq("id", rifaId)
       .maybeSingle();
 
     if (rifaError) {
-      return NextResponse.json(
-        { error: rifaError.message },
-        { status: 500 }
-      );
+      console.error("Error consultando rifa:", rifaError);
+      return errorResponse("No se pudo consultar la rifa asociada", 500);
     }
 
     if (!rifa) {
-      return NextResponse.json(
-        { error: "La rifa asociada no existe" },
-        { status: 404 }
-      );
+      return errorResponse("La rifa asociada no existe", 404);
     }
 
     const estadoRifa = String(rifa.estado || "").toLowerCase();
 
     if (!["activa", "disponible", "publicada"].includes(estadoRifa)) {
-      return NextResponse.json(
-        { error: "La rifa no está disponible para aprobar compras automáticamente" },
-        { status: 400 }
+      return errorResponse(
+        "La rifa no está disponible para aprobar compras automáticamente",
+        400
       );
     }
 
-    const numeroInicio = Number.isFinite(Number(rifa.numero_inicio))
-      ? Number(rifa.numero_inicio)
+    const numeroInicioRaw = Number(rifa.numero_inicio);
+    const numeroFinRaw = Number(rifa.numero_fin);
+
+    const numeroInicio = Number.isInteger(numeroInicioRaw)
+      ? numeroInicioRaw
       : 0;
 
-    const numeroFin = Number.isFinite(Number(rifa.numero_fin))
-      ? Number(rifa.numero_fin)
+    const numeroFin = Number.isInteger(numeroFinRaw)
+      ? numeroFinRaw
       : String(rifa.formato) === "3digitos"
       ? 999
       : 9999;
@@ -211,21 +232,23 @@ export async function POST(req) {
       !Number.isInteger(numeroFin) ||
       numeroFin < numeroInicio
     ) {
-      return NextResponse.json(
-        { error: "La rifa no tiene un rango de números válido" },
-        { status: 400 }
-      );
+      return errorResponse("La rifa no tiene un rango de números válido", 400);
     }
 
     const padLength = String(rifa.formato) === "3digitos" ? 3 : 4;
+
     const totalNumerosConfigurados = Number(
-      rifa.cantidad_numeros ?? numeroFin - numeroInicio + 1
+      rifa.cantidad_numeros ?? rifa.total_tickets ?? rifa.numeros_totales ?? 0
     );
 
     const totalNumeros =
       Number.isFinite(totalNumerosConfigurados) && totalNumerosConfigurados > 0
         ? totalNumerosConfigurados
         : numeroFin - numeroInicio + 1;
+
+    if (totalNumeros <= 0) {
+      return errorResponse("La rifa no tiene una cantidad de números válida", 400);
+    }
 
     const { data: ticketsExistentes, error: ticketsExistentesError } =
       await supabaseAdmin
@@ -234,15 +257,11 @@ export async function POST(req) {
         .eq("rifa_id", rifa.id);
 
     if (ticketsExistentesError) {
-      return NextResponse.json(
-        { error: ticketsExistentesError.message },
-        { status: 500 }
-      );
+      console.error("Error consultando tickets existentes:", ticketsExistentesError);
+      return errorResponse("No se pudo validar la disponibilidad de números", 500);
     }
 
-    const ticketsActuales = Array.isArray(ticketsExistentes)
-      ? ticketsExistentes
-      : [];
+    const ticketsActuales = Array.isArray(ticketsExistentes) ? ticketsExistentes : [];
     const ticketsVendidosAntes = ticketsActuales.length;
 
     if (ticketsVendidosAntes >= totalNumeros) {
@@ -252,26 +271,22 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateAgotadaError) {
-        return NextResponse.json(
-          { error: updateAgotadaError.message },
-          { status: 500 }
-        );
+        console.error("Error marcando rifa como agotada:", updateAgotadaError);
+        return errorResponse("No se pudo actualizar el estado de la rifa", 500);
       }
 
-      return NextResponse.json(
-        { error: "La rifa ya alcanzó el 100% y no tiene números disponibles" },
-        { status: 409 }
+      return errorResponse(
+        "La rifa ya alcanzó el 100% y no tiene números disponibles",
+        409
       );
     }
 
     const disponiblesRestantesAntes = totalNumeros - ticketsVendidosAntes;
 
     if (cantidadTickets > disponiblesRestantesAntes) {
-      return NextResponse.json(
-        {
-          error: `No hay suficientes números disponibles. Solo quedan ${disponiblesRestantesAntes} ticket(s)`,
-        },
-        { status: 409 }
+      return errorResponse(
+        `No hay suficientes números disponibles. Solo quedan ${disponiblesRestantesAntes} ticket(s)`,
+        409
       );
     }
 
@@ -281,19 +296,13 @@ export async function POST(req) {
 
     const disponibles = [];
     for (let i = numeroInicio; i <= numeroFin; i++) {
-      if (!numerosOcupados.has(i)) {
-        disponibles.push(i);
-      }
+      if (!numerosOcupados.has(i)) disponibles.push(i);
     }
 
     if (disponibles.length < cantidadTickets) {
-      return NextResponse.json(
-        { error: "No hay suficientes números disponibles en esta rifa" },
-        { status: 400 }
-      );
+      return errorResponse("No hay suficientes números disponibles en esta rifa", 400);
     }
 
-    // Aleatorización real y uniforme
     const disponiblesMezclados = mezclarSeguro(disponibles);
     const seleccionados = disponiblesMezclados.slice(0, cantidadTickets);
 
@@ -306,12 +315,13 @@ export async function POST(req) {
     const { data: nuevosTickets, error: insertTicketsError } = await supabaseAdmin
       .from("tickets")
       .insert(ticketsParaInsertar)
-      .select();
+      .select("id, numero_ticket, compra_id, rifa_id");
 
-    if (insertTicketsError) {
-      return NextResponse.json(
-        { error: insertTicketsError.message },
-        { status: 500 }
+    if (insertTicketsError || !nuevosTickets) {
+      console.error("Error insertando tickets:", insertTicketsError);
+      return errorResponse(
+        insertTicketsError?.message || "No se pudieron asignar los tickets",
+        500
       );
     }
 
@@ -324,15 +334,23 @@ export async function POST(req) {
       .eq("id", compra.id);
 
     if (aprobarCompraError) {
-      return NextResponse.json(
-        { error: aprobarCompraError.message },
-        { status: 500 }
+      console.error("Error aprobando compra:", aprobarCompraError);
+
+      const rollbackErrors = await rollbackAprobacion({
+        compraId: compra.id,
+        estadoAnteriorCompra,
+        rifaIdOriginal,
+        ticketIds: nuevosTickets.map((t) => t.id),
+      });
+
+      return errorResponse(
+        `No se pudo aprobar la compra. ${rollbackErrors.length ? "Hubo un problema al revertir cambios." : ""}`,
+        500
       );
     }
 
     const ticketsVendidosDespues = ticketsVendidosAntes + cantidadTickets;
     const rifaCompleta = ticketsVendidosDespues >= totalNumeros;
-    const nuevoEstadoRifa = rifaCompleta ? "agotada" : rifa.estado;
 
     if (rifaCompleta) {
       const { error: updateRifaError } = await supabaseAdmin
@@ -341,9 +359,18 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateRifaError) {
-        return NextResponse.json(
-          { error: updateRifaError.message },
-          { status: 500 }
+        console.error("Error actualizando rifa a agotada:", updateRifaError);
+
+        const rollbackErrors = await rollbackAprobacion({
+          compraId: compra.id,
+          estadoAnteriorCompra,
+          rifaIdOriginal,
+          ticketIds: nuevosTickets.map((t) => t.id),
+        });
+
+        return errorResponse(
+          `La compra se aprobó, pero no se pudo actualizar el estado de la rifa. ${rollbackErrors.length ? "Hubo un problema al revertir cambios." : ""}`,
+          500
         );
       }
     }
@@ -381,12 +408,17 @@ export async function POST(req) {
 
     return NextResponse.json({
       ok: true,
-      tickets: nuevosTickets || [],
+      tickets: (nuevosTickets || []).map((t) => ({
+        id: t.id,
+        numero_ticket: t.numero_ticket,
+        compra_id: t.compra_id,
+        rifa_id: t.rifa_id,
+      })),
       rifa: {
         id: rifa.id,
         nombre: rifa.nombre,
         formato: rifa.formato,
-        estado: nuevoEstadoRifa,
+        estado: rifaCompleta ? "agotada" : rifa.estado,
         tickets_vendidos: ticketsVendidosDespues,
         total_numeros: totalNumeros,
         porcentaje_vendido:
@@ -398,9 +430,7 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error("aprobar-compra error:", error);
-    return NextResponse.json(
-      { error: error.message || "Error interno del servidor" },
-      { status: 500 }
-    );
+
+    return errorResponse("No se pudo procesar la aprobación de la compra", 500);
   }
 }

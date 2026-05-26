@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Swal from "sweetalert2";
 import { supabase } from "../../lib/supabase";
-import { ADMIN_EMAIL } from "../../lib/admin/adminConstants";
 
 export function useAdminAuth() {
   const router = useRouter();
@@ -14,22 +13,46 @@ export function useAdminAuth() {
   const [adminEmail, setAdminEmail] = useState("");
 
   useEffect(() => {
+    let mounted = true;
+
     const verificarAcceso = async () => {
       try {
-        const {
-          data: { user },
-          error,
-        } = await supabase.auth.getUser();
+        setAuthLoading(true);
 
-        if (error || !user) {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
+
+        const token = session?.access_token;
+        const user = session?.user || null;
+
+        if (error || !token || !user) {
+          if (!mounted) return;
+          setAccesoPermitido(false);
           router.replace("/admin-login");
           return;
         }
 
-        const email = user.email?.toLowerCase();
+        const res = await fetch("/api/admin-check", {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        if (email !== ADMIN_EMAIL.toLowerCase()) {
+        let data = null;
+        try {
+          data = await res.json();
+        } catch {
+          data = null;
+        }
+
+        if (!res.ok || !data?.ok) {
           await supabase.auth.signOut();
+
+          if (!mounted) return;
 
           await Swal.fire({
             icon: "error",
@@ -37,21 +60,32 @@ export function useAdminAuth() {
             text: "No tienes permiso para entrar al panel de administración",
           });
 
+          setAccesoPermitido(false);
           router.replace("/admin-login");
           return;
         }
+
+        if (!mounted) return;
 
         setAdminEmail(user.email || "");
         setAccesoPermitido(true);
       } catch (error) {
         console.error("Error verificando acceso:", error);
+
+        if (!mounted) return;
+
+        setAccesoPermitido(false);
         router.replace("/admin-login");
       } finally {
-        setAuthLoading(false);
+        if (mounted) setAuthLoading(false);
       }
     };
 
     verificarAcceso();
+
+    return () => {
+      mounted = false;
+    };
   }, [router]);
 
   const cerrarSesion = async () => {

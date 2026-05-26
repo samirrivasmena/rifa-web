@@ -17,6 +17,8 @@ export default function EventoDetallePageClient() {
 
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
+  // CORRECCIÓN #7: estado de error de red separado del "no encontrado"
+  const [errorRed, setErrorRed] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verificarEmail, setVerificarEmail] = useState("");
 
@@ -49,6 +51,7 @@ export default function EventoDetallePageClient() {
     const cargarEvento = async () => {
       try {
         setLoading(true);
+        setErrorRed(false);
 
         const res = await fetch("/api/rifas-publicas", {
           method: "GET",
@@ -63,12 +66,15 @@ export default function EventoDetallePageClient() {
         } catch {
           console.error("Respuesta inválida en /api/rifas-publicas");
           setEvento(null);
+          // CORRECCIÓN #7: marcar error de red para mostrar mensaje diferente
+          setErrorRed(true);
           return;
         }
 
         if (!res.ok) {
           console.error(data.error || "No se pudo cargar el evento");
           setEvento(null);
+          setErrorRed(true);
           return;
         }
 
@@ -82,6 +88,7 @@ export default function EventoDetallePageClient() {
       } catch (error) {
         console.error("Error cargando evento:", error);
         setEvento(null);
+        setErrorRed(true);
       } finally {
         setLoading(false);
       }
@@ -186,6 +193,23 @@ export default function EventoDetallePageClient() {
               </div>
             </div>
           </section>
+
+        /* CORRECCIÓN #7: estado de error de red con mensaje y botón de reintento */
+        ) : errorRed ? (
+          <div className="evento-empty-state premium">
+            <img src="/logo.png" alt="Logo" className="evento-empty-logo" />
+            <h2>Error de conexión</h2>
+            <p>No se pudo cargar el evento. Verifica tu conexión e intenta de nuevo.</p>
+
+            <button
+              type="button"
+              className="principal-red-btn"
+              onClick={() => window.location.reload()}
+            >
+              Reintentar
+            </button>
+          </div>
+
         ) : !evento ? (
           <div className="evento-empty-state premium">
             <img src="/logo.png" alt="Logo" className="evento-empty-logo" />
@@ -366,10 +390,10 @@ export default function EventoDetallePageClient() {
 
         {/* BOTÓN DE COMPARTIR */}
         {evento?.id && shareUrl && (
-<FloatingShareButton
-  url={shareUrl}
-  title={evento?.nombre || "Evento"}
-  text={`🔥 *${evento?.nombre || "Evento"}*
+          <FloatingShareButton
+            url={shareUrl}
+            title={evento?.nombre || "Evento"}
+            text={`🔥 *${evento?.nombre || "Evento"}*
 
 🎉 *¡No te quedes por fuera!*
 🏆 *Premio:* ${premios.length > 0 ? premios[0] : "Disponible"}
@@ -378,7 +402,7 @@ export default function EventoDetallePageClient() {
 
 ✅ *Compra tus tickets en la PAGINA OFICIAL*
 👇 Mira todos los detalles aquí:`}
-/>
+          />
         )}
       </main>
 

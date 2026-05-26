@@ -2,6 +2,78 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 
+function limpiarTexto(valor) {
+  return String(valor ?? "").trim();
+}
+
+function validarId(valor) {
+  const limpio = limpiarTexto(valor);
+  return Boolean(limpio) && limpio.length <= 100 && /^[a-zA-Z0-9_-]+$/.test(limpio);
+}
+
+function errorResponse(mensaje, status = 400) {
+  return NextResponse.json({ error: mensaje }, { status });
+}
+
+async function restaurarRifaAnterior(rifaId, rifaAnterior) {
+  if (!rifaId || !rifaAnterior) return { ok: true };
+
+  const { error } = await supabaseAdmin
+    .from("rifas")
+    .update({
+      estado: rifaAnterior.estado ?? "activa",
+      numero_ganador: rifaAnterior.numero_ganador ?? null,
+      numero_oficial: rifaAnterior.numero_oficial ?? null,
+    })
+    .eq("id", rifaId);
+
+  if (error) {
+    return { ok: false, error: error.message || "No se pudo restaurar la rifa" };
+  }
+
+  return { ok: true };
+}
+
+async function restaurarSorteoAnterior(sorteoAnterior) {
+  if (!sorteoAnterior?.id) return { ok: true };
+
+  const { error } = await supabaseAdmin
+    .from("sorteos")
+    .update({
+      numero_ganador: sorteoAnterior.numero_ganador ?? null,
+      numero_oficial: sorteoAnterior.numero_oficial ?? null,
+      fecha_sorteo: sorteoAnterior.fecha_sorteo ?? null,
+      fuente: sorteoAnterior.fuente ?? null,
+    })
+    .eq("id", sorteoAnterior.id);
+
+  if (error) {
+    return { ok: false, error: error.message || "No se pudo restaurar el sorteo" };
+  }
+
+  return { ok: true };
+}
+
+async function restaurarOtrasActivas(ids = []) {
+  if (!Array.isArray(ids) || ids.length === 0) {
+    return { ok: true };
+  }
+
+  const { error } = await supabaseAdmin
+    .from("rifas")
+    .update({ estado: "activa" })
+    .in("id", ids);
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "No se pudieron restaurar las rifas activas",
+    };
+  }
+
+  return { ok: true };
+}
+
 export async function POST(req) {
   const auth = await requireAdmin(req);
 
@@ -13,47 +85,48 @@ export async function POST(req) {
   }
 
   try {
-    const body = await req.json();
-    const rifaIdLimpio = String(body?.rifaId ?? "").trim();
-
-    if (!rifaIdLimpio) {
-      return NextResponse.json(
-        { error: "Falta la rifa seleccionada" },
-        { status: 400 }
-      );
+    let body;
+    try {
+      body = await req.json();
+    } catch {
+      return errorResponse("Cuerpo de la solicitud inválido", 400);
     }
 
-    // 1) Verificar que la rifa exista
-    const { data: rifaExistente, error: rifaExistenteError } = await supabaseAdmin
+    const rifaIdLimpio = limpiarTexto(body?.rifaId);
+
+    if (!validarId(rifaIdLimpio)) {
+      return errorResponse("Falta la rifa seleccionada", 400);
+    }
+
+    // 1) Verificar que la rifa exista y guardar su estado anterior
+    const { data: rifaAnterior, error: rifaExistenteError } = await supabaseAdmin
       .from("rifas")
-      .select("id, estado")
+      .select("id, estado, numero_ganador, numero_oficial, nombre")
       .eq("id", rifaIdLimpio)
       .maybeSingle();
 
     if (rifaExistenteError) {
       console.error("Error buscando rifa:", rifaExistenteError);
-      return NextResponse.json(
-        {
-          error: "No se pudo validar la rifa",
-          debug: {
-            message: rifaExistenteError.message,
-            code: rifaExistenteError.code,
-            details: rifaExistenteError.details,
-            hint: rifaExistenteError.hint,
-          },
-        },
-        { status: 500 }
-      );
+      return errorResponse("No se pudo validar la rifa", 500);
     }
 
-    if (!rifaExistente) {
-      return NextResponse.json(
-        { error: "La rifa no existe" },
-        { status: 404 }
-      );
+    if (!rifaAnterior) {
+      return errorResponse("La rifa no existe", 404);
     }
 
-    // 2) Buscar otras rifas activas para dejarlas en publicada
+    // 2) Guardar sorteo actual, si existe
+    const { data: sorteoAnterior, error: sorteoBuscarError } = await supabaseAdmin
+      .from("sorteos")
+      .select("id, numero_ganador, numero_oficial, fecha_sorteo, fuente, rifa_id")
+      .eq("rifa_id", rifaIdLimpio)
+      .maybeSingle();
+
+    if (sorteoBuscarError) {
+      console.error("Error buscando sorteo:", sorteoBuscarError);
+      return errorResponse("No se pudo validar el sorteo asociado", 500);
+    }
+
+    // 3) Buscar otras rifas activas para dejarlas en publicada
     const { data: otrasActivas, error: activasError } = await supabaseAdmin
       .from("rifas")
       .select("id")
@@ -62,24 +135,15 @@ export async function POST(req) {
 
     if (activasError) {
       console.error("Error buscando otras rifas activas:", activasError);
-      return NextResponse.json(
-        {
-          error: "No se pudieron validar las rifas activas",
-          debug: {
-            message: activasError.message,
-            code: activasError.code,
-            details: activasError.details,
-            hint: activasError.hint,
-          },
-        },
-        { status: 500 }
-      );
+      return errorResponse("No se pudieron validar las rifas activas", 500);
     }
 
-    // 3) Bajar otras activas a publicada
-    if (Array.isArray(otrasActivas) && otrasActivas.length > 0) {
-      const idsOtrasActivas = otrasActivas.map((r) => r.id);
+    const idsOtrasActivas = Array.isArray(otrasActivas)
+      ? otrasActivas.map((r) => r.id)
+      : [];
 
+    // 4) Bajar otras activas a publicada
+    if (idsOtrasActivas.length > 0) {
       const { error: demoteError } = await supabaseAdmin
         .from("rifas")
         .update({
@@ -89,78 +153,59 @@ export async function POST(req) {
 
       if (demoteError) {
         console.error("Error bajando otras activas:", demoteError);
-        return NextResponse.json(
-          {
-            error: "No se pudieron actualizar las otras rifas activas",
-            debug: {
-              message: demoteError.message,
-              code: demoteError.code,
-              details: demoteError.details,
-              hint: demoteError.hint,
-            },
-          },
-          { status: 500 }
-        );
+        return errorResponse("No se pudieron actualizar las otras rifas activas", 500);
       }
     }
 
-    // 4) Limpiar el sorteo relacionado
-    const { error: sorteoError } = await supabaseAdmin
-      .from("sorteos")
-      .update({
-        numero_ganador: null,
-        numero_oficial: null,
-      })
-      .eq("rifa_id", rifaIdLimpio);
+    // 5) Limpiar el sorteo relacionado
+    if (sorteoAnterior?.id) {
+      const { error: sorteoError } = await supabaseAdmin
+        .from("sorteos")
+        .update({
+          numero_ganador: null,
+          numero_oficial: null,
+        })
+        .eq("id", sorteoAnterior.id);
 
-    if (sorteoError) {
-      console.error("Error limpiando sorteo:", sorteoError);
-      return NextResponse.json(
-        {
-          error: "No se pudo limpiar el sorteo",
-          debug: {
-            message: sorteoError.message,
-            code: sorteoError.code,
-            details: sorteoError.details,
-            hint: sorteoError.hint,
-          },
-        },
-        { status: 500 }
-      );
+      if (sorteoError) {
+        console.error("Error limpiando sorteo:", sorteoError);
+
+        // rollback de otras rifas activas
+        await restaurarOtrasActivas(idsOtrasActivas);
+
+        return errorResponse("No se pudo limpiar el sorteo", 500);
+      }
     }
 
-    // 5) Reactivar la rifa seleccionada
+    // 6) Reactivar la rifa seleccionada
     const { data: rifaActualizada, error: rifaError } = await supabaseAdmin
       .from("rifas")
       .update({
         estado: "activa",
         numero_ganador: null,
+        numero_oficial: null,
       })
       .eq("id", rifaIdLimpio)
-      .select("id, estado, numero_ganador")
+      .select("id, estado, numero_ganador, numero_oficial, nombre")
       .maybeSingle();
 
     if (rifaError) {
       console.error("Error actualizando rifa:", rifaError);
-      return NextResponse.json(
-        {
-          error: "No se pudo actualizar la rifa",
-          debug: {
-            message: rifaError.message,
-            code: rifaError.code,
-            details: rifaError.details,
-            hint: rifaError.hint,
-          },
-        },
-        { status: 500 }
-      );
+
+      // rollback básico
+      await restaurarSorteoAnterior(sorteoAnterior);
+      await restaurarOtrasActivas(idsOtrasActivas);
+      await restaurarRifaAnterior(rifaIdLimpio, rifaAnterior);
+
+      return errorResponse("No se pudo actualizar la rifa", 500);
     }
 
     if (!rifaActualizada) {
-      return NextResponse.json(
-        { error: "La rifa no se pudo actualizar" },
-        { status: 404 }
-      );
+      await restaurarSorteoAnterior(sorteoAnterior);
+      await restaurarOtrasActivas(idsOtrasActivas);
+      await restaurarRifaAnterior(rifaIdLimpio, rifaAnterior);
+
+      return errorResponse("La rifa no se pudo actualizar", 404);
     }
 
     return NextResponse.json({
@@ -170,9 +215,6 @@ export async function POST(req) {
     });
   } catch (error) {
     console.error("Error en quitar-ganador:", error);
-    return NextResponse.json(
-      { error: error.message || "Error interno del servidor" },
-      { status: 500 }
-    );
+    return errorResponse("No se pudo procesar la eliminación del ganador", 500);
   }
 }
