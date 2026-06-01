@@ -173,9 +173,8 @@ export async function POST(req) {
     if (!rifaId) {
       const { data: rifaActiva, error: rifaActivaError } = await supabaseAdmin
         .from("rifas")
-        .select("id, estado, cantidad_numeros, total_tickets, numeros_totales, precio_ticket, numero_inicio, numero_fin, formato, nombre, descripcion, portada_url, portada_scroll_url, fecha_sorteo, fecha, fecha_rifa, hora_sorteo, hora, hora_rifa")
+        .select("*")
         .eq("estado", "activa")
-        .limit(1)
         .maybeSingle();
 
       if (rifaActivaError) {
@@ -192,7 +191,7 @@ export async function POST(req) {
 
     const { data: rifa, error: rifaError } = await supabaseAdmin
       .from("rifas")
-      .select("id, estado, cantidad_numeros, total_tickets, numeros_totales, precio_ticket, numero_inicio, numero_fin, formato, nombre, descripcion, portada_url, portada_scroll_url, fecha_sorteo, fecha, fecha_rifa, hora_sorteo, hora, hora_rifa")
+      .select("*")
       .eq("id", rifaId)
       .maybeSingle();
 

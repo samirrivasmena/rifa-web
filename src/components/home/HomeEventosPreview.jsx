@@ -370,7 +370,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
               </button>
 
               <div className="principal-pagination-current premium">
-                <span className="principal-pagination-label">PÁGINA ACTUAL</span>
+                <span className="principal-pagination-label">PÁGINA</span>
                 <strong>
                   {paginaFinalizados} / {totalPaginasFinalizados}
                 </strong>

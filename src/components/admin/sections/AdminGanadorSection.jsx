@@ -27,9 +27,15 @@ export default function AdminGanadorSection({
         <div className="adminpro-section-head">
           <div>
             <h2>Validar número por rifa</h2>
-            <p>Consulta si un número fue vendido y regístralo como ganador oficial</p>
+            <p>Consulta si un número fue vendido y luego regístralo como ganador oficial</p>
           </div>
         </div>
+
+        {numeroGanadorOficial && (
+          <div className="adminpro-winner-current-note">
+            <strong>Ganador oficial actual:</strong> {numeroGanadorOficial}
+          </div>
+        )}
 
         <div className="adminpro-search-row">
           <div className="adminpro-search-input">

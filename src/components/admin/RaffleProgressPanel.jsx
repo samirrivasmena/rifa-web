@@ -30,8 +30,7 @@ export default function RaffleProgressPanel({
   tieneComprasPendientes,
   onOpenManualFromGrid,
   onOpenCompra,
-  numeroGanador = null,
-  resultadoGanador = null,
+  numeroGanadorOficial = null,
 }) {
   const [detalleOpen, setDetalleOpen] = useState(false);
   const [ticketDetalle, setTicketDetalle] = useState(null);
@@ -54,6 +53,41 @@ export default function RaffleProgressPanel({
       ? 999
       : 9999;
 
+  const normalizarNumero = (valor) => {
+    if (valor === undefined || valor === null || valor === "") return null;
+
+    const texto = String(valor).trim();
+    const soloNumeros = texto.replace(/\D/g, "");
+    if (!soloNumeros) return null;
+
+    return String(Number(soloNumeros)).padStart(padLength, "0");
+  };
+
+  const numeroGanadorFormateado = useMemo(() => {
+    const ganador = numeroGanadorOficial
+      ?? rifaSeleccionada?.numero_ganador
+      ?? rifaSeleccionada?.numero_oficial
+      ?? rifaSeleccionada?.sorteo?.numero_ganador
+      ?? rifaSeleccionada?.sorteo?.numero_oficial
+      ?? null;
+
+    return normalizarNumero(ganador);
+  }, [
+    numeroGanadorOficial,
+    rifaSeleccionada?.numero_ganador,
+    rifaSeleccionada?.numero_oficial,
+    rifaSeleccionada?.sorteo?.numero_ganador,
+    rifaSeleccionada?.sorteo?.numero_oficial,
+  ]);
+
+  const esNumeroGanador = (numero) => {
+    const numeroFormateado = String(numero).padStart(padLength, "0");
+    return (
+      numeroGanadorFormateado !== null &&
+      numeroFormateado === numeroGanadorFormateado
+    );
+  };
+
   const totalNumeros = useMemo(() => {
     if (!rifaSeleccionada) return 0;
     return Number(rifaSeleccionada.cantidad_numeros) || numeroFin - numeroInicio + 1;
@@ -75,107 +109,14 @@ export default function RaffleProgressPanel({
     return map;
   }, [compras]);
 
-  const normalizarNumero = (valor) => {
-    if (valor === undefined || valor === null || valor === "") return null;
-
-    const texto = String(valor).trim();
-    const soloNumeros = texto.replace(/\D/g, "");
-    if (!soloNumeros) return null;
-
-    return String(Number(soloNumeros)).padStart(padLength, "0");
-  };
-
-  const extraerNumeroGanadorProfundo = (valor, visitados = new Set()) => {
-    if (valor === undefined || valor === null) return null;
-
-    if (typeof valor === "number" || typeof valor === "string") {
-      return normalizarNumero(valor);
-    }
-
-    if (Array.isArray(valor)) {
-      for (const item of valor) {
-        const encontrado = extraerNumeroGanadorProfundo(item, visitados);
-        if (encontrado) return encontrado;
-      }
-      return null;
-    }
-
-    if (typeof valor === "object") {
-      if (visitados.has(valor)) return null;
-      visitados.add(valor);
-
-      const clavesPrioritarias = [
-        "numero_ganador",
-        "numeroGanador",
-        "numero_ticket",
-        "numeroTicket",
-        "numero",
-        "ganador",
-        "winner",
-        "ticket",
-        "resultado",
-        "data",
-      ];
-
-      for (const key of clavesPrioritarias) {
-        if (Object.prototype.hasOwnProperty.call(valor, key)) {
-          const encontrado = extraerNumeroGanadorProfundo(valor[key], visitados);
-          if (encontrado) return encontrado;
-        }
-      }
-
-      for (const [, v] of Object.entries(valor)) {
-        const encontrado = extraerNumeroGanadorProfundo(v, visitados);
-        if (encontrado) return encontrado;
-      }
-    }
-
-    return null;
-  };
-
-  /**
-   * IMPORTANTE:
-   * Solo debe considerarse ganador oficial si:
-   * - resultadoGanador realmente es ganador, o
-   * - ya existe un ganador guardado en la rifa
-   *
-   * Así evitamos que una búsqueda de un número vendido lo pinte en dorado.
-   */
-  const numeroGanadorFormateado = useMemo(() => {
-    const ganadorPersistido =
-      extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_ganador) ||
-      extraerNumeroGanadorProfundo(rifaSeleccionada?.numero_oficial) ||
-      extraerNumeroGanadorProfundo(rifaSeleccionada?.sorteo?.numero_ganador) ||
-      extraerNumeroGanadorProfundo(rifaSeleccionada?.sorteo?.numero_oficial) ||
-      null;
-
-    const resultadoEsGanador =
-      Boolean(resultadoGanador?.esGanador) || Boolean(resultadoGanador?.oficial);
-
-    if (resultadoEsGanador) {
-      return (
-        extraerNumeroGanadorProfundo(resultadoGanador) ||
-        ganadorPersistido ||
-        null
-      );
-    }
-
-    return ganadorPersistido;
-  }, [
-    resultadoGanador,
-    rifaSeleccionada?.numero_ganador,
-    rifaSeleccionada?.numero_oficial,
-    rifaSeleccionada?.sorteo?.numero_ganador,
-    rifaSeleccionada?.sorteo?.numero_oficial,
-  ]);
-
-  const esNumeroGanador = (numero) => {
-    const numeroFormateado = String(numero).padStart(padLength, "0");
-    return (
-      numeroGanadorFormateado !== null &&
-      numeroFormateado === numeroGanadorFormateado
-    );
-  };
+  const ticketsOrdenados = useMemo(() => {
+    return tickets
+      .map((ticket) => ({
+        ...ticket,
+        compra: comprasMap.get(String(ticket.compra_id)) || null,
+      }))
+      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
+  }, [tickets, comprasMap]);
 
   const vendidos = tickets.length;
   const disponibles = Math.max(totalNumeros - vendidos, 0);
@@ -192,24 +133,15 @@ export default function RaffleProgressPanel({
     return lista;
   }, [numeroInicio, numeroFin]);
 
-  const vendidosLista = useMemo(() => {
-    return tickets
-      .map((ticket) => ({
-        ...ticket,
-        compra: comprasMap.get(String(ticket.compra_id)) || null,
-      }))
-      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
-  }, [tickets, comprasMap]);
-
   const abrirDetalleNumero = (numero) => {
     const ticket = ticketsMap.get(Number(numero));
-    const esGanador = esNumeroGanador(numero);
+    const ganador = esNumeroGanador(numero);
 
     if (!ticket) {
       setTicketDetalle({
         tipo: "disponible",
         numero,
-        esGanador,
+        esGanador: ganador,
       });
       setDetalleOpen(true);
       return;
@@ -222,7 +154,7 @@ export default function RaffleProgressPanel({
       numero,
       ticket,
       compra,
-      esGanador,
+      esGanador: ganador,
     });
     setDetalleOpen(true);
   };
@@ -234,7 +166,7 @@ export default function RaffleProgressPanel({
       const ticket = ticketsMap.get(Number(numero));
       const vendido = Boolean(ticket);
       const numeroFormateado = String(numero).padStart(padLength, "0");
-      const esGanador = esNumeroGanador(numero);
+      const ganador = esNumeroGanador(numero);
 
       const coincideBusqueda =
         !numeroBuscadoNormalizado || numeroFormateado.includes(numeroBuscadoNormalizado);
@@ -242,19 +174,12 @@ export default function RaffleProgressPanel({
       let coincideFiltro = true;
 
       if (filtroVista === "vendidos") coincideFiltro = vendido;
-      else if (filtroVista === "disponibles") coincideFiltro = !vendido && !esGanador;
-      else if (filtroVista === "ganador") coincideFiltro = esGanador;
+      else if (filtroVista === "disponibles") coincideFiltro = !vendido && !ganador;
+      else if (filtroVista === "ganador") coincideFiltro = ganador;
 
       return coincideBusqueda && coincideFiltro;
     });
-  }, [
-    numeros,
-    ticketsMap,
-    numeroBuscadoNormalizado,
-    filtroVista,
-    padLength,
-    numeroGanadorFormateado,
-  ]);
+  }, [numeros, ticketsMap, numeroBuscadoNormalizado, filtroVista, padLength, numeroGanadorFormateado]);
 
   const numeroExactoEncontrado = useMemo(() => {
     if (numeroBuscadoNormalizado.length !== padLength) return null;
@@ -309,7 +234,7 @@ export default function RaffleProgressPanel({
                 tipo: "lista-vendidos",
                 titulo: "Tickets vendidos",
                 valor: vendidos,
-                tickets: vendidosLista,
+                tickets: ticketsOrdenados,
               });
               setDetalleOpen(true);
             }}
@@ -474,16 +399,16 @@ export default function RaffleProgressPanel({
               const ticket = ticketsMap.get(Number(numero));
               const vendido = Boolean(ticket);
               const numeroFormateado = String(numero).padStart(padLength, "0");
-              const esGanador = esNumeroGanador(numero);
+              const ganador = esNumeroGanador(numero);
               const esBusquedaExacta =
                 busquedaNumero.length === padLength &&
                 numeroFormateado === numeroBuscadoNormalizado;
 
               let className = "free";
-              if (esGanador) className = "winner";
+              if (ganador) className = "winner";
               else if (vendido) className = "sold";
 
-              const winnerStyle = esGanador
+              const winnerStyle = ganador
                 ? {
                     background: "linear-gradient(135deg, #facc15 0%, #f59e0b 100%)",
                     color: "#111827",
@@ -502,7 +427,7 @@ export default function RaffleProgressPanel({
                   }`}
                   onClick={() => abrirDetalleNumero(numero)}
                   title={
-                    esGanador
+                    ganador
                       ? `Número ganador ${numeroFormateado}`
                       : vendido
                       ? `Número vendido ${numeroFormateado}`

@@ -5,27 +5,33 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY
 );
 
+function normalizarNumero(valor) {
+  if (valor === undefined || valor === null || valor === "") return null;
+
+  const texto = String(valor).trim();
+  const soloNumeros = texto.replace(/\D/g, "");
+  if (!soloNumeros) return null;
+
+  return Number(soloNumeros);
+}
+
 export async function POST(req) {
   try {
     const body = await req.json();
     const { rifaId, numero } = body;
 
     const rifaIdLimpio = String(rifaId ?? "").trim();
+    const numeroBuscado = normalizarNumero(numero);
 
     if (!rifaIdLimpio) {
       return Response.json({ error: "Falta rifaId" }, { status: 400 });
     }
 
-    if (numero === undefined || numero === null) {
-      return Response.json({ error: "Falta número" }, { status: 400 });
-    }
-
-    const numeroBuscado = Number(numero);
-
-    if (Number.isNaN(numeroBuscado)) {
+    if (numeroBuscado === null || Number.isNaN(numeroBuscado)) {
       return Response.json({ error: "Número inválido" }, { status: 400 });
     }
 
+    // Buscar si el número fue vendido
     const { data: ticketData, error: ticketError } = await supabase
       .from("tickets")
       .select("id, numero_ticket, compra_id, rifa_id")
@@ -37,9 +43,11 @@ export async function POST(req) {
       return Response.json({ error: ticketError.message }, { status: 500 });
     }
 
+    // Si no fue vendido
     if (!ticketData) {
       return Response.json({
         existe: false,
+        vendido: false,
         numero_ticket: numeroBuscado,
         compra_id: null,
         usuario: null,
@@ -48,6 +56,7 @@ export async function POST(req) {
       });
     }
 
+    // Buscar compra
     const { data: compraData, error: compraError } = await supabase
       .from("compras")
       .select("id, rifa_id, usuario_id")
@@ -58,6 +67,7 @@ export async function POST(req) {
       return Response.json({ error: compraError.message }, { status: 500 });
     }
 
+    // Buscar usuario
     let usuario = null;
 
     if (compraData?.usuario_id) {
@@ -74,24 +84,17 @@ export async function POST(req) {
       usuario = usuarioData || null;
     }
 
-    const { data: sorteoData, error: sorteoError } = await supabase
-      .from("sorteos")
-      .select("id, numero_ganador, numero_oficial, rifa_id, fecha_sorteo, fuente")
-      .eq("rifa_id", rifaIdLimpio)
-      .or(`numero_ganador.eq.${numeroBuscado},numero_oficial.eq.${numeroBuscado}`)
-      .maybeSingle();
-
-    if (sorteoError) {
-      return Response.json({ error: sorteoError.message }, { status: 500 });
-    }
-
+    // Importante:
+    // Aquí NO marcamos ganador.
+    // Solo decimos que fue vendido.
     return Response.json({
       existe: true,
+      vendido: true,
       numero_ticket: ticketData.numero_ticket,
       compra_id: ticketData.compra_id,
       usuario,
-      sorteo: sorteoData || null,
-      esGanador: Boolean(sorteoData),
+      sorteo: null,
+      esGanador: false,
     });
   } catch (error) {
     return Response.json(

@@ -64,10 +64,8 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
 
       try {
         const numero = Number(ganadorPersistido);
-
         const headers = await getAdminAuthHeaders();
 
-        // Si no hay token admin, igual mostramos el ganador persistido
         if (!headers.Authorization) {
           if (!active) return;
 
@@ -78,10 +76,10 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
             compra_id: null,
             usuario: null,
             sorteo: rifaSeleccionada?.sorteo ?? null,
-            esGanador: true,
             oficial: true,
             persistido: true,
           });
+
           setEsNumeroGanador(true);
           setMensajeBusqueda(`🏆 Ganador oficial cargado: ${ganadorPersistido}`);
           return;
@@ -108,7 +106,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           padLength
         );
 
-        // Importante: si ya estaba persistido, seguimos tratándolo como ganador oficial
         setResultadoGanador({
           existe: true,
           numero_ticket: data.numero_ticket ?? ganadorPersistido,
@@ -116,7 +113,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           compra_id: data.compra_id ?? null,
           usuario: data.usuario ?? null,
           sorteo: data.sorteo ?? rifaSeleccionada?.sorteo ?? null,
-          esGanador: true,
           oficial: true,
           persistido: true,
         });
@@ -129,7 +125,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
 
         if (!active) return;
 
-        // Aunque falle la verificación, si había ganador guardado lo mostramos como oficial
         if (ganadorPersistido) {
           setResultadoGanador({
             existe: true,
@@ -138,10 +133,10 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
             compra_id: null,
             usuario: null,
             sorteo: rifaSeleccionada?.sorteo ?? null,
-            esGanador: true,
             oficial: true,
             persistido: true,
           });
+
           setEsNumeroGanador(true);
           setMensajeBusqueda(`🏆 Ganador oficial cargado: ${ganadorPersistido}`);
         } else {
@@ -169,7 +164,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
       return;
     }
 
-    const limpio = String(numeroGanador || "").replace(/\D/g, "").slice(0, padLength);
+    const limpio = String(numeroGanador || "")
+      .replace(/\D/g, "")
+      .slice(0, padLength);
 
     if (!limpio) {
       setMensajeBusqueda("⚠️ Debes ingresar un número válido");
@@ -206,37 +203,26 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
         return;
       }
 
-      const ganadorNormalizado = normalizarNumero(
-        data.numero_ganador ?? data.numero_oficial ?? data.numero_ticket ?? numero,
-        padLength
-      );
+      const vendido = Boolean(data.existe);
 
       setResultadoGanador({
-        existe: Boolean(data.existe),
+        existe: vendido,
         numero_ticket: data.numero_ticket ?? numero,
-        numero_ganador: ganadorNormalizado,
         compra_id: data.compra_id ?? null,
         usuario: data.usuario ?? null,
-        sorteo: data.sorteo ?? null,
-        esGanador: Boolean(data.esGanador),
+        sorteo: null,
+        oficial: false,
+        persistido: false,
       });
 
-      if (data.esGanador) {
-        setNumeroGanadorOficial(ganadorNormalizado);
-        setEsNumeroGanador(true);
+      if (!vendido) {
         setMensajeBusqueda(
-          `🏆 El número ${numeroFormateado} es el ganador oficial de esta rifa`
+          `❌ El número ${numeroFormateado} no fue vendido en esta rifa`
         );
       } else {
-        setEsNumeroGanador(false);
-
-        if (!data.existe) {
-          setMensajeBusqueda(
-            `❌ El número ${numeroFormateado} no fue vendido en esta rifa`
-          );
-        } else {
-          setMensajeBusqueda(`✅ El número ${numeroFormateado} sí fue vendido en esta rifa`);
-        }
+        setMensajeBusqueda(
+          `✅ El número ${numeroFormateado} sí fue vendido en esta rifa`
+        );
       }
     } catch (error) {
       console.error("Error buscando ganador:", error);
@@ -264,9 +250,18 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
     }
 
     const numeroFormateado = normalizarNumero(
-      resultadoGanador?.numero_ticket ?? resultadoGanador?.numero_ganador,
+      resultadoGanador?.numero_ticket,
       padLength
     );
+
+    if (ganadorPersistido && ganadorPersistido !== numeroFormateado) {
+      await Swal.fire({
+        icon: "info",
+        title: "Ya existe un ganador",
+        text: "Primero debes quitar el ganador oficial actual para registrar otro.",
+      });
+      return;
+    }
 
     const confirmar = await Swal.fire({
       title: "¿Registrar ganador oficial?",
@@ -313,7 +308,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           ? {
               ...prev,
               numero_ganador: numeroFormateado,
-              esGanador: true,
               oficial: true,
               persistido: true,
             }
@@ -324,7 +318,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
               compra_id: resultadoGanador.compra_id ?? null,
               usuario: resultadoGanador.usuario ?? null,
               sorteo: resultadoGanador.sorteo ?? null,
-              esGanador: true,
               oficial: true,
               persistido: true,
             }
@@ -350,7 +343,7 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
     } finally {
       setGuardandoGanador(false);
     }
-  }, [rifaSeleccionada, resultadoGanador, padLength, recargarTodo]);
+  }, [rifaSeleccionada, resultadoGanador, padLength, recargarTodo, ganadorPersistido]);
 
   const quitarGanadorOficial = useCallback(async () => {
     if (!rifaSeleccionada?.id) {
@@ -445,7 +438,6 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
             compra_id: null,
             usuario: null,
             sorteo: rifaSeleccionada?.sorteo ?? null,
-            esGanador: true,
             oficial: true,
             persistido: true,
           }

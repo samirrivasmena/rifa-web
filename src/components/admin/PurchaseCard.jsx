@@ -60,54 +60,6 @@ function normalizarNumero(valor, padLength = 4) {
   return String(Number(soloNumeros)).padStart(padLength, "0");
 }
 
-function extraerNumeroGanadorProfundo(valor, padLength = 4, visitados = new Set()) {
-  if (valor === undefined || valor === null) return null;
-
-  if (typeof valor === "number" || typeof valor === "string") {
-    return normalizarNumero(valor, padLength);
-  }
-
-  if (Array.isArray(valor)) {
-    for (const item of valor) {
-      const encontrado = extraerNumeroGanadorProfundo(item, padLength, visitados);
-      if (encontrado) return encontrado;
-    }
-    return null;
-  }
-
-  if (typeof valor === "object") {
-    if (visitados.has(valor)) return null;
-    visitados.add(valor);
-
-    const clavesPrioritarias = [
-      "numero_ganador",
-      "numeroGanador",
-      "numero_ticket",
-      "numeroTicket",
-      "numero",
-      "ganador",
-      "winner",
-      "ticket",
-      "resultado",
-      "data",
-    ];
-
-    for (const key of clavesPrioritarias) {
-      if (Object.prototype.hasOwnProperty.call(valor, key)) {
-        const encontrado = extraerNumeroGanadorProfundo(valor[key], padLength, visitados);
-        if (encontrado) return encontrado;
-      }
-    }
-
-    for (const [, v] of Object.entries(valor)) {
-      const encontrado = extraerNumeroGanadorProfundo(v, padLength, visitados);
-      if (encontrado) return encontrado;
-    }
-  }
-
-  return null;
-}
-
 export default function PurchaseCard({
   compra,
   ticketsAsignados = [],
@@ -121,8 +73,7 @@ export default function PurchaseCard({
   loadingEliminacion,
   mostrarEliminar = false,
   formatearFecha,
-  numeroGanador = null,
-  resultadoGanador = null,
+  numeroGanadorOficial = null,
   padLength = 4,
 }) {
   const comprobanteUrl =
@@ -142,12 +93,8 @@ export default function PurchaseCard({
   }, [comprobanteUrl]);
 
   const numeroGanadorFormateado = useMemo(() => {
-    return (
-      extraerNumeroGanadorProfundo(numeroGanador, padLength) ||
-      extraerNumeroGanadorProfundo(resultadoGanador, padLength) ||
-      null
-    );
-  }, [numeroGanador, resultadoGanador, padLength]);
+    return normalizarNumero(numeroGanadorOficial, padLength);
+  }, [numeroGanadorOficial, padLength]);
 
   const ticketsFormateados = useMemo(() => {
     return (ticketsAsignados || []).map(
@@ -157,12 +104,12 @@ export default function PurchaseCard({
 
   const compraTieneGanador = useMemo(() => {
     if (!numeroGanadorFormateado) return false;
-    return ticketsFormateados.includes(String(numeroGanadorFormateado));
+    return ticketsFormateados.includes(numeroGanadorFormateado);
   }, [numeroGanadorFormateado, ticketsFormateados]);
 
   const esTicketGanador = (ticket) => {
     const ticketFormateado = normalizarNumero(ticket, padLength);
-    return Boolean(numeroGanadorFormateado) && ticketFormateado === String(numeroGanadorFormateado);
+    return Boolean(numeroGanadorFormateado) && ticketFormateado === numeroGanadorFormateado;
   };
 
   const abrirPreviewRapida = () => {

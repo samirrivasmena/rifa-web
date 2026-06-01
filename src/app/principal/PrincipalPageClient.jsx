@@ -23,8 +23,8 @@ export default function PrincipalPageClient() {
   const [rifaActiva, setRifaActiva] = useState(null);
 
   // CORRECCIÓN #8: paginación de 3 en lugar de 1
-  const [paginaFinalizados, setPaginaFinalizados] = useState(1);
-  const itemsPorPaginaFinalizados = 3;
+const [paginaFinalizados, setPaginaFinalizados] = useState(1);
+const itemsPorPaginaFinalizados = 1;
 
   const swalConfig = {
     background: "#1f1f1f",
@@ -594,7 +594,7 @@ export default function PrincipalPageClient() {
                 </button>
 
                 <div className="principal-pagination-current premium">
-                  <span className="principal-pagination-label">PÁGINA ACTUAL</span>
+                  <span className="principal-pagination-label">PÁGINA</span>
                   <strong>
                     {paginaFinalizados} / {totalPaginasFinalizados}
                   </strong>

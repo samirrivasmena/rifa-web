@@ -40,8 +40,7 @@ export default function AdminComprasSection({
   setPaginaCompras,
   paginaCompras,
   totalPaginasCompras,
-  numeroGanador,
-  resultadoGanador,
+  numeroGanadorOficial,
   padLength,
 }) {
   return (
@@ -170,8 +169,7 @@ export default function AdminComprasSection({
                     loadingEliminacion={loadingEliminacion}
                     mostrarEliminar={String(compra.estado_pago || "").toLowerCase() === "rechazado"}
                     formatearFecha={formatearFecha}
-                    numeroGanador={numeroGanador}
-                    resultadoGanador={resultadoGanador}
+                    numeroGanadorOficial={numeroGanadorOficial}
                     padLength={padLength}
                   />
                 ))}

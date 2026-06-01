@@ -30,16 +30,16 @@ export default function Admin() {
   const { authLoading, accesoPermitido, adminEmail, cerrarSesion } = useAdminAuth();
 
   const {
-refs: {
-  topRef,
-  dashboardRef,
-  mapaTicketsRef,
-  dashboardFilterRef,
-  comprasSectionRef,
-  ganadorRef,
-  rankingRef,
-  rankingDetalleRef,
-},
+    refs: {
+      topRef,
+      dashboardRef,
+      mapaTicketsRef,
+      dashboardFilterRef,
+      comprasSectionRef,
+      ganadorRef,
+      rankingRef,
+      rankingDetalleRef,
+    },
     seccionActiva,
     setSeccionActiva,
     filtroDashboard,
@@ -300,38 +300,6 @@ refs: {
     recargarTodo,
   });
 
-  const ganadorPersistido = useMemo(() => {
-    const raw =
-      rifaSeleccionada?.numero_ganador ??
-      rifaSeleccionada?.numero_oficial ??
-      rifaSeleccionada?.sorteo?.numero_ganador ??
-      rifaSeleccionada?.sorteo?.numero_oficial ??
-      null;
-
-    if (raw === null || raw === undefined || raw === "") return null;
-
-    const soloNumeros = String(raw).replace(/\D/g, "");
-    if (!soloNumeros) return null;
-
-    return String(Number(soloNumeros)).padStart(padLength, "0");
-  }, [rifaSeleccionada, padLength]);
-
-  const ganadorParaUI = ganadorPersistido || numeroGanadorOficial || null;
-
-  const resultadoGanadorParaUI = useMemo(() => {
-    return resultadoGanador || rifaSeleccionada?.sorteo || null;
-  }, [resultadoGanador, rifaSeleccionada]);
-
-const comprasFiltradasPorRifa = useMemo(() => {
-  if (!rifaSeleccionadaId) return [];
-  return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
-}, [compras, rifaSeleccionadaId]);
-
-const ticketsFiltradosPorRifa = useMemo(() => {
-  if (!rifaSeleccionadaId) return [];
-  return tickets.filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId));
-}, [tickets, rifaSeleccionadaId]);
-
   const {
     filtrosCompras,
     setFiltrosCompras,
@@ -351,7 +319,12 @@ const ticketsFiltradosPorRifa = useMemo(() => {
     cantidadFiltrosActivos,
     eliminarFiltroIndividual,
     resetComprasState,
-  } = useAdminCompras(comprasFiltradasPorRifa);
+  } = useAdminCompras(
+    useMemo(() => {
+      if (!rifaSeleccionadaId) return [];
+      return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
+    }, [compras, rifaSeleccionadaId])
+  );
 
   const {
     busquedaRanking,
@@ -375,7 +348,22 @@ const ticketsFiltradosPorRifa = useMemo(() => {
     ranking,
     resumenRanking,
     resetRankingState,
-  } = useAdminRanking(comprasFiltradasPorRifa);
+  } = useAdminRanking(
+    useMemo(() => {
+      if (!rifaSeleccionadaId) return [];
+      return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
+    }, [compras, rifaSeleccionadaId])
+  );
+
+  const comprasFiltradasPorRifa = useMemo(() => {
+    if (!rifaSeleccionadaId) return [];
+    return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
+  }, [compras, rifaSeleccionadaId]);
+
+  const ticketsFiltradosPorRifa = useMemo(() => {
+    if (!rifaSeleccionadaId) return [];
+    return tickets.filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId));
+  }, [tickets, rifaSeleccionadaId]);
 
   const comprasPendientes = useMemo(() => {
     return comprasFiltradasPorRifa.filter((compra) => compra.estado_pago === "pendiente");
@@ -1095,8 +1083,7 @@ const ticketsFiltradosPorRifa = useMemo(() => {
               loadingAprobacion={loadingAprobacion}
               loadingRechazo={loadingRechazo}
               loadingEliminacion={loadingEliminacion}
-              numeroGanador={ganadorParaUI}
-              resultadoGanador={resultadoGanadorParaUI}
+              numeroGanadorOficial={numeroGanadorOficial}
             />
           )}
 
@@ -1111,8 +1098,7 @@ const ticketsFiltradosPorRifa = useMemo(() => {
               setSeccionActiva={setSeccionActiva}
               scrollToRef={scrollToRef}
               comprasSectionRef={comprasSectionRef}
-              numeroGanador={ganadorParaUI}
-              resultadoGanador={resultadoGanadorParaUI}
+              numeroGanadorOficial={numeroGanadorOficial}
             />
           )}
 
@@ -1224,8 +1210,7 @@ const ticketsFiltradosPorRifa = useMemo(() => {
               setPaginaCompras={setPaginaCompras}
               paginaCompras={paginaCompras}
               totalPaginasCompras={totalPaginasCompras}
-              numeroGanador={ganadorParaUI}
-              resultadoGanador={resultadoGanadorParaUI}
+              numeroGanadorOficial={numeroGanadorOficial}
               padLength={padLength}
             />
           )}

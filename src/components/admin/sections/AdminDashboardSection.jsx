@@ -30,8 +30,7 @@ export default function AdminDashboardSection({
   loadingAprobacion,
   loadingRechazo,
   loadingEliminacion,
-  numeroGanador,
-  resultadoGanador,
+  numeroGanadorOficial,
 }) {
   const comprasPorFiltro = {
     total: comprasFiltradasPorRifa,
@@ -124,8 +123,7 @@ export default function AdminDashboardSection({
                           String(compra.estado_pago || "").toLowerCase() === "rechazado"
                         }
                         formatearFecha={formatearFecha}
-                        numeroGanador={numeroGanador}
-                        resultadoGanador={resultadoGanador}
+                        numeroGanadorOficial={numeroGanadorOficial}
                         padLength={padLength}
                       />
                     ))}

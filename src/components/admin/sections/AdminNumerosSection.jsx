@@ -12,8 +12,7 @@ export default function AdminNumerosSection({
   setSeccionActiva,
   scrollToRef,
   comprasSectionRef,
-  numeroGanador,
-  resultadoGanador,
+  numeroGanadorOficial,
 }) {
   return (
     <div className="adminpro-page-stack">
@@ -28,8 +27,7 @@ export default function AdminNumerosSection({
             setSeccionActiva("compras");
             scrollToRef(comprasSectionRef, 180);
           }}
-          numeroGanador={numeroGanador}
-          resultadoGanador={resultadoGanador}
+          numeroGanadorOficial={numeroGanadorOficial}
         />
       </div>
     </div>

@@ -88,15 +88,11 @@ function esComprobanteValido(url) {
 }
 
 function errorResponse(mensaje, status = 400) {
-  return NextResponse.json(
-    { error: mensaje },
-    { status }
-  );
+  return NextResponse.json({ error: mensaje }, { status });
 }
 
 export async function POST(req) {
   try {
-    // Rate limit básico
     const rateLimit = aplicarRateLimit(req);
     if (rateLimit.limited) {
       return NextResponse.json(
@@ -126,8 +122,10 @@ export async function POST(req) {
       totalPagar,
       paymentMethod,
       comprobanteUrl,
-      rifaId,
     } = body;
+
+    const rifaIdRecibido =
+      body.rifaId ?? body.rifa_id ?? body.idRifa ?? body.id_rifa;
 
     const nombreLimpio = limitarLongitud(limpiarTexto(nombre), 120);
     const emailLimpio = limitarLongitud(limpiarTexto(email).toLowerCase(), 254);
@@ -135,7 +133,7 @@ export async function POST(req) {
     const referenciaLimpia = limitarLongitud(limpiarTexto(referencia), 80);
     const metodoPago = limitarLongitud(limpiarTexto(paymentMethod), 30);
     const comprobante = limitarLongitud(limpiarTexto(comprobanteUrl), 500);
-    const rifaIdLimpio = limitarLongitud(limpiarTexto(rifaId), 100);
+    const rifaIdLimpio = limitarLongitud(limpiarTexto(rifaIdRecibido), 100);
 
     const cantidadTickets = Number(tickets);
     const totalRecibido = Number(totalPagar);
@@ -172,7 +170,6 @@ export async function POST(req) {
 
     const esAppPay = metodoPago === "App Pay";
 
-    // Para métodos que no son App Pay, referencia y comprobante son obligatorios
     if (!esAppPay && !referenciaLimpia) {
       return errorResponse(
         "La referencia es obligatoria para este método de pago",
@@ -194,20 +191,33 @@ export async function POST(req) {
       );
     }
 
-    // Rifa
+    if (!rifaIdLimpio) {
+      return errorResponse("Falta el ID de la rifa", 400);
+    }
+
     const { data: rifa, error: rifaError } = await supabaseAdmin
       .from("rifas")
-      .select("id, estado, cantidad_numeros, total_tickets, numeros_totales, precio_ticket")
+      .select("*")
       .eq("id", rifaIdLimpio)
       .maybeSingle();
 
     if (rifaError) {
-      console.error("Error consultando rifa:", rifaError);
-      return errorResponse("No se pudo validar la rifa seleccionada", 500);
+      console.error("Error consultando rifa:", {
+        rifaIdLimpio,
+        error: rifaError,
+      });
+
+      return errorResponse(
+        `No se pudo consultar la rifa asociada: ${rifaError.message}`,
+        500
+      );
     }
 
     if (!rifa) {
-      return errorResponse("La rifa seleccionada no existe", 404);
+      return errorResponse(
+        `La rifa seleccionada no existe (ID: ${rifaIdLimpio})`,
+        404
+      );
     }
 
     const estadoRifa = String(rifa.estado || "").toLowerCase();
@@ -240,7 +250,6 @@ export async function POST(req) {
       );
     }
 
-    // Disponibilidad
     const { data: ticketsExistentes, error: ticketsError } = await supabaseAdmin
       .from("tickets")
       .select("id")
@@ -271,11 +280,9 @@ export async function POST(req) {
       );
     }
 
-    // El servidor decide el total real
     const totalEsperado = Number((cantidadTickets * precioTicket).toFixed(2));
     const totalEnviado = Number(totalRecibido.toFixed(2));
 
-    // CORRECCIÓN #2: No se expone el precio esperado en el mensaje de error
     if (totalEsperado !== totalEnviado) {
       return errorResponse(
         "El monto enviado no coincide con el precio actual de la rifa",
@@ -283,7 +290,6 @@ export async function POST(req) {
       );
     }
 
-    // Duplicidad de referencia solo para métodos normales
     if (!esAppPay) {
       const { data: compraDuplicada, error: compraDuplicadaError } =
         await supabaseAdmin
@@ -306,7 +312,6 @@ export async function POST(req) {
       }
     }
 
-    // Usuario
     const { data: usuarioExistente, error: usuarioBusquedaError } =
       await supabaseAdmin
         .from("usuarios")
@@ -404,7 +409,7 @@ export async function POST(req) {
       disponibilidad: {
         total_numeros: totalNumeros,
         tickets_vendidos: ticketsVendidos,
-        tickets_disponibles: ticketsDisponibles - cantidadTickets,
+        tickets_disponibles: Math.max(ticketsDisponibles - cantidadTickets, 0),
       },
     });
   } catch (error) {
