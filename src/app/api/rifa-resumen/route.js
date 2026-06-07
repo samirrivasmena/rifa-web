@@ -3,6 +3,7 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const runtime = "nodejs";
 
 function obtenerTotalNumeros(rifa = {}) {
   const inicio = Number(rifa?.numero_inicio);
@@ -13,48 +14,57 @@ function obtenerTotalNumeros(rifa = {}) {
   }
 
   const cantidad = Number(rifa?.cantidad_numeros);
-  return Number.isFinite(cantidad) ? cantidad : 0;
+  if (Number.isFinite(cantidad) && cantidad > 0) return cantidad;
+
+  return String(rifa?.formato) === "3digitos" ? 1000 : 10000;
 }
 
-export async function GET() {
+export async function GET(req) {
   try {
-    const { data: rifasData, error: rifasError } = await supabaseAdmin
-      .from("rifas")
-      .select("*")
-      .in("estado", ["activa", "agotada"])
-      .eq("publicada", true)
-      .order("created_at", { ascending: false });
+    const { searchParams } = new URL(req.url);
+    const rifaId = searchParams.get("rifaId");
 
-    if (rifasError) {
-      return NextResponse.json(
-        { error: rifasError.message || "No se pudo obtener la rifa activa" },
-        { status: 500 }
-      );
+    let rifa = null;
+
+    if (rifaId) {
+      const { data, error } = await supabaseAdmin
+        .from("rifas")
+        .select("*")
+        .eq("id", rifaId)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json(
+          { error: error.message || "No se pudo cargar la rifa" },
+          { status: 500 }
+        );
+      }
+
+      rifa = data || null;
+    } else {
+      const { data, error } = await supabaseAdmin
+        .from("rifas")
+        .select("*")
+        .eq("publicada", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json(
+          { error: error.message || "No se pudo cargar la rifa activa" },
+          { status: 500 }
+        );
+      }
+
+      rifa = data || null;
     }
 
-    const rifas = Array.isArray(rifasData) ? rifasData : [];
-
-    const rifaActiva = rifas.find(
-      (r) => String(r.estado || "").toLowerCase() === "activa"
-    );
-
-    const rifaAgotada = rifas.find(
-      (r) => String(r.estado || "").toLowerCase() === "agotada"
-    );
-
-    const rifa = rifaActiva || rifaAgotada || null;
-
     if (!rifa) {
-      return NextResponse.json(
-        { ok: true, rifa: null },
-        {
-          headers: {
-            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        }
-      );
+      return NextResponse.json({
+        ok: true,
+        rifa: null,
+      });
     }
 
     const totalNumeros = obtenerTotalNumeros(rifa);
@@ -62,37 +72,25 @@ export async function GET() {
     const { data: ticketsData, error: ticketsError } = await supabaseAdmin
       .from("tickets")
       .select("numero_ticket, compra_id")
-      .eq("rifa_id", rifa.id)
-      .not("compra_id", "is", null);
+      .eq("rifa_id", rifa.id);
 
     if (ticketsError) {
       return NextResponse.json(
         {
           error:
             ticketsError.message ||
-            "No se pudieron obtener los tickets de la rifa activa",
+            "No se pudieron obtener los tickets de la rifa",
         },
         { status: 500 }
       );
     }
 
-    const { data: sorteoData } = await supabaseAdmin
-      .from("sorteos")
-      .select("id, rifa_id, numero_ganador, numero_oficial, fecha_sorteo, fuente")
-      .eq("rifa_id", rifa.id)
-      .order("fecha_sorteo", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
     const tickets = Array.isArray(ticketsData) ? ticketsData : [];
 
-    const numerosUnicos = new Set(
-      tickets
-        .map((t) => Number(t.numero_ticket))
-        .filter(Number.isFinite)
-    );
+    const ticketsVendidos = tickets.filter(
+      (t) => t?.compra_id !== null && t?.compra_id !== undefined
+    ).length;
 
-    const ticketsVendidos = numerosUnicos.size;
     const ticketsDisponibles = Math.max(totalNumeros - ticketsVendidos, 0);
 
     const porcentajeVendido =
@@ -107,9 +105,6 @@ export async function GET() {
         ok: true,
         rifa: {
           ...rifa,
-          sorteo: sorteoData || null,
-          numero_ganador: sorteoData?.numero_ganador ?? rifa.numero_ganador ?? null,
-          numero_oficial: sorteoData?.numero_oficial ?? rifa.numero_oficial ?? null,
           total_numeros: totalNumeros,
           tickets_vendidos: ticketsVendidos,
           tickets_disponibles: ticketsDisponibles,
@@ -128,14 +123,15 @@ export async function GET() {
       },
       {
         headers: {
-          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
           Pragma: "no-cache",
           Expires: "0",
         },
       }
     );
   } catch (error) {
-    console.error("rifa-activa error:", error);
+    console.error("rifa-resumen error:", error);
 
     return NextResponse.json(
       { error: error.message || "Error interno del servidor" },

@@ -1533,11 +1533,68 @@ export default function RifasSection({
                 ? 999
                 : 9999;
 
-            const stats = rifa.stats || {
-              compras: 0,
-              ticketsVendidos: 0,
-              disponibles: 0,
-              porcentajeVendido: 0,
+            const totalNumerosBase = Number(
+              rifa?.stats?.total ??
+                rifa?.total_numeros ??
+                rifa?.cantidad_numeros ??
+                numeroFin - numeroInicio + 1 ??
+                0
+            );
+
+            const totalNumeros = Number.isFinite(totalNumerosBase)
+              ? totalNumerosBase
+              : 0;
+
+            const ticketsVendidosRaw = Number(
+              rifa?.stats?.vendidos ??
+                rifa?.stats?.ticketsVendidos ??
+                rifa?.tickets_vendidos ??
+                rifa?.vendidos ??
+                0
+            );
+
+            const ticketsVendidos = Number.isFinite(ticketsVendidosRaw)
+              ? ticketsVendidosRaw
+              : 0;
+
+            const ticketsDisponiblesRaw = Number(
+              rifa?.stats?.disponibles ??
+                rifa?.tickets_disponibles ??
+                Math.max(totalNumeros - ticketsVendidos, 0)
+            );
+
+            const ticketsDisponibles = Number.isFinite(ticketsDisponiblesRaw)
+              ? Math.max(ticketsDisponiblesRaw, 0)
+              : Math.max(totalNumeros - ticketsVendidos, 0);
+
+            const porcentajeVendidoRaw = Number(
+              rifa?.stats?.porcentaje ??
+                rifa?.stats?.porcentajeVendido ??
+                rifa?.porcentaje_vendido ??
+                (totalNumeros > 0 ? (ticketsVendidos / totalNumeros) * 100 : 0)
+            );
+
+            const porcentajeVendido = Number.isFinite(porcentajeVendidoRaw)
+              ? Math.min(Math.max(Number(porcentajeVendidoRaw.toFixed(2)), 0), 100)
+              : 0;
+
+            const comprasCountRaw = Number(
+              rifa?.stats?.compras ??
+                rifa?.compras_count ??
+                rifa?.total_compras ??
+                rifa?.compras ??
+                0
+            );
+
+            const comprasCount = Number.isFinite(comprasCountRaw)
+              ? comprasCountRaw
+              : 0;
+
+            const stats = {
+              compras: comprasCount,
+              ticketsVendidos,
+              disponibles: ticketsDisponibles,
+              porcentajeVendido,
             };
 
             const estado = String(rifa.estado || "").toLowerCase();

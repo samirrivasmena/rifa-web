@@ -47,6 +47,43 @@ export default function HomeEventosPreview({ rifas = [] }) {
     });
   };
 
+  const normalizarProgreso = (evento) => {
+    const progresoFallback = getRifaProgress(evento || {});
+
+    const total = Number(
+      evento?.total_numeros ??
+        evento?.cantidad_numeros ??
+        evento?.numeros_totales ??
+        progresoFallback.total ??
+        0
+    );
+
+    const vendidos = Number(
+      evento?.tickets_vendidos ??
+        evento?.numeros_vendidos ??
+        progresoFallback.vendidos ??
+        0
+    );
+
+    const porcentajeApi = Number(evento?.porcentaje_vendido);
+
+    const porcentaje = Number.isFinite(porcentajeApi)
+      ? Number(Math.min(Math.max(porcentajeApi, 0), 100).toFixed(2))
+      : progresoFallback.porcentaje;
+
+    const soldOut =
+      Boolean(evento?.sold_out) ||
+      progresoFallback.soldOut ||
+      (total > 0 && vendidos >= total);
+
+    return {
+      total,
+      vendidos,
+      porcentaje,
+      soldOut,
+    };
+  };
+
   const eventosDisponibles = useMemo(() => {
     return ordenarRifas(rifas.filter((r) => esEventoDisponible(r.estado)));
   }, [rifas]);
@@ -130,7 +167,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                 evento.hora_rifa ||
                 "";
 
-              const progreso = getRifaProgress(evento);
+              const progreso = normalizarProgreso(evento);
 
               return (
                 <article key={evento.id} className="home-event-card">
@@ -216,7 +253,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   evento.fecha_rifa ||
                   "";
 
-                const progreso = getRifaProgress(evento);
+                const progreso = normalizarProgreso(evento);
 
                 return (
                   <article key={evento.id} className="home-event-card finalizada">
@@ -295,7 +332,7 @@ export default function HomeEventosPreview({ rifas = [] }) {
                   evento.fecha_rifa ||
                   "";
 
-                const progreso = getRifaProgress(evento);
+                const progreso = normalizarProgreso(evento);
 
                 return (
                   <article key={evento.id} className="home-event-card finalizada">

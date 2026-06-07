@@ -25,17 +25,6 @@ function getBaseUrl(req) {
   return `${proto}://${host}`.replace(/\/$/, "");
 }
 
-function mezclarSeguro(array) {
-  const arr = [...array];
-
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = randomInt(0, i + 1);
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-
-  return arr;
-}
-
 function limpiarTexto(valor) {
   return String(valor || "").trim();
 }
@@ -47,6 +36,120 @@ function validarId(valor) {
 
 function errorResponse(mensaje, status = 400) {
   return NextResponse.json({ error: mensaje }, { status });
+}
+
+function tomarNumerosAleatorios(disponibles, cantidad) {
+  const pool = [...disponibles];
+  const seleccionados = [];
+
+  for (let i = 0; i < cantidad; i++) {
+    const idx = randomInt(0, pool.length);
+    seleccionados.push(pool.splice(idx, 1)[0]);
+  }
+
+  return seleccionados;
+}
+
+function obtenerTotalNumeros(rifa = {}) {
+  const inicio = Number(rifa?.numero_inicio);
+  const fin = Number(rifa?.numero_fin);
+
+  if (Number.isFinite(inicio) && Number.isFinite(fin) && fin >= inicio) {
+    return fin - inicio + 1;
+  }
+
+  const cantidad = Number(rifa?.cantidad_numeros);
+  if (Number.isFinite(cantidad) && cantidad > 0) return cantidad;
+
+  return String(rifa?.formato) === "3digitos" ? 1000 : 10000;
+}
+
+function obtenerRangoNumeros(rifa = {}, totalNumeros = 0) {
+  const inicioRaw = Number(rifa?.numero_inicio);
+  const finRaw = Number(rifa?.numero_fin);
+
+  const inicio = Number.isFinite(inicioRaw) ? inicioRaw : 0;
+  const fin = Number.isFinite(finRaw)
+    ? finRaw
+    : inicio + Math.max(totalNumeros - 1, 0);
+
+  return { inicio, fin };
+}
+
+function construirListaNumeros(inicio, fin) {
+  const lista = [];
+  for (let n = inicio; n <= fin; n++) {
+    lista.push(n);
+  }
+  return lista;
+}
+
+async function asegurarTicketsBase(rifa) {
+  const totalNumeros = obtenerTotalNumeros(rifa);
+  const { inicio, fin } = obtenerRangoNumeros(rifa, totalNumeros);
+  const esperados = construirListaNumeros(inicio, fin);
+
+  const { data: existentes, error: errorExistentes } = await supabaseAdmin
+    .from("tickets")
+    .select("id, numero_ticket, compra_id")
+    .eq("rifa_id", rifa.id);
+
+  if (errorExistentes) {
+    return {
+      ok: false,
+      error: errorExistentes.message || "No se pudieron leer los tickets existentes",
+    };
+  }
+
+  const ticketsExistentes = Array.isArray(existentes) ? existentes : [];
+  const setExistentes = new Set(
+    ticketsExistentes
+      .map((t) => Number(t.numero_ticket))
+      .filter((n) => Number.isFinite(n))
+  );
+
+  const faltantes = esperados.filter((n) => !setExistentes.has(n));
+
+  if (faltantes.length > 0) {
+    const batchSize = 500;
+
+    for (let i = 0; i < faltantes.length; i += batchSize) {
+      const batch = faltantes.slice(i, i + batchSize).map((numero) => ({
+        rifa_id: rifa.id,
+        numero_ticket: numero,
+        compra_id: null,
+      }));
+
+      const { error: insertError } = await supabaseAdmin
+        .from("tickets")
+        .insert(batch);
+
+      if (insertError) {
+        return {
+          ok: false,
+          error: insertError.message || "No se pudieron crear los tickets faltantes",
+        };
+      }
+    }
+  }
+
+  const { data: ticketsReload, error: errorReload } = await supabaseAdmin
+    .from("tickets")
+    .select("id, numero_ticket, compra_id, rifa_id")
+    .eq("rifa_id", rifa.id)
+    .order("numero_ticket", { ascending: true });
+
+  if (errorReload) {
+    return {
+      ok: false,
+      error: errorReload.message || "No se pudieron recargar los tickets",
+    };
+  }
+
+  return {
+    ok: true,
+    tickets: Array.isArray(ticketsReload) ? ticketsReload : [],
+  };
 }
 
 async function obtenerDatosCliente(compra) {
@@ -62,7 +165,10 @@ async function obtenerDatosCliente(compra) {
         .maybeSingle();
 
       if (usuarioError) {
-        console.warn("No se pudo leer el usuario asociado:", usuarioError.message);
+        console.warn(
+          "No se pudo leer el usuario asociado:",
+          usuarioError.message
+        );
       }
 
       if (usuario) {
@@ -86,13 +192,15 @@ async function rollbackAprobacion({
   const errores = [];
 
   if (ticketIds.length > 0) {
-    const { error: deleteTicketsError } = await supabaseAdmin
+    const { error: revertTicketsError } = await supabaseAdmin
       .from("tickets")
-      .delete()
+      .update({ compra_id: null })
       .in("id", ticketIds);
 
-    if (deleteTicketsError) {
-      errores.push(deleteTicketsError.message || "No se pudieron eliminar los tickets");
+    if (revertTicketsError) {
+      errores.push(
+        revertTicketsError.message || "No se pudieron revertir los tickets"
+      );
     }
   }
 
@@ -105,7 +213,9 @@ async function rollbackAprobacion({
     .eq("id", compraId);
 
   if (rollbackCompraError) {
-    errores.push(rollbackCompraError.message || "No se pudo revertir la compra");
+    errores.push(
+      rollbackCompraError.message || "No se pudo revertir la compra"
+    );
   }
 
   return errores;
@@ -138,7 +248,9 @@ export async function POST(req) {
 
     const { data: compra, error: compraError } = await supabaseAdmin
       .from("compras")
-      .select("id, usuario_id, estado_pago, cantidad_tickets, monto_total, rifa_id, referencia")
+      .select(
+        "id, usuario_id, estado_pago, cantidad_tickets, monto_total, rifa_id, referencia"
+      )
       .eq("id", compraIdLimpio)
       .maybeSingle();
 
@@ -156,13 +268,19 @@ export async function POST(req) {
     }
 
     if (compra.estado_pago === "rechazado") {
-      return errorResponse("La compra fue rechazada y no puede aprobarse", 400);
+      return errorResponse(
+        "La compra fue rechazada y no puede aprobarse",
+        400
+      );
     }
 
     const cantidadTickets = Number(compra.cantidad_tickets) || 0;
 
     if (!Number.isInteger(cantidadTickets) || cantidadTickets <= 0) {
-      return errorResponse("La compra no tiene una cantidad válida de tickets", 400);
+      return errorResponse(
+        "La compra no tiene una cantidad válida de tickets",
+        400
+      );
     }
 
     const estadoAnteriorCompra = compra.estado_pago || "pendiente";
@@ -197,7 +315,10 @@ export async function POST(req) {
 
     if (rifaError) {
       console.error("Error consultando rifa:", rifaError);
-      return errorResponse("No se pudo consultar la rifa asociada", 500);
+      return errorResponse(
+        "No se pudo consultar la rifa asociada",
+        500
+      );
     }
 
     if (!rifa) {
@@ -213,55 +334,32 @@ export async function POST(req) {
       );
     }
 
-    const numeroInicioRaw = Number(rifa.numero_inicio);
-    const numeroFinRaw = Number(rifa.numero_fin);
-
-    const numeroInicio = Number.isInteger(numeroInicioRaw)
-      ? numeroInicioRaw
-      : 0;
-
-    const numeroFin = Number.isInteger(numeroFinRaw)
-      ? numeroFinRaw
-      : String(rifa.formato) === "3digitos"
-      ? 999
-      : 9999;
-
-    if (
-      !Number.isInteger(numeroInicio) ||
-      !Number.isInteger(numeroFin) ||
-      numeroFin < numeroInicio
-    ) {
-      return errorResponse("La rifa no tiene un rango de números válido", 400);
-    }
-
-    const padLength = String(rifa.formato) === "3digitos" ? 3 : 4;
-
-    const totalNumerosConfigurados = Number(
-      rifa.cantidad_numeros ?? rifa.total_tickets ?? rifa.numeros_totales ?? 0
-    );
-
-    const totalNumeros =
-      Number.isFinite(totalNumerosConfigurados) && totalNumerosConfigurados > 0
-        ? totalNumerosConfigurados
-        : numeroFin - numeroInicio + 1;
+    const totalNumeros = obtenerTotalNumeros(rifa);
 
     if (totalNumeros <= 0) {
-      return errorResponse("La rifa no tiene una cantidad de números válida", 400);
+      return errorResponse(
+        "La rifa no tiene una cantidad válida de números",
+        400
+      );
     }
 
-    const { data: ticketsExistentes, error: ticketsExistentesError } =
-      await supabaseAdmin
-        .from("tickets")
-        .select("id, numero_ticket")
-        .eq("rifa_id", rifa.id);
-
-    if (ticketsExistentesError) {
-      console.error("Error consultando tickets existentes:", ticketsExistentesError);
-      return errorResponse("No se pudo validar la disponibilidad de números", 500);
+    // Aseguramos que existan todos los tickets de la rifa
+    const aseguracion = await asegurarTicketsBase(rifa);
+    if (!aseguracion.ok) {
+      return errorResponse(aseguracion.error, 500);
     }
 
-    const ticketsActuales = Array.isArray(ticketsExistentes) ? ticketsExistentes : [];
-    const ticketsVendidosAntes = ticketsActuales.length;
+    const ticketsActuales = Array.isArray(aseguracion.tickets)
+      ? aseguracion.tickets
+      : [];
+
+    const ticketsVendidosAntes = ticketsActuales.filter(
+      (t) => t.compra_id !== null && t.compra_id !== undefined
+    ).length;
+
+    const ticketsLibresAntes = ticketsActuales.filter(
+      (t) => t.compra_id === null || t.compra_id === undefined
+    );
 
     if (ticketsVendidosAntes >= totalNumeros) {
       const { error: updateAgotadaError } = await supabaseAdmin
@@ -270,8 +368,12 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateAgotadaError) {
-        console.error("Error marcando rifa como agotada:", updateAgotadaError);
-        return errorResponse("No se pudo actualizar el estado de la rifa", 500);
+        console.error("Error marcando rifa como agotada:", {
+          message: updateAgotadaError.message,
+          details: updateAgotadaError.details,
+          hint: updateAgotadaError.hint,
+          code: updateAgotadaError.code,
+        });
       }
 
       return errorResponse(
@@ -280,7 +382,7 @@ export async function POST(req) {
       );
     }
 
-    const disponiblesRestantesAntes = totalNumeros - ticketsVendidosAntes;
+    const disponiblesRestantesAntes = ticketsLibresAntes.length;
 
     if (cantidadTickets > disponiblesRestantesAntes) {
       return errorResponse(
@@ -289,40 +391,41 @@ export async function POST(req) {
       );
     }
 
-    const numerosOcupados = new Set(
-      ticketsActuales.map((t) => Number(t.numero_ticket))
+    if (ticketsLibresAntes.length < cantidadTickets) {
+      return errorResponse(
+        "No hay suficientes números disponibles en esta rifa",
+        400
+      );
+    }
+
+    const seleccionados = tomarNumerosAleatorios(
+      ticketsLibresAntes,
+      cantidadTickets
     );
 
-    const disponibles = [];
-    for (let i = numeroInicio; i <= numeroFin; i++) {
-      if (!numerosOcupados.has(i)) disponibles.push(i);
-    }
+    const idsTicketsAsignar = seleccionados.map((t) => t.id);
 
-    if (disponibles.length < cantidadTickets) {
-      return errorResponse("No hay suficientes números disponibles en esta rifa", 400);
-    }
-
-    const disponiblesMezclados = mezclarSeguro(disponibles);
-    const seleccionados = disponiblesMezclados.slice(0, cantidadTickets);
-
-    const ticketsParaInsertar = seleccionados.map((numero) => ({
-      compra_id: compra.id,
-      rifa_id: rifa.id,
-      numero_ticket: numero,
-    }));
-
-    const { data: nuevosTickets, error: insertTicketsError } = await supabaseAdmin
+    const { error: asignarTicketsError } = await supabaseAdmin
       .from("tickets")
-      .insert(ticketsParaInsertar)
-      .select("id, numero_ticket, compra_id, rifa_id");
+      .update({
+        compra_id: compra.id,
+      })
+      .in("id", idsTicketsAsignar);
 
-    if (insertTicketsError || !nuevosTickets) {
-      console.error("Error insertando tickets:", insertTicketsError);
+    if (asignarTicketsError) {
+      console.error("Error asignando tickets:", asignarTicketsError);
       return errorResponse(
-        insertTicketsError?.message || "No se pudieron asignar los tickets",
+        asignarTicketsError.message || "No se pudieron asignar los tickets",
         500
       );
     }
+
+    const nuevosTickets = seleccionados.map((t) => ({
+      id: t.id,
+      numero_ticket: t.numero_ticket,
+      compra_id: compra.id,
+      rifa_id: rifa.id,
+    }));
 
     const { error: aprobarCompraError } = await supabaseAdmin
       .from("compras")
@@ -343,13 +446,17 @@ export async function POST(req) {
       });
 
       return errorResponse(
-        `No se pudo aprobar la compra. ${rollbackErrors.length ? "Hubo un problema al revertir cambios." : ""}`,
+        `No se pudo aprobar la compra. ${
+          rollbackErrors.length ? "Hubo un problema al revertir cambios." : ""
+        }`,
         500
       );
     }
 
     const ticketsVendidosDespues = ticketsVendidosAntes + cantidadTickets;
     const rifaCompleta = ticketsVendidosDespues >= totalNumeros;
+
+    let advertenciaRifa = null;
 
     if (rifaCompleta) {
       const { error: updateRifaError } = await supabaseAdmin
@@ -358,19 +465,16 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateRifaError) {
-        console.error("Error actualizando rifa a agotada:", updateRifaError);
-
-        const rollbackErrors = await rollbackAprobacion({
-          compraId: compra.id,
-          estadoAnteriorCompra,
-          rifaIdOriginal,
-          ticketIds: nuevosTickets.map((t) => t.id),
+        console.error("Error actualizando rifa a agotada:", {
+          message: updateRifaError.message,
+          details: updateRifaError.details,
+          hint: updateRifaError.hint,
+          code: updateRifaError.code,
         });
 
-        return errorResponse(
-          `La compra se aprobó, pero no se pudo actualizar el estado de la rifa. ${rollbackErrors.length ? "Hubo un problema al revertir cambios." : ""}`,
-          500
-        );
+        advertenciaRifa =
+          `La compra se aprobó, pero no se pudo marcar la rifa como agotada: ` +
+          (updateRifaError.message || "error desconocido");
       }
     }
 
@@ -394,7 +498,7 @@ export async function POST(req) {
           totalPagar: Number(compra.monto_total ?? 0),
           eventoUrl: `${baseUrl}/evento/${rifa.id}`,
           verificarUrl: `${baseUrl}/principal`,
-          padLength,
+          padLength: String(rifa.formato) === "3digitos" ? 3 : 4,
         });
       } else {
         console.warn(
@@ -407,6 +511,7 @@ export async function POST(req) {
 
     return NextResponse.json({
       ok: true,
+      advertenciaRifa,
       tickets: (nuevosTickets || []).map((t) => ({
         id: t.id,
         numero_ticket: t.numero_ticket,
@@ -430,6 +535,9 @@ export async function POST(req) {
   } catch (error) {
     console.error("aprobar-compra error:", error);
 
-    return errorResponse("No se pudo procesar la aprobación de la compra", 500);
+    return errorResponse(
+      "No se pudo procesar la aprobación de la compra",
+      500
+    );
   }
 }

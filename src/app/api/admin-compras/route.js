@@ -2,14 +2,38 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+async function traerTodosLosTickets() {
+  const pageSize = 1000;
+  let from = 0;
+  let allTickets = [];
+
+  while (true) {
+    const { data, error } = await supabaseAdmin
+      .from("tickets")
+      .select("*")
+      .order("numero_ticket", { ascending: true })
+      .range(from, from + pageSize - 1);
+
+    if (error) throw error;
+
+    allTickets = [...allTickets, ...(data || [])];
+
+    if (!data || data.length < pageSize) break;
+
+    from += pageSize;
+  }
+
+  return allTickets;
+}
+
 export async function GET(req) {
   const auth = await requireAdmin(req);
 
   if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
-    );
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   try {
@@ -33,25 +57,25 @@ export async function GET(req) {
       );
     }
 
-    const { data: tickets, error: ticketsError } = await supabaseAdmin
-      .from("tickets")
-      .select("*")
-      .order("numero_ticket", { ascending: true });
+    const tickets = await traerTodosLosTickets();
 
-    if (ticketsError) {
-      return NextResponse.json(
-        { error: ticketsError.message || "Error al cargar tickets" },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      ok: true,
-      compras: compras || [],
-      tickets: tickets || [],
-    });
+    return NextResponse.json(
+      {
+        ok: true,
+        compras: compras || [],
+        tickets: tickets || [],
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
+    );
   } catch (error) {
     console.error("admin-compras error:", error);
+
     return NextResponse.json(
       { error: error.message || "Error interno del servidor" },
       { status: 500 }

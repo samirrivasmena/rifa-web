@@ -21,13 +21,21 @@ export default function AdminGanadorSection({
   numeroGanadorOficial,
   formatearFecha,
 }) {
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    buscarGanador();
+  };
+
   return (
     <div className="adminpro-page-stack" ref={ganadorRef}>
       <div className="adminpro-card">
         <div className="adminpro-section-head">
           <div>
             <h2>Validar número por rifa</h2>
-            <p>Consulta si un número fue vendido y luego regístralo como ganador oficial</p>
+            <p>
+              Consulta si un número fue vendido y luego regístralo como ganador
+              oficial
+            </p>
           </div>
         </div>
 
@@ -37,13 +45,15 @@ export default function AdminGanadorSection({
           </div>
         )}
 
-        <div className="adminpro-search-row">
+        <form className="adminpro-search-row" onSubmit={handleSubmit}>
           <div className="adminpro-search-input">
             <input
               type="text"
               placeholder={padLength === 3 ? "000 - 999" : "0000 - 9999"}
               value={numeroGanador}
               maxLength={padLength}
+              inputMode="numeric"
+              autoComplete="off"
               onChange={(e) => {
                 const value = e.target.value.replace(/\D/g, "").slice(0, padLength);
                 setNumeroGanador(value);
@@ -57,13 +67,12 @@ export default function AdminGanadorSection({
 
           <button
             className="adminpro-primary-btn"
-            onClick={buscarGanador}
-            type="button"
-            disabled={guardandoGanador || quitandoGanador}
+            type="submit"
+            disabled={guardandoGanador || quitandoGanador || !numeroGanador}
           >
             Buscar
           </button>
-        </div>
+        </form>
 
         <WinnerCard
           resultado={resultadoGanador}

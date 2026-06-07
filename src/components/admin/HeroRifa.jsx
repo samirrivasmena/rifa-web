@@ -18,6 +18,11 @@ function formatBool(value) {
   return value ? "Sí" : "No";
 }
 
+function toNumber(value, fallback = 0) {
+  const num = Number(value);
+  return Number.isFinite(num) ? num : fallback;
+}
+
 export default function HeroRifa({
   rifaSeleccionada,
   totalCompras = 0,
@@ -50,25 +55,40 @@ export default function HeroRifa({
     stats,
   } = rifaSeleccionada;
 
+  // ✅ Primero usa los datos ya normalizados por API / admin
+  // ✅ Luego usa stats
+  // ✅ Luego usa props
+  // ✅ Por último calcula por rango como fallback
   const totalNumeros =
-    Number(cantidad_numeros) ||
-    (Number(numero_fin || 0) - Number(numero_inicio || 0) + 1);
+    toNumber(rifaSeleccionada?.total_numeros, 0) ||
+    toNumber(stats?.total, 0) ||
+    toNumber(cantidad_numeros, 0) ||
+    (toNumber(numero_fin, 0) - toNumber(numero_inicio, 0) + 1);
 
-  const vendidos = Number(stats?.ticketsVendidos || totalTicketsVendidos || 0);
-  const disponibles = Math.max(
-    Number(stats?.disponibles ?? totalNumeros - vendidos),
-    0
-  );
+  const vendidos =
+    toNumber(rifaSeleccionada?.tickets_vendidos, NaN) ||
+    toNumber(stats?.ticketsVendidos, NaN) ||
+    toNumber(totalTicketsVendidos, NaN) ||
+    0;
+
+  const disponibles =
+    toNumber(rifaSeleccionada?.tickets_disponibles, NaN) ||
+    toNumber(stats?.disponibles, NaN) ||
+    Math.max(totalNumeros - vendidos, 0);
+
   const porcentajeVendido =
-    totalNumeros > 0
-      ? Number((((vendidos || 0) / totalNumeros) * 100).toFixed(2))
-      : 0;
+    toNumber(rifaSeleccionada?.porcentaje_vendido, NaN) ||
+    toNumber(stats?.porcentajeVendido, NaN) ||
+    (totalNumeros > 0
+      ? Number(((vendidos / totalNumeros) * 100).toFixed(2))
+      : 0);
 
-  const urlPublica = typeof window !== "undefined" ? window.location.origin : "#";
+  const urlPublica =
+    typeof window !== "undefined" ? window.location.origin : "#";
 
   const ringRadius = 42;
   const circumference = 2 * Math.PI * ringRadius;
-  const dash = `${(porcentajeVendido / 100) * circumference} ${circumference}`;
+  const dash = `${(Math.min(Math.max(porcentajeVendido, 0), 100) / 100) * circumference} ${circumference}`;
 
   const imagenPrincipal = portada_url || "";
   const imagenScroll = portada_scroll_url || imagenPrincipal;
@@ -169,7 +189,7 @@ export default function HeroRifa({
               </div>
               <div>
                 <span>Precio por ticket</span>
-                <strong>${Number(precio_ticket || 0).toFixed(2)}</strong>
+                <strong>${toNumber(precio_ticket).toFixed(2)}</strong>
               </div>
             </div>
 
@@ -191,7 +211,7 @@ export default function HeroRifa({
               </div>
               <div>
                 <span>Total de números</span>
-                <strong>{totalNumeros || 0}</strong>
+                <strong>{toNumber(totalNumeros, 0)}</strong>
               </div>
             </div>
 
@@ -201,7 +221,7 @@ export default function HeroRifa({
               </div>
               <div>
                 <span>Compras registradas</span>
-                <strong>{totalCompras || 0}</strong>
+                <strong>{toNumber(totalCompras, 0)}</strong>
               </div>
             </div>
           </div>
@@ -213,30 +233,32 @@ export default function HeroRifa({
                 <h3>Progreso de ventas</h3>
               </div>
 
-              <strong>{porcentajeVendido.toFixed(2)}%</strong>
+              <strong>{toNumber(porcentajeVendido, 0).toFixed(2)}%</strong>
             </div>
 
             <div className="adminhero4__bar">
               <div
                 className="adminhero4__barfill"
-                style={{ width: `${Math.min(porcentajeVendido, 100)}%` }}
+                style={{
+                  width: `${Math.min(Math.max(porcentajeVendido, 0), 100)}%`,
+                }}
               />
             </div>
 
             <div className="adminhero4__salesmeta">
               <div className="adminhero4__salesmeta-card">
                 <span>Vendidos</span>
-                <strong>{vendidos}</strong>
+                <strong>{toNumber(vendidos, 0)}</strong>
               </div>
 
               <div className="adminhero4__salesmeta-card">
                 <span>Disponibles</span>
-                <strong>{disponibles}</strong>
+                <strong>{toNumber(disponibles, 0)}</strong>
               </div>
 
               <div className="adminhero4__salesmeta-card">
                 <span>Total</span>
-                <strong>{totalNumeros}</strong>
+                <strong>{toNumber(totalNumeros, 0)}</strong>
               </div>
             </div>
           </div>
@@ -249,12 +271,16 @@ export default function HeroRifa({
                 <img
                   src={imagenPrincipal}
                   alt={nombre || "Rifa"}
-                  className={`adminhero4__image-layer ${showSecondImage ? "hide" : "show"}`}
+                  className={`adminhero4__image-layer ${
+                    showSecondImage ? "hide" : "show"
+                  }`}
                 />
                 <img
                   src={imagenScroll}
                   alt={`${nombre || "Rifa"} scroll`}
-                  className={`adminhero4__image-layer ${showSecondImage ? "show" : "hide"}`}
+                  className={`adminhero4__image-layer ${
+                    showSecondImage ? "show" : "hide"
+                  }`}
                 />
               </>
             ) : (
@@ -290,11 +316,11 @@ export default function HeroRifa({
             <div className="adminhero4__insight-copy">
               <h4>Resumen de ocupación</h4>
               <p>
-                Se han vendido {vendidos} de {totalNumeros} números disponibles
-                en esta rifa.
+                Se han vendido {toNumber(vendidos, 0)} de {toNumber(totalNumeros, 0)} números
+                disponibles en esta rifa.
               </p>
               <p>
-                Compras aprobadas: <strong>{totalComprasAprobadas || 0}</strong>
+                Compras aprobadas: <strong>{toNumber(totalComprasAprobadas, 0)}</strong>
               </p>
             </div>
           </div>

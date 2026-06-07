@@ -8,6 +8,9 @@ import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import {
+  enriquecerListaRifasConResumen,
+} from "@/lib/rifas/enriquecerRifaConResumen";
 
 import { paymentMethodsConfig } from "@/lib/paymentMethods";
 import { getRifaProgress } from "@/lib/getRifaProgress";
@@ -128,56 +131,59 @@ const itemsPorPaginaFinalizados = 1;
   }, []);
 
   // CORRECCIÓN #5: un solo fetch, rifaActiva se deriva de los datos cargados
-  useEffect(() => {
-    const cargarRifas = async () => {
+useEffect(() => {
+  const cargarRifas = async () => {
+    try {
+      setLoadingRifas(true);
+      setErrorRed(false);
+
+      const res = await fetch("/api/rifas-publicas", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const raw = await res.text();
+      let data;
+
       try {
-        setLoadingRifas(true);
-        setErrorRed(false);
-
-        const res = await fetch("/api/rifas-publicas", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const raw = await res.text();
-        let data;
-
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          console.error("Respuesta inválida en /api/rifas-publicas");
-          setRifas([]);
-          setErrorRed(true);
-          return;
-        }
-
-        if (!res.ok) {
-          console.error(data.error || "No se pudieron cargar las rifas");
-          setRifas([]);
-          // CORRECCIÓN #7: distinguir error de red vs lista vacía
-          setErrorRed(true);
-          return;
-        }
-
-        const lista = Array.isArray(data.rifas) ? data.rifas : [];
-        setRifas(lista);
-
-        // Derivar rifaActiva del mismo fetch
-        const activa = lista.find(
-          (r) => String(r.estado || "").toLowerCase() === "activa"
-        );
-        setRifaActiva(activa || null);
-      } catch (error) {
-        console.error("Error cargando rifas:", error);
+        data = JSON.parse(raw);
+      } catch {
+        console.error("Respuesta inválida en /api/rifas-publicas");
         setRifas([]);
         setErrorRed(true);
-      } finally {
-        setLoadingRifas(false);
+        return;
       }
-    };
 
-    cargarRifas();
-  }, []);
+      if (!res.ok) {
+        console.error(data.error || "No se pudieron cargar las rifas");
+        setRifas([]);
+        setErrorRed(true);
+        return;
+      }
+
+      const lista = Array.isArray(data.rifas) ? data.rifas : [];
+
+      // IMPORTANTE: aquí se corrige con el resumen real
+      const listaEnriquecida = await enriquecerListaRifasConResumen(lista);
+
+      setRifas(listaEnriquecida);
+
+      const activa = listaEnriquecida.find(
+        (r) => String(r.estado || "").toLowerCase() === "activa"
+      );
+
+      setRifaActiva(activa || null);
+    } catch (error) {
+      console.error("Error cargando rifas:", error);
+      setRifas([]);
+      setErrorRed(true);
+    } finally {
+      setLoadingRifas(false);
+    }
+  };
+
+  cargarRifas();
+}, []);
 
   const rifasPublicadas = useMemo(() => {
     return rifas.filter((r) => esPublicada(r.publicada));

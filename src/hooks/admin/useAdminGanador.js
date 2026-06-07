@@ -35,7 +35,11 @@ function extraerGanadorPersistido(rifaSeleccionada, padLength = 4) {
   return null;
 }
 
-export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo }) {
+export function useAdminGanador({
+  rifaSeleccionada,
+  padLength = 4,
+  recargarTodo,
+}) {
   const ganadorPersistido = useMemo(() => {
     return extraerGanadorPersistido(rifaSeleccionada, padLength);
   }, [rifaSeleccionada, padLength]);
@@ -63,9 +67,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
       }
 
       try {
-        const numero = Number(ganadorPersistido);
         const headers = await getAdminAuthHeaders();
 
+        // Si todavía no hay auth listo, mostramos el ganador persistido sin consultar
         if (!headers.Authorization) {
           if (!active) return;
 
@@ -85,6 +89,8 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           return;
         }
 
+        const numero = Number(ganadorPersistido);
+
         const res = await fetch("/api/verificar-ganador", {
           method: "POST",
           headers: {
@@ -92,14 +98,23 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            rifaId: rifaSeleccionada.id,
+            rifaId: String(rifaSeleccionada.id),
+            numero_ticket: ganadorPersistido,
             numero,
+            padLength,
           }),
         });
 
         const data = await res.json();
 
         if (!active) return;
+
+        if (!res.ok) {
+          setResultadoGanador(null);
+          setEsNumeroGanador(false);
+          setMensajeBusqueda(data.error || "No se pudo cargar el ganador oficial.");
+          return;
+        }
 
         const ganadorNormalizado = normalizarNumero(
           data.numero_ganador ?? data.numero_oficial ?? data.numero_ticket ?? ganadorPersistido,
@@ -159,7 +174,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
     setMensajeBusqueda("");
     setEsNumeroGanador(false);
 
-    if (!rifaSeleccionada?.id) {
+    const rifaId = String(rifaSeleccionada?.id || "").trim();
+
+    if (!rifaId) {
       setMensajeBusqueda("⚠️ Debes seleccionar una rifa");
       return;
     }
@@ -190,8 +207,10 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          rifaId: rifaSeleccionada.id,
+          rifaId,
+          numero_ticket: numeroFormateado,
           numero,
+          padLength,
         }),
       });
 
@@ -199,7 +218,7 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
 
       if (!res.ok) {
         console.error("Error verificar ganador:", data.error);
-        setMensajeBusqueda("❌ Error al buscar el número");
+        setMensajeBusqueda(data.error || "❌ Error al buscar el número");
         return;
       }
 
@@ -207,7 +226,7 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
 
       setResultadoGanador({
         existe: vendido,
-        numero_ticket: data.numero_ticket ?? numero,
+        numero_ticket: data.numero_ticket ?? numeroFormateado,
         compra_id: data.compra_id ?? null,
         usuario: data.usuario ?? null,
         sorteo: null,
@@ -231,7 +250,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
   }, [rifaSeleccionada, numeroGanador, padLength]);
 
   const guardarGanadorOficial = useCallback(async () => {
-    if (!rifaSeleccionada?.id) {
+    const rifaId = String(rifaSeleccionada?.id || "").trim();
+
+    if (!rifaId) {
       await Swal.fire({
         icon: "error",
         title: "No permitido",
@@ -253,6 +274,15 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
       resultadoGanador?.numero_ticket,
       padLength
     );
+
+    if (!numeroFormateado) {
+      await Swal.fire({
+        icon: "error",
+        title: "Número inválido",
+        text: "No se pudo normalizar el número ganador",
+      });
+      return;
+    }
 
     if (ganadorPersistido && ganadorPersistido !== numeroFormateado) {
       await Swal.fire({
@@ -286,8 +316,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          numero_ticket: resultadoGanador.numero_ticket,
-          rifaId: rifaSeleccionada.id,
+          numero_ticket: numeroFormateado,
+          rifaId,
+          padLength,
         }),
       });
 
@@ -313,20 +344,22 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
             }
           : {
               existe: true,
-              numero_ticket: resultadoGanador.numero_ticket,
+              numero_ticket: numeroFormateado,
               numero_ganador: numeroFormateado,
-              compra_id: resultadoGanador.compra_id ?? null,
-              usuario: resultadoGanador.usuario ?? null,
-              sorteo: resultadoGanador.sorteo ?? null,
+              compra_id: null,
+              usuario: null,
+              sorteo: null,
               oficial: true,
               persistido: true,
             }
       );
 
       setEsNumeroGanador(true);
-      setMensajeBusqueda(`🏆 El número ${numeroFormateado} fue registrado como ganador oficial`);
+      setMensajeBusqueda(
+        `🏆 El número ${numeroFormateado} fue registrado como ganador oficial`
+      );
 
-      await recargarTodo();
+      await recargarTodo?.();
 
       await Swal.fire({
         icon: "success",
@@ -346,7 +379,9 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
   }, [rifaSeleccionada, resultadoGanador, padLength, recargarTodo, ganadorPersistido]);
 
   const quitarGanadorOficial = useCallback(async () => {
-    if (!rifaSeleccionada?.id) {
+    const rifaId = String(rifaSeleccionada?.id || "").trim();
+
+    if (!rifaId) {
       await Swal.fire({
         icon: "error",
         title: "No permitido",
@@ -387,7 +422,8 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          rifaId: rifaSeleccionada.id,
+          rifaId,
+          padLength,
         }),
       });
 
@@ -408,7 +444,7 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
       setEsNumeroGanador(false);
       setMensajeBusqueda("Ganador oficial eliminado. La rifa volvió a activa.");
 
-      await recargarTodo();
+      await recargarTodo?.();
 
       await Swal.fire({
         icon: "success",
@@ -425,7 +461,7 @@ export function useAdminGanador({ rifaSeleccionada, padLength = 4, recargarTodo 
     } finally {
       setQuitandoGanador(false);
     }
-  }, [rifaSeleccionada, numeroGanadorOficial, ganadorPersistido, recargarTodo]);
+  }, [rifaSeleccionada, numeroGanadorOficial, ganadorPersistido, recargarTodo, padLength]);
 
   const resetGanadorState = useCallback(() => {
     setNumeroGanador("");

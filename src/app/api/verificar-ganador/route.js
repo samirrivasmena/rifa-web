@@ -1,54 +1,110 @@
-import { createClient } from "@supabase/supabase-js";
+import { NextResponse } from "next/server";
+import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { requireAdmin } from "../../../lib/requireAdmin";
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+export const runtime = "nodejs";
 
-function normalizarNumero(valor) {
+function esUuidValido(valor) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+    String(valor || "").trim()
+  );
+}
+
+function normalizarNumero(valor, padLength = 4) {
   if (valor === undefined || valor === null || valor === "") return null;
 
   const texto = String(valor).trim();
   const soloNumeros = texto.replace(/\D/g, "");
   if (!soloNumeros) return null;
 
-  return Number(soloNumeros);
+  const numero = Number(soloNumeros);
+  if (!Number.isInteger(numero)) return null;
+
+  return {
+    numero,
+    numeroOficial: String(numero).padStart(padLength, "0"),
+  };
 }
 
 export async function POST(req) {
+  const auth = await requireAdmin(req);
+
+  if (!auth.ok) {
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
+  }
+
   try {
     const body = await req.json();
-    const { rifaId, numero } = body;
 
-    const rifaIdLimpio = String(rifaId ?? "").trim();
-    const numeroBuscado = normalizarNumero(numero);
+    const rifaId = String(body.rifaId ?? body.rifa_id ?? "").trim();
 
-    if (!rifaIdLimpio) {
-      return Response.json({ error: "Falta rifaId" }, { status: 400 });
+    const padLength = Number.isInteger(Number(body.padLength))
+      ? Number(body.padLength)
+      : 4;
+
+    const numeroNormalizado = normalizarNumero(
+      body.numero ?? body.numero_ticket,
+      padLength
+    );
+
+    if (
+      !rifaId ||
+      rifaId === "null" ||
+      rifaId === "undefined" ||
+      !esUuidValido(rifaId)
+    ) {
+      return NextResponse.json(
+        { error: "Selecciona una rifa válida antes de buscar el ganador" },
+        { status: 400 }
+      );
     }
 
-    if (numeroBuscado === null || Number.isNaN(numeroBuscado)) {
-      return Response.json({ error: "Número inválido" }, { status: 400 });
+    if (!numeroNormalizado) {
+      return NextResponse.json({ error: "Número inválido" }, { status: 400 });
     }
 
-    // Buscar si el número fue vendido
-    const { data: ticketData, error: ticketError } = await supabase
+    const { numero, numeroOficial } = numeroNormalizado;
+
+    const { data: rifaData, error: rifaError } = await supabaseAdmin
+      .from("rifas")
+      .select("id, nombre, estado")
+      .eq("id", rifaId)
+      .maybeSingle();
+
+    if (rifaError) {
+      return NextResponse.json(
+        { error: `Error al buscar la rifa: ${rifaError.message}` },
+        { status: 500 }
+      );
+    }
+
+    if (!rifaData) {
+      return NextResponse.json({ error: "La rifa no existe" }, { status: 404 });
+    }
+
+    // IMPORTANTE:
+    // Solo cuenta como vendido si el ticket tiene compra_id.
+    // Si el número existe en tickets pero compra_id es null, sigue disponible.
+    const { data: ticketData, error: ticketError } = await supabaseAdmin
       .from("tickets")
       .select("id, numero_ticket, compra_id, rifa_id")
-      .eq("rifa_id", rifaIdLimpio)
-      .eq("numero_ticket", numeroBuscado)
+      .eq("rifa_id", rifaId)
+      .eq("numero_ticket", numero)
+      .not("compra_id", "is", null)
       .maybeSingle();
 
     if (ticketError) {
-      return Response.json({ error: ticketError.message }, { status: 500 });
+      return NextResponse.json({ error: ticketError.message }, { status: 500 });
     }
 
-    // Si no fue vendido
     if (!ticketData) {
-      return Response.json({
+      return NextResponse.json({
         existe: false,
         vendido: false,
-        numero_ticket: numeroBuscado,
+        numero_ticket: numero,
+        numero_oficial: numeroOficial,
         compra_id: null,
         usuario: null,
         sorteo: null,
@@ -56,48 +112,54 @@ export async function POST(req) {
       });
     }
 
-    // Buscar compra
-    const { data: compraData, error: compraError } = await supabase
-      .from("compras")
-      .select("id, rifa_id, usuario_id")
-      .eq("id", ticketData.compra_id)
-      .maybeSingle();
+    let compraData = null;
 
-    if (compraError) {
-      return Response.json({ error: compraError.message }, { status: 500 });
+    if (ticketData.compra_id) {
+      const { data, error } = await supabaseAdmin
+        .from("compras")
+        .select("id, rifa_id, usuario_id")
+        .eq("id", ticketData.compra_id)
+        .maybeSingle();
+
+      if (error) {
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+
+      compraData = data || null;
     }
 
-    // Buscar usuario
     let usuario = null;
 
     if (compraData?.usuario_id) {
-      const { data: usuarioData, error: usuarioError } = await supabase
+      const { data: usuarioData } = await supabaseAdmin
         .from("usuarios")
         .select("id, nombre, email, telefono")
         .eq("id", compraData.usuario_id)
         .maybeSingle();
 
-      if (usuarioError) {
-        return Response.json({ error: usuarioError.message }, { status: 500 });
-      }
-
       usuario = usuarioData || null;
     }
 
-    // Importante:
-    // Aquí NO marcamos ganador.
-    // Solo decimos que fue vendido.
-    return Response.json({
+    const { data: sorteoData } = await supabaseAdmin
+      .from("sorteos")
+      .select("id, numero_ganador, numero_oficial, fecha_sorteo, fuente, rifa_id")
+      .eq("rifa_id", rifaId)
+      .maybeSingle();
+
+    return NextResponse.json({
       existe: true,
       vendido: true,
       numero_ticket: ticketData.numero_ticket,
+      numero_oficial: numeroOficial,
       compra_id: ticketData.compra_id,
       usuario,
-      sorteo: null,
-      esGanador: false,
+      sorteo: sorteoData || null,
+      esGanador: Boolean(sorteoData),
     });
   } catch (error) {
-    return Response.json(
+    console.error("verificar-ganador error:", error);
+
+    return NextResponse.json(
       { error: error.message || "Error interno del servidor" },
       { status: 500 }
     );

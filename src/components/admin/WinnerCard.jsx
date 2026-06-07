@@ -56,7 +56,9 @@ export default function WinnerCard({
   formatearFecha,
   numeroGanadorOficial,
 }) {
-  const ganadorOficialActual = Boolean(resultado?.oficial === true);
+  const ganadorOficialActual = Boolean(
+    resultado?.oficial === true || numeroGanadorOficial
+  );
 
   const numeroGanadorGuardado = normalizarNumero(numeroGanadorOficial, padLength);
 
@@ -64,6 +66,7 @@ export default function WinnerCard({
     resultado?.numero_ticket ??
     resultado?.numero_ganador ??
     resultado?.numero_oficial ??
+    numeroGanadorOficial ??
     null;
 
   const numeroSeguro =
@@ -78,7 +81,9 @@ export default function WinnerCard({
 
   const tieneUsuario = Boolean(
     resultado?.usuario &&
-      (resultado.usuario.nombre || resultado.usuario.email || resultado.usuario.telefono)
+      (resultado.usuario.nombre ||
+        resultado.usuario.email ||
+        resultado.usuario.telefono)
   );
 
   const estadoKey = ganadorOficialActual
@@ -146,13 +151,13 @@ export default function WinnerCard({
           <div className="adminpro-winner-empty-emoji">🔎</div>
           <h3>Resultado del número</h3>
           <p>
-            Busca un número para ver aquí su estado, los datos del comprador y las acciones
-            disponibles.
+            Busca un número para ver aquí su estado, los datos del comprador y las
+            acciones disponibles.
           </p>
 
           <div className="adminpro-winner-empty-tip">
-            <strong>Tip:</strong> cuando el número sea vendido podrás registrarlo como ganador
-            oficial o quitarlo si hace falta.
+            <strong>Tip:</strong> cuando el número sea vendido podrás registrarlo
+            como ganador oficial o quitarlo si hace falta.
           </div>
         </div>
       ) : (
@@ -188,7 +193,11 @@ export default function WinnerCard({
               <div className="adminpro-winner-info-item">
                 <span>Estado</span>
                 <strong>
-                  {ganadorOficialActual ? "Ganador oficial" : resultado?.existe ? "Vendido" : "No vendido"}
+                  {ganadorOficialActual
+                    ? "Ganador oficial"
+                    : resultado?.existe
+                    ? "Vendido"
+                    : "No vendido"}
                 </strong>
               </div>
 
@@ -236,7 +245,9 @@ export default function WinnerCard({
                 <>
                   <div className="adminpro-winner-user-card">
                     <div className="adminpro-winner-avatar">
-                      {String(resultado.usuario?.nombre || resultado.usuario?.email || "?")
+                      {String(
+                        resultado.usuario?.nombre || resultado.usuario?.email || "?"
+                      )
                         .charAt(0)
                         .toUpperCase()}
                     </div>
@@ -273,7 +284,9 @@ export default function WinnerCard({
                       <button
                         type="button"
                         className="adminpro-winner-copy-btn"
-                        onClick={() => copiarDato(resultado.usuario.telefono, "Teléfono")}
+                        onClick={() =>
+                          copiarDato(resultado.usuario.telefono, "Teléfono")
+                        }
                       >
                         📞 Teléfono
                       </button>

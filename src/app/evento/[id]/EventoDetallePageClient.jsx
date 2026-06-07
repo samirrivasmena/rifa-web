@@ -10,6 +10,7 @@ import RaffleDualImage from "@/components/shared/RaffleDualImage";
 import FloatingShareButton from "@/components/shared/ShareButtons/FloatingShareButton";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
 import { getRifaProgress } from "@/lib/getRifaProgress";
+import { enriquecerRifaConResumen } from "@/lib/rifas/enriquecerRifaConResumen";
 
 export default function EventoDetallePageClient() {
   const params = useParams();
@@ -47,60 +48,53 @@ export default function EventoDetallePageClient() {
   }, []);
 
   // Cargar evento
-  useEffect(() => {
-    const cargarEvento = async () => {
-      try {
-        setLoading(true);
-        setErrorRed(false);
+useEffect(() => {
+  const cargarEvento = async () => {
+    try {
+      setLoading(true);
+      setErrorRed(false);
 
-        const res = await fetch("/api/rifas-publicas", {
-          method: "GET",
-          cache: "no-store",
-        });
+      const res = await fetch("/api/rifa-resumen?rifaId=" + encodeURIComponent(params?.id), {
+        method: "GET",
+        cache: "no-store",
+      });
 
-        const raw = await res.text();
-        let data;
+      const data = await res.json();
 
-        try {
-          data = JSON.parse(raw);
-        } catch {
-          console.error("Respuesta inválida en /api/rifas-publicas");
-          setEvento(null);
-          // CORRECCIÓN #7: marcar error de red para mostrar mensaje diferente
-          setErrorRed(true);
-          return;
-        }
-
-        if (!res.ok) {
-          console.error(data.error || "No se pudo cargar el evento");
-          setEvento(null);
-          setErrorRed(true);
-          return;
-        }
-
-        const rifas = Array.isArray(data.rifas) ? data.rifas : [];
-
-        const encontrada = rifas.find(
-          (r) => String(r.id) === String(params?.id) && esPublicada(r.publicada)
-        );
-
-        setEvento(encontrada || null);
-      } catch (error) {
-        console.error("Error cargando evento:", error);
+      if (!res.ok) {
+        console.error(data.error || "No se pudo cargar el evento");
         setEvento(null);
         setErrorRed(true);
-      } finally {
-        setLoading(false);
+        return;
       }
-    };
 
-    if (params?.id) {
-      cargarEvento();
-    } else {
+      const rifa = data.rifa || null;
+
+      if (!rifa) {
+        setEvento(null);
+        return;
+      }
+
+      // Si quieres, puedes reforzarlo todavía más:
+      const rifaNormalizada = await enriquecerRifaConResumen(rifa);
+
+      setEvento(rifaNormalizada);
+    } catch (error) {
+      console.error("Error cargando evento:", error);
       setEvento(null);
+      setErrorRed(true);
+    } finally {
       setLoading(false);
     }
-  }, [params?.id]);
+  };
+
+  if (params?.id) {
+    cargarEvento();
+  } else {
+    setEvento(null);
+    setLoading(false);
+  }
+}, [params?.id]);
 
   /**
    * Share URL PRO (sin duplicar dominio/ruta)

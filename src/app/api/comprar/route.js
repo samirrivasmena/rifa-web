@@ -5,7 +5,6 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX = 15;
 const PATH_COMPROBANTES = "/storage/v1/object/public/comprobantes/";
 
-// Store simple en memoria para rate limiting básico
 const globalForRateLimit = globalThis;
 if (!globalForRateLimit.__comprarRateLimitStore) {
   globalForRateLimit.__comprarRateLimitStore = new Map();
@@ -58,11 +57,6 @@ function aplicarRateLimit(req) {
   record.count += 1;
   rateLimitStore.set(key, record);
 
-  if (now > record.resetAt) {
-    rateLimitStore.delete(key);
-    return { limited: false };
-  }
-
   if (record.count > RATE_LIMIT_MAX) {
     return {
       limited: true,
@@ -89,6 +83,88 @@ function esComprobanteValido(url) {
 
 function errorResponse(mensaje, status = 400) {
   return NextResponse.json({ error: mensaje }, { status });
+}
+
+function obtenerTotalNumeros(rifa = {}) {
+  const inicio = Number(rifa?.numero_inicio);
+  const fin = Number(rifa?.numero_fin);
+
+  if (Number.isFinite(inicio) && Number.isFinite(fin) && fin >= inicio) {
+    return fin - inicio + 1;
+  }
+
+  const cantidad = Number(rifa?.cantidad_numeros);
+  return Number.isFinite(cantidad) ? cantidad : 0;
+}
+
+function construirNumerosTickets(rifa = {}, totalNumeros = 0) {
+  const inicio = Number(rifa?.numero_inicio);
+  const fin = Number(rifa?.numero_fin);
+
+  if (Number.isFinite(inicio) && Number.isFinite(fin) && fin >= inicio) {
+    const numeros = [];
+    for (let n = inicio; n <= fin; n++) {
+      numeros.push(n);
+    }
+    return numeros;
+  }
+
+  const cantidad = Number(rifa?.cantidad_numeros);
+  const limite = Number.isFinite(cantidad) && cantidad > 0 ? cantidad : totalNumeros;
+
+  return Array.from({ length: limite }, (_, index) => index + 1);
+}
+
+async function generarTicketsSiNoExisten(rifaIdLimpio, rifa, totalNumeros) {
+  const { count, error } = await supabaseAdmin
+    .from("tickets")
+    .select("id", { count: "exact", head: true })
+    .eq("rifa_id", rifaIdLimpio);
+
+  if (error) {
+    return {
+      ok: false,
+      error: error.message || "No se pudo validar si existen tickets",
+    };
+  }
+
+  const ticketsExistentes = count ?? 0;
+
+  if (ticketsExistentes > 0) {
+    return { ok: true, generados: false };
+  }
+
+  const numeros = construirNumerosTickets(rifa, totalNumeros);
+
+  if (!Array.isArray(numeros) || numeros.length === 0) {
+    return {
+      ok: false,
+      error: "No se pudieron generar los tickets de la rifa",
+    };
+  }
+
+  const batchSize = 500;
+
+  for (let i = 0; i < numeros.length; i += batchSize) {
+    const batch = numeros.slice(i, i + batchSize).map((numero) => ({
+      rifa_id: rifaIdLimpio,
+      numero_ticket: numero,
+      compra_id: null,
+    }));
+
+    const { error: insertError } = await supabaseAdmin
+      .from("tickets")
+      .insert(batch);
+
+    if (insertError) {
+      return {
+        ok: false,
+        error: insertError.message || "No se pudieron insertar los tickets",
+      };
+    }
+  }
+
+  return { ok: true, generados: true };
 }
 
 export async function POST(req) {
@@ -144,7 +220,13 @@ export async function POST(req) {
       return errorResponse("Método de pago no válido", 400);
     }
 
-    if (!nombreLimpio || !emailLimpio || !telefonoLimpio || !metodoPago || !rifaIdLimpio) {
+    if (
+      !nombreLimpio ||
+      !emailLimpio ||
+      !telefonoLimpio ||
+      !metodoPago ||
+      !rifaIdLimpio
+    ) {
       return errorResponse("Faltan datos obligatorios", 400);
     }
 
@@ -191,10 +273,6 @@ export async function POST(req) {
       );
     }
 
-    if (!rifaIdLimpio) {
-      return errorResponse("Falta el ID de la rifa", 400);
-    }
-
     const { data: rifa, error: rifaError } = await supabaseAdmin
       .from("rifas")
       .select("*")
@@ -222,18 +300,14 @@ export async function POST(req) {
 
     const estadoRifa = String(rifa.estado || "").toLowerCase();
 
-    if (!["activa", "disponible", "publicada"].includes(estadoRifa)) {
+    if (!["activa", "disponible", "publicada", "agotada"].includes(estadoRifa)) {
       return errorResponse(
         "La rifa seleccionada no está disponible para comprar",
         400
       );
     }
 
-    const totalNumerosRaw = Number(
-      rifa.cantidad_numeros ?? rifa.total_tickets ?? rifa.numeros_totales ?? 0
-    );
-
-    const totalNumeros = Number.isFinite(totalNumerosRaw) ? totalNumerosRaw : 0;
+    const totalNumeros = obtenerTotalNumeros(rifa);
 
     if (totalNumeros <= 0) {
       return errorResponse(
@@ -250,10 +324,23 @@ export async function POST(req) {
       );
     }
 
-    const { data: ticketsExistentes, error: ticketsError } = await supabaseAdmin
+    // Si la rifa no tiene tickets creados, los generamos automáticamente
+    const generacion = await generarTicketsSiNoExisten(
+      rifaIdLimpio,
+      rifa,
+      totalNumeros
+    );
+
+    if (!generacion.ok) {
+      return errorResponse(generacion.error, 500);
+    }
+
+    // Disponibilidad real = tickets sin compra asignada
+    const { count: ticketsLibresCount, error: ticketsError } = await supabaseAdmin
       .from("tickets")
-      .select("id")
-      .eq("rifa_id", rifaIdLimpio);
+      .select("id", { count: "exact", head: true })
+      .eq("rifa_id", rifaIdLimpio)
+      .is("compra_id", null);
 
     if (ticketsError) {
       console.error("Error validando tickets:", ticketsError);
@@ -263,19 +350,19 @@ export async function POST(req) {
       );
     }
 
-    const ticketsVendidos = Array.isArray(ticketsExistentes)
-      ? ticketsExistentes.length
-      : 0;
+    const ticketsLibres = ticketsLibresCount ?? 0;
+    const ticketsVendidos = Math.max(totalNumeros - ticketsLibres, 0);
 
-    const ticketsDisponibles = Math.max(totalNumeros - ticketsVendidos, 0);
-
-    if (ticketsVendidos >= totalNumeros) {
-      return errorResponse("La rifa ya alcanzó el 100% y no acepta más compras", 409);
+    if (ticketsLibres <= 0) {
+      return errorResponse(
+        "La rifa ya alcanzó el 100% y no acepta más compras",
+        409
+      );
     }
 
-    if (cantidadTickets > ticketsDisponibles) {
+    if (cantidadTickets > ticketsLibres) {
       return errorResponse(
-        `Solo quedan ${ticketsDisponibles} ticket(s) disponibles para esta rifa`,
+        `Solo quedan ${ticketsLibres} ticket(s) disponibles para esta rifa`,
         409
       );
     }
@@ -385,7 +472,9 @@ export async function POST(req) {
     const { data: compraCreada, error: compraError } = await supabaseAdmin
       .from("compras")
       .insert([payloadCompra])
-      .select("id, usuario_id, rifa_id, cantidad_tickets, monto_total, metodo_pago, referencia, comprobante_url, estado_pago, fecha_compra")
+      .select(
+        "id, usuario_id, rifa_id, cantidad_tickets, monto_total, metodo_pago, referencia, comprobante_url, estado_pago, fecha_compra"
+      )
       .single();
 
     if (compraError || !compraCreada) {
@@ -409,7 +498,12 @@ export async function POST(req) {
       disponibilidad: {
         total_numeros: totalNumeros,
         tickets_vendidos: ticketsVendidos,
-        tickets_disponibles: Math.max(ticketsDisponibles - cantidadTickets, 0),
+        tickets_disponibles: ticketsLibres - cantidadTickets,
+        porcentaje_vendido:
+          totalNumeros > 0
+            ? Number(((ticketsVendidos / totalNumeros) * 100).toFixed(2))
+            : 0,
+        sold_out: totalNumeros > 0 && ticketsLibres <= 0,
       },
     });
   } catch (error) {

@@ -1,8 +1,33 @@
 "use client";
 
+import { useMemo } from "react";
+
 import HeroRifa from "../HeroRifa";
 import KpiGrid from "../KpiGrid";
 import PurchaseCard from "../PurchaseCard";
+
+function normalizarTicketsUnicos(lista = []) {
+  const seen = new Set();
+
+  return (lista || [])
+    .map((ticket) => {
+      const numero = Number(ticket?.numero_ticket);
+      if (!Number.isFinite(numero)) return null;
+
+      return {
+        ...ticket,
+        numero_ticket: numero,
+      };
+    })
+    .filter(Boolean)
+    .filter((ticket) => {
+      const key = String(ticket.numero_ticket);
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
+}
 
 export default function AdminDashboardSection({
   dashboardRef,
@@ -31,13 +56,63 @@ export default function AdminDashboardSection({
   loadingRechazo,
   loadingEliminacion,
   numeroGanadorOficial,
+  dashboardCompactSummary,
 }) {
+  const estadoNormalizado = (valor) =>
+    String(valor || "").toLowerCase().trim();
+
+  const comprasAprobadas = comprasFiltradasPorRifa.filter((c) =>
+    ["aprobado", "aprobada"].includes(estadoNormalizado(c.estado_pago))
+  );
+
   const comprasPorFiltro = {
     total: comprasFiltradasPorRifa,
-    pendientes: comprasFiltradasPorRifa.filter((c) => c.estado_pago === "pendiente"),
-    aprobadas: comprasFiltradasPorRifa.filter((c) => c.estado_pago === "aprobado"),
-    rechazadas: comprasFiltradasPorRifa.filter((c) => c.estado_pago === "rechazado"),
+    pendientes: comprasFiltradasPorRifa.filter(
+      (c) => estadoNormalizado(c.estado_pago) === "pendiente"
+    ),
+    aprobadas: comprasAprobadas,
+    rechazadas: comprasFiltradasPorRifa.filter(
+      (c) => estadoNormalizado(c.estado_pago) === "rechazado"
+    ),
   };
+
+  // Tickets reales únicos de la rifa
+  const ticketsVendidosUnicos = useMemo(() => {
+    return normalizarTicketsUnicos(ticketsFiltradosPorRifa);
+  }, [ticketsFiltradosPorRifa]);
+
+  const resumenRifa = dashboardCompactSummary || {};
+
+  const totalTickets = Number(
+    resumenRifa.totalTickets ??
+      rifaSeleccionada?.total_numeros ??
+      rifaSeleccionada?.cantidad_numeros ??
+      ticketsVendidosUnicos.length ??
+      0
+  );
+
+  const ticketsVendidos = Number(
+    resumenRifa.ticketsVendidos ??
+      rifaSeleccionada?.tickets_vendidos ??
+      rifaSeleccionada?.stats?.vendidos ??
+      ticketsVendidosUnicos.length ??
+      0
+  );
+
+  const ticketsDisponibles = Number(
+    resumenRifa.disponibles ??
+      rifaSeleccionada?.tickets_disponibles ??
+      Math.max(totalTickets - ticketsVendidos, 0)
+  );
+
+  const porcentajeVendido = Number(
+    resumenRifa.porcentajeVendido ??
+      rifaSeleccionada?.porcentaje_vendido ??
+      rifaSeleccionada?.stats?.porcentaje ??
+      (totalTickets > 0
+        ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
+        : 0)
+  );
 
   const titulosFiltro = {
     total: "Todas las compras de la rifa",
@@ -57,10 +132,8 @@ export default function AdminDashboardSection({
               padLength={padLength}
               formatearFecha={formatearFecha}
               totalCompras={comprasFiltradasPorRifa.length}
-              totalTicketsVendidos={ticketsFiltradosPorRifa.length}
-              totalComprasAprobadas={
-                comprasFiltradasPorRifa.filter((c) => c.estado_pago === "aprobado").length
-              }
+              totalTicketsVendidos={ticketsVendidos}
+              totalComprasAprobadas={comprasAprobadas.length}
               showSecondImage={showSecondImage}
               onIrCompras={() => {
                 setSeccionActiva("compras");
@@ -79,7 +152,8 @@ export default function AdminDashboardSection({
 
           <KpiGrid
             compras={comprasFiltradasPorRifa}
-            tickets={ticketsFiltradosPorRifa}
+            tickets={ticketsVendidosUnicos}
+            ticketsVendidos={ticketsVendidos}
             onCardClick={abrirFiltroDashboard}
           />
         </>
@@ -120,7 +194,7 @@ export default function AdminDashboardSection({
                         loadingRechazo={loadingRechazo}
                         loadingEliminacion={loadingEliminacion}
                         mostrarEliminar={
-                          String(compra.estado_pago || "").toLowerCase() === "rechazado"
+                          estadoNormalizado(compra.estado_pago) === "rechazado"
                         }
                         formatearFecha={formatearFecha}
                         numeroGanadorOficial={numeroGanadorOficial}
@@ -131,9 +205,9 @@ export default function AdminDashboardSection({
                 ) : (
                   <p>No hay registros para mostrar.</p>
                 )
-              ) : ticketsFiltradosPorRifa.length > 0 ? (
+              ) : ticketsVendidosUnicos.length > 0 ? (
                 <div className="adminpro-compras-grid">
-                  {ticketsFiltradosPorRifa.map((ticket) => (
+                  {ticketsVendidosUnicos.map((ticket) => (
                     <div key={ticket.id} className="adminpro-purchase-card">
                       <div className="adminpro-purchase-head">
                         <div>
@@ -163,6 +237,10 @@ export default function AdminDashboardSection({
             </div>
           )}
         </div>
+      </div>
+
+      <div className="adminpro-top-info" style={{ display: "none" }}>
+        {ticketsDisponibles} {porcentajeVendido}
       </div>
     </>
   );

@@ -39,6 +39,14 @@ export default function RaffleProgressPanel({
 
   const padLength = rifaSeleccionada?.formato === "3digitos" ? 3 : 4;
 
+  const toNumber = (value) => {
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const estaAsignado = (ticket) =>
+    ticket?.compra_id !== null && ticket?.compra_id !== undefined;
+
   const numeroInicio =
     rifaSeleccionada?.numero_inicio !== undefined &&
     rifaSeleccionada?.numero_inicio !== null
@@ -64,12 +72,13 @@ export default function RaffleProgressPanel({
   };
 
   const numeroGanadorFormateado = useMemo(() => {
-    const ganador = numeroGanadorOficial
-      ?? rifaSeleccionada?.numero_ganador
-      ?? rifaSeleccionada?.numero_oficial
-      ?? rifaSeleccionada?.sorteo?.numero_ganador
-      ?? rifaSeleccionada?.sorteo?.numero_oficial
-      ?? null;
+    const ganador =
+      numeroGanadorOficial ??
+      rifaSeleccionada?.numero_ganador ??
+      rifaSeleccionada?.numero_oficial ??
+      rifaSeleccionada?.sorteo?.numero_ganador ??
+      rifaSeleccionada?.sorteo?.numero_oficial ??
+      null;
 
     return normalizarNumero(ganador);
   }, [
@@ -89,17 +98,56 @@ export default function RaffleProgressPanel({
   };
 
   const totalNumeros = useMemo(() => {
-    if (!rifaSeleccionada) return 0;
-    return Number(rifaSeleccionada.cantidad_numeros) || numeroFin - numeroInicio + 1;
+    const fromStats = toNumber(rifaSeleccionada?.stats?.total);
+    if (fromStats !== null && fromStats > 0) return fromStats;
+
+    const fromTotalNumeros = toNumber(rifaSeleccionada?.total_numeros);
+    if (fromTotalNumeros !== null && fromTotalNumeros > 0) return fromTotalNumeros;
+
+    const fromCantidad = toNumber(rifaSeleccionada?.cantidad_numeros);
+    if (fromCantidad !== null && fromCantidad > 0) return fromCantidad;
+
+    return numeroFin >= numeroInicio ? numeroFin - numeroInicio + 1 : 0;
   }, [rifaSeleccionada, numeroInicio, numeroFin]);
+
+  const ticketsUnicos = useMemo(() => {
+    const seen = new Set();
+
+    return (tickets || [])
+      .map((ticket) => {
+        const numero = Number(ticket?.numero_ticket);
+        if (!Number.isFinite(numero)) return null;
+
+        // Ignora números fuera del rango de la rifa
+        if (numero < numeroInicio || numero > numeroFin) return null;
+
+        return {
+          ...ticket,
+          numero_ticket: numero,
+        };
+      })
+      .filter(Boolean)
+      .filter((ticket) => {
+        const key = String(ticket.numero_ticket);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
+  }, [tickets, numeroInicio, numeroFin]);
+
+  // Solo tickets realmente asignados a una compra
+  const ticketsAsignados = useMemo(() => {
+    return ticketsUnicos.filter((ticket) => estaAsignado(ticket));
+  }, [ticketsUnicos]);
 
   const ticketsMap = useMemo(() => {
     const map = new Map();
-    tickets.forEach((ticket) => {
+    ticketsUnicos.forEach((ticket) => {
       map.set(Number(ticket.numero_ticket), ticket);
     });
     return map;
-  }, [tickets]);
+  }, [ticketsUnicos]);
 
   const comprasMap = useMemo(() => {
     const map = new Map();
@@ -110,20 +158,22 @@ export default function RaffleProgressPanel({
   }, [compras]);
 
   const ticketsOrdenados = useMemo(() => {
-    return tickets
+    return ticketsAsignados
       .map((ticket) => ({
         ...ticket,
         compra: comprasMap.get(String(ticket.compra_id)) || null,
       }))
       .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
-  }, [tickets, comprasMap]);
+  }, [ticketsAsignados, comprasMap]);
 
-  const vendidos = tickets.length;
+  const vendidos = ticketsAsignados.length;
   const disponibles = Math.max(totalNumeros - vendidos, 0);
+
   const porcentajeVendido =
-    totalNumeros > 0 ? ((vendidos / totalNumeros) * 100).toFixed(2) : "0.00";
+    totalNumeros > 0 ? Number(((vendidos / totalNumeros) * 100).toFixed(2)) : 0;
+
   const porcentajeDisponible =
-    totalNumeros > 0 ? (100 - Number(porcentajeVendido)).toFixed(2) : "0.00";
+    totalNumeros > 0 ? Number((100 - porcentajeVendido).toFixed(2)) : 0;
 
   const numeros = useMemo(() => {
     const lista = [];
@@ -136,8 +186,9 @@ export default function RaffleProgressPanel({
   const abrirDetalleNumero = (numero) => {
     const ticket = ticketsMap.get(Number(numero));
     const ganador = esNumeroGanador(numero);
+    const asignado = estaAsignado(ticket);
 
-    if (!ticket) {
+    if (!ticket || !asignado) {
       setTicketDetalle({
         tipo: "disponible",
         numero,
@@ -164,12 +215,13 @@ export default function RaffleProgressPanel({
   const numerosFiltrados = useMemo(() => {
     return numeros.filter((numero) => {
       const ticket = ticketsMap.get(Number(numero));
-      const vendido = Boolean(ticket);
+      const vendido = Boolean(ticket) && estaAsignado(ticket);
       const numeroFormateado = String(numero).padStart(padLength, "0");
       const ganador = esNumeroGanador(numero);
 
       const coincideBusqueda =
-        !numeroBuscadoNormalizado || numeroFormateado.includes(numeroBuscadoNormalizado);
+        !numeroBuscadoNormalizado ||
+        numeroFormateado.includes(numeroBuscadoNormalizado);
 
       let coincideFiltro = true;
 
@@ -179,7 +231,14 @@ export default function RaffleProgressPanel({
 
       return coincideBusqueda && coincideFiltro;
     });
-  }, [numeros, ticketsMap, numeroBuscadoNormalizado, filtroVista, padLength, numeroGanadorFormateado]);
+  }, [
+    numeros,
+    ticketsMap,
+    numeroBuscadoNormalizado,
+    filtroVista,
+    padLength,
+    numeroGanadorFormateado,
+  ]);
 
   const numeroExactoEncontrado = useMemo(() => {
     if (numeroBuscadoNormalizado.length !== padLength) return null;
@@ -269,7 +328,8 @@ export default function RaffleProgressPanel({
                 tipo: "resumen",
                 titulo: "Falta por vender",
                 valor: `${porcentajeDisponible}%`,
-                descripcion: "Porcentaje restante de números que todavía no han sido vendidos.",
+                descripcion:
+                  "Porcentaje restante de números que todavía no han sido vendidos.",
               });
               setDetalleOpen(true);
             }}
@@ -397,7 +457,7 @@ export default function RaffleProgressPanel({
           <div className="adminpro-ticket-grid">
             {numerosFiltrados.map((numero) => {
               const ticket = ticketsMap.get(Number(numero));
-              const vendido = Boolean(ticket);
+              const vendido = Boolean(ticket) && estaAsignado(ticket);
               const numeroFormateado = String(numero).padStart(padLength, "0");
               const ganador = esNumeroGanador(numero);
               const esBusquedaExacta =
@@ -486,7 +546,9 @@ export default function RaffleProgressPanel({
                     ticketDetalle.tickets.map((item) => (
                       <div key={item.id} className="adminpro-raffle-sold-item">
                         <div>
-                          <strong>Nº {String(item.numero_ticket).padStart(padLength, "0")}</strong>
+                          <strong>
+                            Nº {String(item.numero_ticket).padStart(padLength, "0")}
+                          </strong>
                           <p>Compra #{item.compra_id}</p>
                         </div>
 

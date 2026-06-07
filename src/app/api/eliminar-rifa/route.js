@@ -2,19 +2,19 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 export async function POST(req) {
   const auth = await requireAdmin(req);
 
   if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
-    );
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   try {
     const body = await req.json();
-    const { rifaId } = body;
+    const rifaId = String(body?.rifaId || body?.rifa_id || "").trim();
 
     if (!rifaId) {
       return NextResponse.json(
@@ -23,45 +23,9 @@ export async function POST(req) {
       );
     }
 
-    const { data: compras, error: comprasError } = await supabaseAdmin
-      .from("compras")
-      .select("id")
-      .eq("rifa_id", rifaId)
-      .limit(1);
-
-    if (comprasError) {
-      return NextResponse.json(
-        { error: comprasError.message },
-        { status: 500 }
-      );
-    }
-
-    if (compras && compras.length > 0) {
-      return NextResponse.json(
-        { error: "No se puede eliminar una rifa que tiene compras asociadas" },
-        { status: 400 }
-      );
-    }
-
-    const { data: tickets, error: ticketsError } = await supabaseAdmin
-      .from("tickets")
-      .select("id")
-      .eq("rifa_id", rifaId)
-      .limit(1);
-
-    if (ticketsError) {
-      return NextResponse.json(
-        { error: ticketsError.message },
-        { status: 500 }
-      );
-    }
-
-    if (tickets && tickets.length > 0) {
-      return NextResponse.json(
-        { error: "No se puede eliminar una rifa que tiene tickets asociados" },
-        { status: 400 }
-      );
-    }
+    await supabaseAdmin.from("sorteos").delete().eq("rifa_id", rifaId);
+    await supabaseAdmin.from("tickets").delete().eq("rifa_id", rifaId);
+    await supabaseAdmin.from("compras").delete().eq("rifa_id", rifaId);
 
     const { error: deleteError } = await supabaseAdmin
       .from("rifas")
@@ -70,16 +34,18 @@ export async function POST(req) {
 
     if (deleteError) {
       return NextResponse.json(
-        { error: deleteError.message },
+        { error: deleteError.message || "No se pudo eliminar la rifa" },
         { status: 500 }
       );
     }
 
     return NextResponse.json({
       ok: true,
-      message: "Rifa eliminada correctamente",
+      message: "Rifa eliminada correctamente con sus datos asociados",
     });
   } catch (error) {
+    console.error("eliminar-rifa error:", error);
+
     return NextResponse.json(
       { error: error.message || "Error interno del servidor" },
       { status: 500 }

@@ -9,6 +9,10 @@ import HomeEventosPreview from "@/components/home/HomeEventosPreview";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import {
+  enriquecerRifaConResumen,
+  enriquecerListaRifasConResumen,
+} from "@/lib/rifas/enriquecerRifaConResumen";
 
 import { paymentMethodsConfig, paymentMethodsList } from "@/lib/paymentMethods";
 import { validarEmail } from "@/lib/verifyTickets";
@@ -76,65 +80,75 @@ export default function HomePageClient() {
     };
   }, []);
 
-  useEffect(() => {
-    const cargarRifa = async () => {
-      try {
-        setLoadingRifa(true);
+useEffect(() => {
+  const cargarRifa = async () => {
+    try {
+      setLoadingRifa(true);
 
-        if (rifaDesdeQuery) {
-          const resRifas = await fetch("/api/rifas-publicas", {
-            method: "GET",
-            cache: "no-store",
-          });
-
-          const dataRifas = await resRifas.json();
-
-          if (!resRifas.ok) {
-            console.error(dataRifas.error || "No se pudo cargar la lista de rifas");
-            setRifaActiva(null);
-            return;
-          }
-
-          const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
-
-          const rifaEncontrada = listaRifas.find(
-            (r) => String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
-          );
-
-          if (!rifaEncontrada) {
-            console.warn("No se encontró la rifa solicitada en la URL");
-            setRifaActiva(null);
-            return;
-          }
-
-          setRifaActiva(rifaEncontrada);
-          return;
-        }
-
-        const res = await fetch("/api/rifa-activa", {
+      if (rifaDesdeQuery) {
+        const resRifas = await fetch("/api/rifas-publicas", {
           method: "GET",
           cache: "no-store",
         });
 
-        const data = await res.json();
+        const dataRifas = await resRifas.json();
 
-        if (!res.ok) {
-          console.error(data.error || "No se pudo cargar la rifa activa");
+        if (!resRifas.ok) {
+          console.error(dataRifas.error || "No se pudo cargar la lista de rifas");
           setRifaActiva(null);
           return;
         }
 
-        setRifaActiva(data.rifa || null);
-      } catch (error) {
-        console.error("Error cargando rifa:", error);
-        setRifaActiva(null);
-      } finally {
-        setLoadingRifa(false);
-      }
-    };
+        const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
 
-    cargarRifa();
-  }, [rifaDesdeQuery]);
+        const rifaEncontrada = listaRifas.find(
+          (r) => String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
+        );
+
+        if (!rifaEncontrada) {
+          console.warn("No se encontró la rifa solicitada en la URL");
+          setRifaActiva(null);
+          return;
+        }
+
+        // Aquí la normalizamos con el resumen real
+        const rifaResumen = await enriquecerRifaConResumen(rifaEncontrada);
+        setRifaActiva(rifaResumen);
+        return;
+      }
+
+      const res = await fetch("/api/rifa-activa", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data.error || "No se pudo cargar la rifa activa");
+        setRifaActiva(null);
+        return;
+      }
+
+      const rifa = data.rifa || null;
+      if (!rifa?.id) {
+        setRifaActiva(null);
+        return;
+      }
+
+      // También la normalizamos con el resumen real
+      const rifaResumen = await enriquecerRifaConResumen(rifa);
+      setRifaActiva(rifaResumen);
+    } catch (error) {
+      console.error("Error cargando rifa:", error);
+      setRifaActiva(null);
+    } finally {
+      setLoadingRifa(false);
+    }
+  };
+
+  cargarRifa();
+}, [rifaDesdeQuery]);
 
   useEffect(() => {
     const scrollConOffset = (id, intentos = 0) => {
@@ -222,7 +236,9 @@ export default function HomePageClient() {
           return;
         }
 
-        setRifas(Array.isArray(data.rifas) ? data.rifas : []);
+const lista = Array.isArray(data.rifas) ? data.rifas : [];
+const listaEnriquecida = await enriquecerListaRifasConResumen(lista);
+setRifas(listaEnriquecida);
       } catch (error) {
         console.error("Error cargando rifas:", error);
       }
@@ -237,27 +253,48 @@ export default function HomePageClient() {
     };
   }, [previewUrl]);
 
+  const normalizarRifaConProgreso = (rifa) => {
+    const progreso = getRifaProgress(rifa || {});
+
+    return {
+      ...rifa,
+      progreso,
+      total_numeros: progreso.total,
+      tickets_vendidos: progreso.vendidos,
+      tickets_disponibles: progreso.disponibles,
+      porcentaje_vendido: progreso.porcentaje,
+      sold_out: progreso.soldOut,
+      stats: {
+        ...(rifa?.stats || {}),
+        total: progreso.total,
+        vendidos: progreso.vendidos,
+        disponibles: progreso.disponibles,
+        porcentaje: progreso.porcentaje,
+        soldOut: progreso.soldOut,
+        ticketsVendidos: progreso.vendidos,
+        porcentajeVendido: progreso.porcentaje,
+      },
+    };
+  };
+
   const rifasPublicadasOrdenadas = useMemo(() => {
-    const publicadas = rifas.filter((r) => esPublicada(r.publicada));
+    const publicadas = rifas
+      .filter((r) => esPublicada(r.publicada))
+      .map(normalizarRifaConProgreso);
 
-    return [...publicadas]
-      .sort((a, b) => {
-        const destacadaA = Boolean(a.destacada);
-        const destacadaB = Boolean(b.destacada);
+    return [...publicadas].sort((a, b) => {
+      const destacadaA = Boolean(a.destacada);
+      const destacadaB = Boolean(b.destacada);
 
-        if (destacadaA !== destacadaB) {
-          return Number(destacadaB) - Number(destacadaA);
-        }
+      if (destacadaA !== destacadaB) {
+        return Number(destacadaB) - Number(destacadaA);
+      }
 
-        const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
-        const fechaB = new Date(b.created_at || b.fecha_sorteo || 0).getTime();
+      const fechaA = new Date(a.created_at || a.fecha_sorteo || 0).getTime();
+      const fechaB = new Date(b.created_at || b.fecha_sorteo || 0).getTime();
 
-        return fechaB - fechaA;
-      })
-      .map((rifa) => ({
-        ...rifa,
-        progreso: getRifaProgress(rifa),
-      }));
+      return fechaB - fechaA;
+    });
   }, [rifas]);
 
   const progresoRifaActiva = useMemo(() => {
@@ -268,9 +305,15 @@ export default function HomePageClient() {
   const precioPorTicket = Number.isFinite(precioPorTicketRaw) ? precioPorTicketRaw : 0;
   const totalPagar = tickets * precioPorTicket;
 
-  const totalNumeros = progresoRifaActiva.total;
-  const porcentajeVendido = progresoRifaActiva.porcentaje;
-  const rifaCompleta = progresoRifaActiva.soldOut;
+const totalNumeros = Number(progresoRifaActiva.total || 0);
+const ticketsVendidos = Number(progresoRifaActiva.vendidos || 0);
+const porcentajeVendido = Number(progresoRifaActiva.porcentaje || 0);
+
+const estadoRifa = String(rifaActiva?.estado || "").toLowerCase();
+
+const rifaCompleta =
+  ["finalizada", "agotada", "agotado"].includes(estadoRifa) ||
+  (totalNumeros > 0 && ticketsVendidos > 0 && ticketsVendidos >= totalNumeros);
 
   const nombreRifa = rifaActiva?.nombre || "";
   const descripcionRifa = rifaActiva?.descripcion || "";
@@ -886,16 +929,14 @@ export default function HomePageClient() {
             </div>
           </section>
 
-{totalNumeros > 0 && (
-  <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
-    <div className="mini-progress-inner">
-      <ProgressVentaBar
-        value={porcentajeVendido}
-        soldOut={rifaCompleta}
-      />
-    </div>
-  </section>
-)}
+          {totalNumeros > 0 && (
+            <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
+              <ProgressVentaBar
+                value={porcentajeVendido}
+                soldOut={rifaCompleta}
+              />
+            </section>
+          )}
 
           <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
             <section className="card-section">

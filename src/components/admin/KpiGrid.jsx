@@ -1,24 +1,40 @@
 "use client";
 
-export default function KpiGrid({ compras = [], tickets = [], onCardClick }) {
+function estadoNormalizado(valor) {
+  return String(valor || "").toLowerCase().trim();
+}
+
+function esCompraAprobada(estado) {
+  const e = estadoNormalizado(estado);
+  return e === "aprobado" || e === "aprobada";
+}
+
+export default function KpiGrid({
+  compras = [],
+  tickets = [],
+  ticketsVendidos: ticketsVendidosProp = null,
+  onCardClick,
+}) {
   const totalCompras = compras.length;
 
   const pendientes = compras.filter(
-    (c) => c.estado_pago === "pendiente"
+    (c) => estadoNormalizado(c.estado_pago) === "pendiente"
   ).length;
 
-  const aprobadas = compras.filter(
-    (c) => c.estado_pago === "aprobado"
-  ).length;
+  const aprobadas = compras.filter((c) => esCompraAprobada(c.estado_pago)).length;
 
   const rechazadas = compras.filter(
-    (c) => c.estado_pago === "rechazado"
+    (c) => estadoNormalizado(c.estado_pago) === "rechazado"
   ).length;
 
-  const ticketsVendidos = tickets.length;
+  // ✅ Usa el valor real si viene desde arriba
+  const ticketsVendidos =
+    Number.isFinite(Number(ticketsVendidosProp))
+      ? Number(ticketsVendidosProp)
+      : tickets.filter((ticket) => ticket?.compra_id).length;
 
   const montoAprobado = compras
-    .filter((c) => c.estado_pago === "aprobado")
+    .filter((c) => esCompraAprobada(c.estado_pago))
     .reduce((acc, compra) => {
       const monto = Number(compra.monto_total ?? compra.total ?? 0);
       return acc + monto;
@@ -90,9 +106,7 @@ export default function KpiGrid({ compras = [], tickets = [], onCardClick }) {
             <h3>{card.value}</h3>
           </div>
 
-          {!card.disabled && (
-            <span className="adminpro-kpi-click-hint">↘</span>
-          )}
+          {!card.disabled && <span className="adminpro-kpi-click-hint">↘</span>}
         </button>
       ))}
     </div>

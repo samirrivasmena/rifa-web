@@ -6,6 +6,7 @@ import Swal from "sweetalert2";
 import { getAdminAuthHeaders } from "../../lib/getAdminAuthHeaders";
 import { formatearFecha } from "../../lib/admin/formatearFecha";
 import { escaparCSV } from "../../lib/admin/escaparCSV";
+import { getRifaProgress } from "@/lib/getRifaProgress";
 
 import Sidebar from "../../components/admin/Sidebar";
 import HeaderPanel from "../../components/admin/HeaderPanel";
@@ -17,6 +18,11 @@ import AdminComprasSection from "../../components/admin/sections/AdminComprasSec
 import AdminGanadorSection from "../../components/admin/sections/AdminGanadorSection";
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
 import AdminRifasSection from "../../components/admin/sections/AdminRifasSection";
+
+import {
+  enriquecerListaRifasConResumen,
+  enriquecerRifaConResumen,
+} from "@/lib/rifas/enriquecerRifaConResumen";
 
 import { useAdminAuth } from "../../hooks/admin/useAdminAuth";
 import { useAdminNavigation } from "../../hooks/admin/useAdminNavigation";
@@ -117,7 +123,7 @@ export default function Admin() {
     }
   }, [accesoPermitido]);
 
-  const cargarRifasGlobal = useCallback(async (comprasData = [], ticketsData = []) => {
+  const cargarRifasGlobal = useCallback(async () => {
     try {
       const headers = await getAdminAuthHeaders();
 
@@ -148,35 +154,7 @@ export default function Admin() {
       }
 
       const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
-
-      const rifasConStats = listaRifas.map((rifa) => {
-        const comprasDeRifa = comprasData.filter(
-          (compra) => String(compra.rifa_id) === String(rifa.id)
-        );
-
-        const ticketsDeRifa = ticketsData.filter(
-          (ticket) => String(ticket.rifa_id) === String(rifa.id)
-        );
-
-        const totalTickets = Number(rifa.cantidad_numeros) || 0;
-        const ticketsVendidos = ticketsDeRifa.length;
-        const comprasTotales = comprasDeRifa.length;
-        const disponibles = Math.max(totalTickets - ticketsVendidos, 0);
-        const porcentajeVendido =
-          totalTickets > 0
-            ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
-            : 0;
-
-        return {
-          ...rifa,
-          stats: {
-            compras: comprasTotales,
-            ticketsVendidos,
-            disponibles,
-            porcentajeVendido,
-          },
-        };
-      });
+      const rifasConStats = await enriquecerListaRifasConResumen(listaRifas);
 
       setRifas(rifasConStats);
 
@@ -188,12 +166,47 @@ export default function Admin() {
         const activa = rifasConStats.find(
           (r) => String(r.estado || "").toLowerCase() === "activa"
         );
+
         if (activa) return activa.id;
 
         return rifasConStats[0]?.id || "";
       });
     } catch (error) {
       console.error("Error cargando rifas globales:", error);
+    }
+  }, []);
+
+  const cargarRifaActiva = useCallback(async () => {
+    try {
+      setLoadingRifa(true);
+
+      const res = await fetch("/api/rifa-activa", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        console.error(data.error || "No se pudo cargar la rifa activa");
+        setRifaActiva(null);
+        return;
+      }
+
+      const rifa = data.rifa || null;
+
+      if (!rifa?.id) {
+        setRifaActiva(null);
+        return;
+      }
+
+      const rifaEnriquecida = await enriquecerRifaConResumen(rifa);
+      setRifaActiva(rifaEnriquecida);
+    } catch (error) {
+      console.error("Error cargando rifa activa:", error);
+      setRifaActiva(null);
+    } finally {
+      setLoadingRifa(false);
     }
   }, []);
 
@@ -209,7 +222,8 @@ export default function Admin() {
       }
 
       const { compras: comprasData, tickets: ticketsData } = await cargarDashboard();
-      await cargarRifasGlobal(comprasData, ticketsData);
+
+      await Promise.all([cargarRifasGlobal(), cargarRifaActiva()]);
 
       return { compras: comprasData, tickets: ticketsData };
     } catch (error) {
@@ -223,37 +237,7 @@ export default function Admin() {
     } finally {
       setDataLoading(false);
     }
-  }, [cargarDashboard, cargarRifasGlobal]);
-
-  useEffect(() => {
-    const cargarRifaActiva = async () => {
-      try {
-        setLoadingRifa(true);
-
-        const res = await fetch("/api/rifa-activa", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error(data.error || "No se pudo cargar la rifa activa");
-          setRifaActiva(null);
-          return;
-        }
-
-        setRifaActiva(data.rifa || null);
-      } catch (error) {
-        console.error("Error cargando rifa activa:", error);
-        setRifaActiva(null);
-      } finally {
-        setLoadingRifa(false);
-      }
-    };
-
-    cargarRifaActiva();
-  }, []);
+  }, [cargarDashboard, cargarRifasGlobal, cargarRifaActiva]);
 
   useEffect(() => {
     if (!accesoPermitido) return;
@@ -272,6 +256,10 @@ export default function Admin() {
   const rifaSeleccionada = useMemo(() => {
     return rifas.find((r) => String(r.id) === String(rifaSeleccionadaId)) || null;
   }, [rifas, rifaSeleccionadaId]);
+
+  const progresoRifa = useMemo(() => {
+    return getRifaProgress(rifaSeleccionada || {});
+  }, [rifaSeleccionada]);
 
   const padLength = rifaSeleccionada?.formato === "3digitos" ? 3 : 4;
 
@@ -362,11 +350,21 @@ export default function Admin() {
 
   const ticketsFiltradosPorRifa = useMemo(() => {
     if (!rifaSeleccionadaId) return [];
-    return tickets.filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId));
+
+    return tickets
+      .filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId))
+      .filter(
+        (ticket) =>
+          ticket?.numero_ticket !== null &&
+          ticket?.numero_ticket !== undefined
+      )
+      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
   }, [tickets, rifaSeleccionadaId]);
 
   const comprasPendientes = useMemo(() => {
-    return comprasFiltradasPorRifa.filter((compra) => compra.estado_pago === "pendiente");
+    return comprasFiltradasPorRifa.filter(
+      (compra) => String(compra.estado_pago || "").toLowerCase().trim() === "pendiente"
+    );
   }, [comprasFiltradasPorRifa]);
 
   const ticketsPorCompra = useMemo(() => {
@@ -383,17 +381,50 @@ export default function Admin() {
 
   const dashboardCompactSummary = useMemo(() => {
     const totalCompras = comprasFiltradasPorRifa.length;
+
     const comprasPendientesCount = comprasFiltradasPorRifa.filter(
-      (c) => c.estado_pago === "pendiente"
-    ).length;
-    const comprasAprobadas = comprasFiltradasPorRifa.filter(
-      (c) => c.estado_pago === "aprobado"
-    ).length;
-    const comprasRechazadas = comprasFiltradasPorRifa.filter(
-      (c) => c.estado_pago === "rechazado"
+      (c) => String(c.estado_pago || "").toLowerCase().trim() === "pendiente"
     ).length;
 
-    const ticketsVendidos = ticketsFiltradosPorRifa.length;
+    const comprasAprobadas = comprasFiltradasPorRifa.filter((c) =>
+      ["aprobado", "aprobada"].includes(
+        String(c.estado_pago || "").toLowerCase().trim()
+      )
+    ).length;
+
+    const comprasRechazadas = comprasFiltradasPorRifa.filter(
+      (c) => String(c.estado_pago || "").toLowerCase().trim() === "rechazado"
+    ).length;
+
+    const totalTickets = Number(
+      progresoRifa.total ??
+        rifaSeleccionada?.stats?.total ??
+        rifaSeleccionada?.total_numeros ??
+        rifaSeleccionada?.cantidad_numeros ??
+        0
+    );
+
+    const ticketsVendidos = Number(
+      progresoRifa.vendidos ??
+        rifaSeleccionada?.stats?.vendidos ??
+        rifaSeleccionada?.tickets_vendidos ??
+        0
+    );
+
+    const disponibles = Number(
+      progresoRifa.disponibles ??
+        rifaSeleccionada?.stats?.disponibles ??
+        Math.max(totalTickets - ticketsVendidos, 0)
+    );
+
+    const porcentajeVendido = Number(
+      progresoRifa.porcentaje ??
+        rifaSeleccionada?.stats?.porcentaje ??
+        rifaSeleccionada?.porcentaje_vendido ??
+        (totalTickets > 0
+          ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
+          : 0)
+    );
 
     return {
       totalCompras,
@@ -401,8 +432,11 @@ export default function Admin() {
       comprasAprobadas,
       comprasRechazadas,
       ticketsVendidos,
+      disponibles,
+      totalTickets,
+      porcentajeVendido,
     };
-  }, [comprasFiltradasPorRifa, ticketsFiltradosPorRifa]);
+  }, [comprasFiltradasPorRifa, rifaSeleccionada, progresoRifa]);
 
   useEffect(() => {
     setFiltroDashboard(null);
