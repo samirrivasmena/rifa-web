@@ -11,6 +11,7 @@ function mapHashToActive(hash) {
   if (!clean || clean === "inicio") return "inicio";
   if (clean.includes("eventos-disponibles")) return "eventos";
   if (clean.includes("resultados-oficiales")) return "resultados";
+  if (clean.includes("historial-ganadores")) return "ganadores";
   if (clean.includes("pagos")) return "pagos";
   if (clean.includes("contacto")) return "contacto";
 
@@ -24,6 +25,7 @@ export default function PublicTopbar({
   inicioHref = "/principal#inicio",
   eventosHref = "/principal#eventos-disponibles",
   resultadosHref = "/principal#resultados-oficiales",
+  ganadoresHref = "/principal#historial-ganadores",
   pagosHref = "/principal#pagos",
   contactoHref = "/principal#contacto",
 }) {
@@ -66,7 +68,6 @@ export default function PublicTopbar({
   }, []);
 
   useEffect(() => {
-    // Cerrar menú al cambiar de ruta
     cerrarMenu();
   }, [pathname]);
 
@@ -83,7 +84,6 @@ export default function PublicTopbar({
         return;
       }
 
-      // Si el menú está abierto, no ocultar el topbar
       if (mobileMenuOpen) {
         setHiddenOnMobile(false);
         lastScrollY = currentScrollY;
@@ -106,6 +106,7 @@ export default function PublicTopbar({
         setMobileMenuOpen(false);
         setHiddenOnMobile(false);
       }
+
       handleScroll();
     };
 
@@ -203,7 +204,9 @@ export default function PublicTopbar({
         >
           <Link
             href={inicioHref}
-            className={`public-topbar-link ${currentActive === "inicio" ? "active" : ""}`}
+            className={`public-topbar-link ${
+              currentActive === "inicio" ? "active" : ""
+            }`}
             onClick={() => marcarActivo("inicio")}
             aria-current={currentActive === "inicio" ? "page" : undefined}
           >
@@ -212,7 +215,9 @@ export default function PublicTopbar({
 
           <Link
             href={eventosHref}
-            className={`public-topbar-link ${currentActive === "eventos" ? "active" : ""}`}
+            className={`public-topbar-link ${
+              currentActive === "eventos" ? "active" : ""
+            }`}
             onClick={() => marcarActivo("eventos")}
             aria-current={currentActive === "eventos" ? "page" : undefined}
           >
@@ -221,7 +226,9 @@ export default function PublicTopbar({
 
           <Link
             href={resultadosHref}
-            className={`public-topbar-link ${currentActive === "resultados" ? "active" : ""}`}
+            className={`public-topbar-link ${
+              currentActive === "resultados" ? "active" : ""
+            }`}
             onClick={() => marcarActivo("resultados")}
             aria-current={currentActive === "resultados" ? "page" : undefined}
           >
@@ -229,8 +236,21 @@ export default function PublicTopbar({
           </Link>
 
           <Link
+            href={ganadoresHref}
+            className={`public-topbar-link ${
+              currentActive === "ganadores" ? "active" : ""
+            }`}
+            onClick={() => marcarActivo("ganadores")}
+            aria-current={currentActive === "ganadores" ? "page" : undefined}
+          >
+            GANADORES
+          </Link>
+
+          <Link
             href={pagosHref}
-            className={`public-topbar-link ${currentActive === "pagos" ? "active" : ""}`}
+            className={`public-topbar-link ${
+              currentActive === "pagos" ? "active" : ""
+            }`}
             onClick={() => marcarActivo("pagos")}
             aria-current={currentActive === "pagos" ? "page" : undefined}
           >
@@ -239,7 +259,9 @@ export default function PublicTopbar({
 
           <Link
             href={contactoHref}
-            className={`public-topbar-link ${currentActive === "contacto" ? "active" : ""}`}
+            className={`public-topbar-link ${
+              currentActive === "contacto" ? "active" : ""
+            }`}
             onClick={() => marcarActivo("contacto")}
             aria-current={currentActive === "contacto" ? "page" : undefined}
           >

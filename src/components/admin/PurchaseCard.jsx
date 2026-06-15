@@ -5,29 +5,13 @@ import { useMemo } from "react";
 function getEstadoBadgeStyle(estado) {
   switch (String(estado || "").toLowerCase()) {
     case "aprobado":
-      return {
-        background: "#dcfce7",
-        color: "#166534",
-        border: "1px solid #86efac",
-      };
+      return { background: "#dcfce7", color: "#166534", border: "1px solid #86efac" };
     case "pendiente":
-      return {
-        background: "#fef3c7",
-        color: "#92400e",
-        border: "1px solid #fcd34d",
-      };
+      return { background: "#fef3c7", color: "#92400e", border: "1px solid #fcd34d" };
     case "rechazado":
-      return {
-        background: "#fee2e2",
-        color: "#991b1b",
-        border: "1px solid #fca5a5",
-      };
+      return { background: "#fee2e2", color: "#991b1b", border: "1px solid #fca5a5" };
     default:
-      return {
-        background: "#e5e7eb",
-        color: "#374151",
-        border: "1px solid #d1d5db",
-      };
+      return { background: "#e5e7eb", color: "#374151", border: "1px solid #d1d5db" };
   }
 }
 
@@ -52,12 +36,56 @@ function EstadoBadge({ estado }) {
 
 function normalizarNumero(valor, padLength = 4) {
   if (valor === undefined || valor === null || valor === "") return null;
-
-  const texto = String(valor).trim();
-  const soloNumeros = texto.replace(/\D/g, "");
+  const soloNumeros = String(valor).trim().replace(/\D/g, "");
   if (!soloNumeros) return null;
-
   return String(Number(soloNumeros)).padStart(padLength, "0");
+}
+
+function limpiarTelefonoWhatsapp(valor) {
+  const numeros = String(valor || "").replace(/\D/g, "");
+  if (!numeros) return "";
+  if (numeros.length === 10) return `1${numeros}`;
+  return numeros;
+}
+
+function crearMensajeWhatsapp({ compra, ticketsFormateados, padLength }) {
+  const nombre = compra?.usuarios?.nombre || "cliente";
+  const rifaNombre = compra?.rifas?.nombre || compra?.rifa_nombre || "Rifa";
+  const premio = compra?.rifas?.premio || compra?.premio || rifaNombre;
+  const fechaSorteo = compra?.rifas?.fecha_sorteo || "Por confirmar";
+  const horaSorteo = compra?.rifas?.hora_sorteo || "";
+
+  const eventoUrl = compra?.rifa_id
+    ? `${window.location.origin}/evento/${compra.rifa_id}`
+    : `${window.location.origin}/principal`;
+
+  const ticketsTexto =
+    ticketsFormateados?.length > 0
+      ? ticketsFormateados.map((t) => `🎟️ ${String(t).padStart(padLength, "0")}`).join("\n")
+      : "⏳ Pendiente de asignar";
+
+  return `🎉 *¡COMPRA APROBADA!*
+
+Hola *${nombre}* 👋
+
+Tu compra fue aprobada correctamente en *Rifas LSD*.
+
+━━━━━━━━━━━━━━
+🎁 *Premio:* ${premio}
+🎯 *Rifa:* ${rifaNombre}
+📅 *Sorteo:* ${fechaSorteo} ${horaSorteo}
+━━━━━━━━━━━━━━
+
+✅ *Tus tickets asignados:*
+${ticketsTexto}
+
+🔎 *Ver tu rifa aquí:*
+${eventoUrl}
+
+🍀 Mucha suerte.
+Gracias por participar con nosotros.
+
+*RIFAS LSD* 🏆`;
 }
 
 export default function PurchaseCard({
@@ -87,6 +115,8 @@ export default function PurchaseCard({
   const fechaVisible = compra?.fecha_compra || compra?.created_at || null;
   const estado = String(compra?.estado_pago || "").toLowerCase();
 
+  const telefonoWhatsapp = limpiarTelefonoWhatsapp(compra?.usuarios?.telefono);
+
   const esPdfComprobante = useMemo(() => {
     if (!comprobanteUrl) return false;
     return /\.pdf(\?|#|$)/i.test(comprobanteUrl);
@@ -101,6 +131,14 @@ export default function PurchaseCard({
       (t) => normalizarNumero(t, padLength) || String(t).padStart(padLength, "0")
     );
   }, [ticketsAsignados, padLength]);
+
+  const mensajeWhatsapp = useMemo(() => {
+    return crearMensajeWhatsapp({ compra, ticketsFormateados, padLength });
+  }, [compra, ticketsFormateados, padLength]);
+
+  const whatsappUrl = telefonoWhatsapp
+    ? `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(mensajeWhatsapp)}`
+    : "";
 
   const compraTieneGanador = useMemo(() => {
     if (!numeroGanadorFormateado) return false;
@@ -168,27 +206,29 @@ export default function PurchaseCard({
       </div>
 
       <div className="adminpro-purchase-body">
-        <p>
-          <strong>Email:</strong> {compra?.usuarios?.email || "Sin email"}
-        </p>
-        <p>
-          <strong>Teléfono:</strong> {compra?.usuarios?.telefono || "Sin teléfono"}
-        </p>
-        <p>
-          <strong>Tickets comprados:</strong> {compra?.cantidad_tickets ?? 0}
-        </p>
-        <p>
-          <strong>Monto:</strong> ${Number.isFinite(monto) ? monto.toFixed(2) : "0.00"}
-        </p>
-        <p>
-          <strong>Referencia:</strong> {compra?.referencia || "Sin referencia"}
-        </p>
-        <p>
-          <strong>Método:</strong> {compra?.metodo_pago || "Sin método"}
-        </p>
-        <p>
-          <strong>Fecha:</strong> {formatearFecha?.(fechaVisible) || "Sin fecha"}
-        </p>
+        <p><strong>Email:</strong> {compra?.usuarios?.email || "Sin email"}</p>
+        <p><strong>Teléfono:</strong> {compra?.usuarios?.telefono || "Sin teléfono"}</p>
+
+        {telefonoWhatsapp ? (
+          <a
+            href={whatsappUrl}
+            target="_blank"
+            rel="noreferrer"
+            className="adminpro-whatsapp-btn"
+          >
+            📱 Contactar por WhatsApp
+          </a>
+        ) : (
+          <p className="adminpro-muted" style={{ marginTop: "8px" }}>
+            📱 Sin teléfono para WhatsApp
+          </p>
+        )}
+
+        <p><strong>Tickets comprados:</strong> {compra?.cantidad_tickets ?? 0}</p>
+        <p><strong>Monto:</strong> ${Number.isFinite(monto) ? monto.toFixed(2) : "0.00"}</p>
+        <p><strong>Referencia:</strong> {compra?.referencia || "Sin referencia"}</p>
+        <p><strong>Método:</strong> {compra?.metodo_pago || "Sin método"}</p>
+        <p><strong>Fecha:</strong> {formatearFecha?.(fechaVisible) || "Sin fecha"}</p>
 
         <div className="adminpro-tickets-box">
           <strong>Tickets asignados:</strong>
@@ -258,11 +298,7 @@ export default function PurchaseCard({
                 <img
                   src={comprobanteUrl}
                   alt="Comprobante"
-                  style={{
-                    width: "100%",
-                    height: "100%",
-                    objectFit: "cover",
-                  }}
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
                   onError={(e) => {
                     e.currentTarget.style.objectFit = "contain";
                     e.currentTarget.style.padding = "18px";
@@ -271,19 +307,8 @@ export default function PurchaseCard({
               )}
             </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "10px",
-                marginTop: "10px",
-                flexWrap: "wrap",
-              }}
-            >
-              <button
-                type="button"
-                className="adminpro-soft-btn dark"
-                onClick={abrirPreviewRapida}
-              >
+            <div style={{ display: "flex", gap: "10px", marginTop: "10px", flexWrap: "wrap" }}>
+              <button type="button" className="adminpro-soft-btn dark" onClick={abrirPreviewRapida}>
                 Ver comprobante
               </button>
 
@@ -292,11 +317,7 @@ export default function PurchaseCard({
                 target="_blank"
                 rel="noreferrer"
                 className="adminpro-soft-btn"
-                style={{
-                  textDecoration: "none",
-                  background: "#eff6ff",
-                  color: "#1d4ed8",
-                }}
+                style={{ textDecoration: "none", background: "#eff6ff", color: "#1d4ed8" }}
               >
                 Abrir archivo
               </a>
@@ -308,14 +329,7 @@ export default function PurchaseCard({
           </p>
         )}
 
-        <div
-          style={{
-            display: "flex",
-            gap: "10px",
-            marginTop: "16px",
-            flexWrap: "wrap",
-          }}
-        >
+        <div style={{ display: "flex", gap: "10px", marginTop: "16px", flexWrap: "wrap" }}>
           {estado === "pendiente" && (
             <>
               <button

@@ -46,6 +46,18 @@ export async function GET(req) {
           nombre,
           email,
           telefono
+        ),
+        rifas (
+          id,
+          nombre,
+          premio,
+          descripcion,
+          portada_url,
+          portada_scroll_url,
+          fecha_sorteo,
+          hora_sorteo,
+          formato,
+          estado
         )
       `)
       .order("fecha_compra", { ascending: false });

@@ -16,6 +16,7 @@ import AdminDashboardSection from "../../components/admin/sections/AdminDashboar
 import AdminNumerosSection from "../../components/admin/sections/AdminNumerosSection";
 import AdminComprasSection from "../../components/admin/sections/AdminComprasSection";
 import AdminGanadorSection from "../../components/admin/sections/AdminGanadorSection";
+import AdminGanadoresSection from "../../components/admin/sections/AdminGanadoresSection";
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
 import AdminRifasSection from "../../components/admin/sections/AdminRifasSection";
 
@@ -655,17 +656,54 @@ export default function Admin() {
         .map((t) => String(t.numero_ticket).padStart(padLength, "0"))
         .join(", ");
 
-      await Swal.fire({
-        icon: "success",
-        title: "Compra aprobada",
-        html: `
-          <p>La compra fue aprobada correctamente.</p>
-          <p><strong>Tickets asignados:</strong></p>
-          <p>${numerosFormateados || "Sin tickets"}</p>
-        `,
-      });
+const resultado = await Swal.fire({
+  icon: "success",
+  title: "🎉 Compra aprobada",
+  html: `
+    <div style="text-align:center">
+      <p>La compra fue aprobada correctamente.</p>
 
-      await recargarTodo();
+      <p style="margin-top:10px">
+        <strong>🎟️ Tickets asignados:</strong>
+      </p>
+
+      <p style="
+        background:#f8fafc;
+        padding:12px;
+        border-radius:10px;
+        font-weight:700;
+        color:#16a34a;
+      ">
+        ${numerosFormateados || "Sin tickets"}
+      </p>
+
+      <div style="
+        margin-top:15px;
+        background:#ecfdf5;
+        border:1px solid #16a34a;
+        padding:12px;
+        border-radius:10px;
+      ">
+        ✅ Compra aprobada<br/>
+        📧 Correo enviado<br/>
+        📱 WhatsApp disponible
+      </div>
+    </div>
+  `,
+  showCancelButton: !!data?.whatsapp?.url,
+  confirmButtonText: "Continuar",
+  cancelButtonText: "📱 Abrir WhatsApp",
+  confirmButtonColor: "#16a34a",
+  cancelButtonColor: "#25D366",
+});
+
+if (resultado.dismiss === Swal.DismissReason.cancel) {
+  if (data?.whatsapp?.url) {
+    window.open(data.whatsapp.url, "_blank");
+  }
+}
+
+await recargarTodo();
     } catch (error) {
       console.error(error);
       await Swal.fire({
@@ -1059,6 +1097,12 @@ export default function Admin() {
               return;
             }
 
+            if (id === "ganadores") {
+              setSeccionActiva("ganadores");
+              scrollToRef(topRef, 120);
+              return;
+            }
+
             if (id === "ranking") {
               setSeccionActiva("ranking");
               scrollToRef(rankingRef, 180);
@@ -1179,6 +1223,14 @@ export default function Admin() {
                 formatearFecha={formatearFecha}
               />
             </div>
+          )}
+
+          {seccionActiva === "ganadores" && (
+            <AdminGanadoresSection
+              rifaSeleccionada={rifaSeleccionada}
+              recargarTodo={recargarTodo}
+              formatearFecha={formatearFecha}
+            />
           )}
 
           {seccionActiva === "ranking" && (

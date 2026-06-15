@@ -15,6 +15,8 @@ import {
 import { paymentMethodsConfig } from "@/lib/paymentMethods";
 import { getRifaProgress } from "@/lib/getRifaProgress";
 
+import HistorialGanadores from "@/components/shared/HistorialGanadores";
+
 export default function PrincipalPageClient() {
   const [rifas, setRifas] = useState([]);
   const [loadingRifas, setLoadingRifas] = useState(true);
@@ -622,6 +624,7 @@ useEffect(() => {
               </div>
             </>
           )}
+          <HistorialGanadores />
         </section>
 
         <section className="principal-section reveal-fade-up reveal-delay-4" id="pagos">
@@ -804,12 +807,17 @@ useEffect(() => {
                 <a href="/principal#eventos-disponibles" className="principal-footer-link">
                   Eventos
                 </a>
-                <a href="/principal#resultados-oficiales" className="principal-footer-link">
-                  Resultados
-                </a>
-                <a href="/principal#pagos" className="principal-footer-link">
-                  Pagos
-                </a>
+<a href="/principal#resultados-oficiales" className="principal-footer-link">
+  Resultados
+</a>
+
+<a href="/principal#historial-ganadores" className="principal-footer-link">
+  Ganadores
+</a>
+
+<a href="/principal#pagos" className="principal-footer-link">
+  Pagos
+</a>
                 <a href="/principal#contacto" className="principal-footer-link">
                   Contacto
                 </a>

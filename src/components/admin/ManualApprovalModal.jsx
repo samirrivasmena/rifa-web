@@ -21,10 +21,12 @@ export default function ManualApprovalModal({
   const vendidosSet = useMemo(() => {
     const set = new Set();
 
-    ticketsVendidos.forEach((t) => {
-      const n = Number(t.numero_ticket);
-      if (!Number.isNaN(n)) set.add(n);
-    });
+ticketsVendidos
+  .filter((t) => t.compra_id !== null && t.compra_id !== undefined)
+  .forEach((t) => {
+    const n = Number(t.numero_ticket);
+    if (!Number.isNaN(n)) set.add(n);
+  });
 
     return set;
   }, [ticketsVendidos]);

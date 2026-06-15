@@ -29,6 +29,18 @@ function limpiarTexto(valor) {
   return String(valor || "").trim();
 }
 
+function limpiarTelefonoWhatsapp(valor) {
+  const soloNumeros = String(valor || "").replace(/\D/g, "");
+
+  if (!soloNumeros) return "";
+
+  if (soloNumeros.length === 10) {
+    return `1${soloNumeros}`;
+  }
+
+  return soloNumeros;
+}
+
 function validarId(valor) {
   const id = limpiarTexto(valor);
   return Boolean(id) && /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 100;
@@ -78,9 +90,11 @@ function obtenerRangoNumeros(rifa = {}, totalNumeros = 0) {
 
 function construirListaNumeros(inicio, fin) {
   const lista = [];
+
   for (let n = inicio; n <= fin; n++) {
     lista.push(n);
   }
+
   return lista;
 }
 
@@ -97,11 +111,14 @@ async function asegurarTicketsBase(rifa) {
   if (errorExistentes) {
     return {
       ok: false,
-      error: errorExistentes.message || "No se pudieron leer los tickets existentes",
+      error:
+        errorExistentes.message ||
+        "No se pudieron leer los tickets existentes",
     };
   }
 
   const ticketsExistentes = Array.isArray(existentes) ? existentes : [];
+
   const setExistentes = new Set(
     ticketsExistentes
       .map((t) => Number(t.numero_ticket))
@@ -127,7 +144,9 @@ async function asegurarTicketsBase(rifa) {
       if (insertError) {
         return {
           ok: false,
-          error: insertError.message || "No se pudieron crear los tickets faltantes",
+          error:
+            insertError.message ||
+            "No se pudieron crear los tickets faltantes",
         };
       }
     }
@@ -155,12 +174,13 @@ async function asegurarTicketsBase(rifa) {
 async function obtenerDatosCliente(compra) {
   let nombreCliente = "cliente";
   let emailDestino = "";
+  let telefonoCliente = "";
 
   if (compra?.usuario_id) {
     try {
       const { data: usuario, error: usuarioError } = await supabaseAdmin
         .from("usuarios")
-        .select("nombre, email")
+        .select("nombre, email, telefono")
         .eq("id", compra.usuario_id)
         .maybeSingle();
 
@@ -174,13 +194,14 @@ async function obtenerDatosCliente(compra) {
       if (usuario) {
         nombreCliente = usuario.nombre || nombreCliente;
         emailDestino = usuario.email || emailDestino;
+        telefonoCliente = usuario.telefono || telefonoCliente;
       }
     } catch (error) {
       console.warn("Error obteniendo datos del cliente:", error.message);
     }
   }
 
-  return { nombreCliente, emailDestino };
+  return { nombreCliente, emailDestino, telefonoCliente };
 }
 
 async function rollbackAprobacion({
@@ -213,9 +234,7 @@ async function rollbackAprobacion({
     .eq("id", compraId);
 
   if (rollbackCompraError) {
-    errores.push(
-      rollbackCompraError.message || "No se pudo revertir la compra"
-    );
+    errores.push(rollbackCompraError.message || "No se pudo revertir la compra");
   }
 
   return errores;
@@ -225,14 +244,12 @@ export async function POST(req) {
   const auth = await requireAdmin(req);
 
   if (!auth.ok) {
-    return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
-    );
+    return NextResponse.json({ error: auth.error }, { status: auth.status });
   }
 
   try {
     let body;
+
     try {
       body = await req.json();
     } catch {
@@ -268,10 +285,7 @@ export async function POST(req) {
     }
 
     if (compra.estado_pago === "rechazado") {
-      return errorResponse(
-        "La compra fue rechazada y no puede aprobarse",
-        400
-      );
+      return errorResponse("La compra fue rechazada y no puede aprobarse", 400);
     }
 
     const cantidadTickets = Number(compra.cantidad_tickets) || 0;
@@ -315,10 +329,7 @@ export async function POST(req) {
 
     if (rifaError) {
       console.error("Error consultando rifa:", rifaError);
-      return errorResponse(
-        "No se pudo consultar la rifa asociada",
-        500
-      );
+      return errorResponse("No se pudo consultar la rifa asociada", 500);
     }
 
     if (!rifa) {
@@ -343,8 +354,8 @@ export async function POST(req) {
       );
     }
 
-    // Aseguramos que existan todos los tickets de la rifa
     const aseguracion = await asegurarTicketsBase(rifa);
+
     if (!aseguracion.ok) {
       return errorResponse(aseguracion.error, 500);
     }
@@ -368,12 +379,7 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateAgotadaError) {
-        console.error("Error marcando rifa como agotada:", {
-          message: updateAgotadaError.message,
-          details: updateAgotadaError.details,
-          hint: updateAgotadaError.hint,
-          code: updateAgotadaError.code,
-        });
+        console.error("Error marcando rifa como agotada:", updateAgotadaError);
       }
 
       return errorResponse(
@@ -391,13 +397,6 @@ export async function POST(req) {
       );
     }
 
-    if (ticketsLibresAntes.length < cantidadTickets) {
-      return errorResponse(
-        "No hay suficientes números disponibles en esta rifa",
-        400
-      );
-    }
-
     const seleccionados = tomarNumerosAleatorios(
       ticketsLibresAntes,
       cantidadTickets
@@ -407,13 +406,12 @@ export async function POST(req) {
 
     const { error: asignarTicketsError } = await supabaseAdmin
       .from("tickets")
-      .update({
-        compra_id: compra.id,
-      })
+      .update({ compra_id: compra.id })
       .in("id", idsTicketsAsignar);
 
     if (asignarTicketsError) {
       console.error("Error asignando tickets:", asignarTicketsError);
+
       return errorResponse(
         asignarTicketsError.message || "No se pudieron asignar los tickets",
         500
@@ -465,12 +463,7 @@ export async function POST(req) {
         .eq("id", rifa.id);
 
       if (updateRifaError) {
-        console.error("Error actualizando rifa a agotada:", {
-          message: updateRifaError.message,
-          details: updateRifaError.details,
-          hint: updateRifaError.hint,
-          code: updateRifaError.code,
-        });
+        console.error("Error actualizando rifa a agotada:", updateRifaError);
 
         advertenciaRifa =
           `La compra se aprobó, pero no se pudo marcar la rifa como agotada: ` +
@@ -478,10 +471,17 @@ export async function POST(req) {
       }
     }
 
-    try {
-      const baseUrl = getBaseUrl(req);
-      const { nombreCliente, emailDestino } = await obtenerDatosCliente(compra);
+    const baseUrl = getBaseUrl(req);
+    const { nombreCliente, emailDestino, telefonoCliente } =
+      await obtenerDatosCliente(compra);
 
+    const padLength = String(rifa.formato) === "3digitos" ? 3 : 4;
+
+    const numerosTickets = (nuevosTickets || [])
+      .map((t) => Number(t.numero_ticket))
+      .sort((a, b) => Number(a) - Number(b));
+
+    try {
       if (emailDestino) {
         await sendCompraAprobadaEmail({
           to: emailDestino,
@@ -492,13 +492,11 @@ export async function POST(req) {
           fechaEvento: rifa.fecha_sorteo || rifa.fecha || rifa.fecha_rifa || "",
           horaEvento: rifa.hora_sorteo || rifa.hora || rifa.hora_rifa || "",
           tickets: compra.cantidad_tickets || 0,
-          numerosTickets: (nuevosTickets || [])
-            .map((t) => t.numero_ticket)
-            .sort((a, b) => Number(a) - Number(b)),
+          numerosTickets,
           totalPagar: Number(compra.monto_total ?? 0),
           eventoUrl: `${baseUrl}/evento/${rifa.id}`,
           verificarUrl: `${baseUrl}/principal`,
-          padLength: String(rifa.formato) === "3digitos" ? 3 : 4,
+          padLength,
         });
       } else {
         console.warn(
@@ -509,9 +507,37 @@ export async function POST(req) {
       console.error("No se pudo enviar el correo:", emailError);
     }
 
+    const telefonoWhatsapp = limpiarTelefonoWhatsapp(telefonoCliente);
+
+    const numerosWhatsapp = numerosTickets
+      .map((n) => `• ${String(n).padStart(padLength, "0")}`)
+      .join("\n");
+
+    const mensajeWhatsapp = `🎉 Felicidades ${nombreCliente}
+
+Tu compra fue aprobada.
+
+🎟️ Rifa: ${rifa.nombre || "Rifa"}
+
+🎫 Tickets:
+${numerosWhatsapp}
+
+Gracias por participar en Rifas LSD.`;
+
+    const whatsappUrl = telefonoWhatsapp
+      ? `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(
+          mensajeWhatsapp
+        )}`
+      : null;
+
     return NextResponse.json({
       ok: true,
       advertenciaRifa,
+      whatsapp: {
+        telefono: telefonoWhatsapp,
+        mensaje: mensajeWhatsapp,
+        url: whatsappUrl,
+      },
       tickets: (nuevosTickets || []).map((t) => ({
         id: t.id,
         numero_ticket: t.numero_ticket,
@@ -527,7 +553,9 @@ export async function POST(req) {
         total_numeros: totalNumeros,
         porcentaje_vendido:
           totalNumeros > 0
-            ? Number(((ticketsVendidosDespues / totalNumeros) * 100).toFixed(2))
+            ? Number(
+                ((ticketsVendidosDespues / totalNumeros) * 100).toFixed(2)
+              )
             : 0,
       },
       rifaCompleta,
