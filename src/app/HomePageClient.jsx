@@ -9,19 +9,78 @@ import HomeEventosPreview from "@/components/home/HomeEventosPreview";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import SiteLogo from "@/components/shared/SiteLogo";
 import {
   enriquecerRifaConResumen,
   enriquecerListaRifasConResumen,
 } from "@/lib/rifas/enriquecerRifaConResumen";
 
-import { paymentMethodsConfig, paymentMethodsList } from "@/lib/paymentMethods";
+import { paymentMethodsConfig } from "@/lib/paymentMethods";
 import { validarEmail } from "@/lib/verifyTickets";
 import { getRifaProgress } from "@/lib/getRifaProgress";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 
 import AppPayButton from "@/components/shared/AppPayButton";
 import PurchaseGuideFloating from "@/components/shared/PurchaseGuideFloating";
+import FloatingPurchaseNotifications from "@/components/shared/FloatingPurchaseNotifications";
+import PublicFooter from "@/components/shared/PublicFooter";
 
 export default function HomePageClient() {
+  const { config } = useSiteConfig();
+
+  useEffect(() => {
+    if (!config) return;
+
+    document.documentElement.style.setProperty(
+      "--site-primary",
+      config.color_primario || "#dc2626"
+    );
+    document.documentElement.style.setProperty(
+      "--site-secondary",
+      config.color_secundario || "#111827"
+    );
+    document.documentElement.style.setProperty(
+      "--site-background",
+      config.color_fondo || "#ffffff"
+    );
+    document.documentElement.style.setProperty(
+      "--site-text",
+      config.color_texto || "#111827"
+    );
+    document.documentElement.style.setProperty(
+      "--site-button",
+      config.color_boton || "#dc2626"
+    );
+    document.documentElement.style.setProperty(
+      "--site-success",
+      config.color_exito || "#16a34a"
+    );
+    document.documentElement.style.setProperty(
+      "--site-warning",
+      config.color_alerta || "#f97316"
+    );
+    document.documentElement.style.setProperty(
+      "--site-card",
+      config.color_tarjeta || "#ffffff"
+    );
+    document.documentElement.style.setProperty(
+      "--site-progress",
+      config.color_progreso ||
+        config.color_boton ||
+        config.color_primario ||
+        "#dc2626"
+    );
+    document.documentElement.style.setProperty(
+      "--site-progress-bg",
+      config.color_progreso_fondo || "#e5e7eb"
+    );
+  }, [config]);
+
+  const logoUrl = config?.logo_url || "/logo.png";
+  const whatsappNumber = config?.whatsapp || "17738277463";
+  const instagramUrl =
+    config?.instagram || "https://www.instagram.com/samir__rivas/";
+
   const searchParams = useSearchParams();
   const rifaDesdeQuery = searchParams.get("rifa");
 
@@ -54,6 +113,9 @@ export default function HomePageClient() {
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
 
+  const esActivo = (value) =>
+    value === true || value === 1 || value === "1" || value === "true";
+
   const estaDisponibleParaCompra = (estado) =>
     ["activa", "disponible", "publicada"].includes(
       String(estado || "").toLowerCase()
@@ -80,146 +142,78 @@ export default function HomePageClient() {
     };
   }, []);
 
-useEffect(() => {
-  const cargarRifa = async () => {
-    try {
-      setLoadingRifa(true);
+  useEffect(() => {
+    const cargarRifa = async () => {
+      try {
+        setLoadingRifa(true);
 
-      if (rifaDesdeQuery) {
-        const resRifas = await fetch("/api/rifas-publicas", {
+        if (rifaDesdeQuery) {
+          const resRifas = await fetch("/api/rifas-publicas", {
+            method: "GET",
+            cache: "no-store",
+          });
+
+          const dataRifas = await resRifas.json();
+
+          if (!resRifas.ok) {
+            console.error(
+              dataRifas.error || "No se pudo cargar la lista de rifas"
+            );
+            setRifaActiva(null);
+            return;
+          }
+
+          const listaRifas = Array.isArray(dataRifas.rifas)
+            ? dataRifas.rifas
+            : [];
+
+          const rifaEncontrada = listaRifas.find(
+            (r) =>
+              String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
+          );
+
+          if (!rifaEncontrada) {
+            console.warn("No se encontró la rifa solicitada en la URL");
+            setRifaActiva(null);
+            return;
+          }
+
+          const rifaResumen = await enriquecerRifaConResumen(rifaEncontrada);
+          setRifaActiva(rifaResumen);
+          return;
+        }
+
+        const res = await fetch("/api/rifa-activa", {
           method: "GET",
           cache: "no-store",
         });
 
-        const dataRifas = await resRifas.json();
+        const data = await res.json();
 
-        if (!resRifas.ok) {
-          console.error(dataRifas.error || "No se pudo cargar la lista de rifas");
+        if (!res.ok) {
+          console.error(data.error || "No se pudo cargar la rifa activa");
           setRifaActiva(null);
           return;
         }
 
-        const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
-
-        const rifaEncontrada = listaRifas.find(
-          (r) => String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
-        );
-
-        if (!rifaEncontrada) {
-          console.warn("No se encontró la rifa solicitada en la URL");
+        const rifa = data.rifa || null;
+        if (!rifa?.id) {
           setRifaActiva(null);
           return;
         }
 
-        // Aquí la normalizamos con el resumen real
-        const rifaResumen = await enriquecerRifaConResumen(rifaEncontrada);
+        const rifaResumen = await enriquecerRifaConResumen(rifa);
         setRifaActiva(rifaResumen);
-        return;
-      }
-
-      const res = await fetch("/api/rifa-activa", {
-        method: "GET",
-        cache: "no-store",
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        console.error(data.error || "No se pudo cargar la rifa activa");
+      } catch (error) {
+        console.error("Error cargando rifa:", error);
         setRifaActiva(null);
-        return;
-      }
-
-      const rifa = data.rifa || null;
-      if (!rifa?.id) {
-        setRifaActiva(null);
-        return;
-      }
-
-      // También la normalizamos con el resumen real
-      const rifaResumen = await enriquecerRifaConResumen(rifa);
-      setRifaActiva(rifaResumen);
-    } catch (error) {
-      console.error("Error cargando rifa:", error);
-      setRifaActiva(null);
-    } finally {
-      setLoadingRifa(false);
-    }
-  };
-
-  cargarRifa();
-}, [rifaDesdeQuery]);
-
-  useEffect(() => {
-    const scrollConOffset = (id, intentos = 0) => {
-      const section = document.getElementById(id);
-
-      if (!section) {
-        if (intentos < 20) {
-          setTimeout(() => {
-            scrollConOffset(id, intentos + 1);
-          }, 200);
-        }
-        return;
-      }
-
-      const isMobile = window.innerWidth <= 768;
-
-      let offset = 110;
-
-      if (id === "resultados-oficiales") {
-        offset = isMobile ? 92 : 130;
-      } else if (id === "boletos") {
-        offset = isMobile ? 88 : 120;
-      } else {
-        offset = isMobile ? 82 : 110;
-      }
-
-      const top = section.getBoundingClientRect().top + window.scrollY - offset;
-
-      window.scrollTo({
-        top,
-        behavior: "smooth",
-      });
-
-      section.classList.remove("boletos-highlight");
-
-      if (
-        ["inicio", "eventos", "boletos", "pagos", "contacto", "resultados-oficiales"].includes(
-          id
-        )
-      ) {
-        setTimeout(() => {
-          section.classList.add("boletos-highlight");
-
-          setTimeout(() => {
-            section.classList.remove("boletos-highlight");
-          }, 2200);
-        }, 150);
+      } finally {
+        setLoadingRifa(false);
       }
     };
 
-    const hacerScrollAlHash = () => {
-      const hash = window.location.hash;
-
-      if (!hash) return;
-
-      const id = hash.replace("#", "");
-      if (!id) return;
-
-      setTimeout(() => {
-        scrollConOffset(id);
-      }, 250);
-    };
-
-    hacerScrollAlHash();
-
-    window.addEventListener("hashchange", hacerScrollAlHash);
-
-    return () => {
-      window.removeEventListener("hashchange", hacerScrollAlHash);
-    };
-  }, [rifaActiva, rifas]);
+    cargarRifa();
+  }, [rifaDesdeQuery]);
 
   useEffect(() => {
     const cargarRifas = async () => {
@@ -236,9 +230,9 @@ useEffect(() => {
           return;
         }
 
-const lista = Array.isArray(data.rifas) ? data.rifas : [];
-const listaEnriquecida = await enriquecerListaRifasConResumen(lista);
-setRifas(listaEnriquecida);
+        const lista = Array.isArray(data.rifas) ? data.rifas : [];
+        const listaEnriquecida = await enriquecerListaRifasConResumen(lista);
+        setRifas(listaEnriquecida);
       } catch (error) {
         console.error("Error cargando rifas:", error);
       }
@@ -248,10 +242,27 @@ setRifas(listaEnriquecida);
   }, []);
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) URL.revokeObjectURL(previewUrl);
-    };
-  }, [previewUrl]);
+    if (!config?.metodos_pago) return;
+  }, [config?.metodos_pago]);
+
+  const metodosPagoAdmin = useMemo(() => {
+    return Array.isArray(config?.metodos_pago) ? config.metodos_pago : [];
+  }, [config?.metodos_pago]);
+
+  const paymentMethods = useMemo(() => {
+    return metodosPagoAdmin
+      .filter((metodo) => esActivo(metodo.activo))
+      .map((metodo) => metodo.nombre)
+      .filter(Boolean);
+  }, [metodosPagoAdmin]);
+
+  useEffect(() => {
+    if (paymentMethods.length === 0) return;
+
+    if (!paymentMethods.includes(paymentMethod)) {
+      setPaymentMethod(paymentMethods[0]);
+    }
+  }, [paymentMethods, paymentMethod]);
 
   const normalizarRifaConProgreso = (rifa) => {
     const progreso = getRifaProgress(rifa || {});
@@ -302,18 +313,22 @@ setRifas(listaEnriquecida);
   }, [rifaActiva]);
 
   const precioPorTicketRaw = Number(rifaActiva?.precio_ticket);
-  const precioPorTicket = Number.isFinite(precioPorTicketRaw) ? precioPorTicketRaw : 0;
+  const precioPorTicket = Number.isFinite(precioPorTicketRaw)
+    ? precioPorTicketRaw
+    : 0;
   const totalPagar = tickets * precioPorTicket;
 
-const totalNumeros = Number(progresoRifaActiva.total || 0);
-const ticketsVendidos = Number(progresoRifaActiva.vendidos || 0);
-const porcentajeVendido = Number(progresoRifaActiva.porcentaje || 0);
+  const totalNumeros = Number(progresoRifaActiva.total || 0);
+  const ticketsVendidos = Number(progresoRifaActiva.vendidos || 0);
+  const porcentajeVendido = Number(progresoRifaActiva.porcentaje || 0);
 
-const estadoRifa = String(rifaActiva?.estado || "").toLowerCase();
+  const estadoRifa = String(rifaActiva?.estado || "").toLowerCase();
 
-const rifaCompleta =
-  ["finalizada", "agotada", "agotado"].includes(estadoRifa) ||
-  (totalNumeros > 0 && ticketsVendidos > 0 && ticketsVendidos >= totalNumeros);
+  const rifaCompleta =
+    ["finalizada", "agotada", "agotado"].includes(estadoRifa) ||
+    (totalNumeros > 0 &&
+      ticketsVendidos > 0 &&
+      ticketsVendidos >= totalNumeros);
 
   const nombreRifa = rifaActiva?.nombre || "";
   const descripcionRifa = rifaActiva?.descripcion || "";
@@ -339,6 +354,25 @@ const rifaCompleta =
     : premioPrincipal
     ? [premioPrincipal]
     : [];
+
+  const metodoAdmin =
+    metodosPagoAdmin.find((metodo) => metodo.nombre === paymentMethod) || null;
+
+  const metodoVisual =
+    paymentMethodsConfig[paymentMethod] || paymentMethodsConfig.Binance || {};
+
+  const metodoSeleccionado = {
+    ...metodoVisual,
+    key: paymentMethod,
+    titulo: metodoAdmin?.nombre || paymentMethod,
+    nombre: metodoAdmin?.titular || "",
+    cuenta: metodoAdmin?.cuenta || "",
+    descripcion: metodoAdmin?.descripcion || "",
+    subtitulo: metodoAdmin?.subtitulo || "CUENTA",
+    note: metodoAdmin?.nota || "",
+  };
+
+  const esPagoDigital = paymentMethod === "App Pay";
 
   const swalConfig = {
     background: "#1f1f1f",
@@ -442,10 +476,6 @@ const rifaCompleta =
     }
   };
 
-  const paymentMethods = paymentMethodsList;
-  const metodoSeleccionado = paymentMethodsConfig[paymentMethod];
-  const esPagoDigital = paymentMethod === "App Pay";
-
   const registrarCompraAppPay = async ({
     referenciaPago,
     emailWallet = "",
@@ -548,7 +578,9 @@ const rifaCompleta =
           ...swalConfig,
           icon: "error",
           title: "Error al registrar compra",
-          text: data.error || "El pago fue exitoso pero no se pudo registrar la compra",
+          text:
+            data.error ||
+            "El pago fue exitoso pero no se pudo registrar la compra",
         });
         return;
       }
@@ -608,7 +640,8 @@ const rifaCompleta =
     try {
       setLoadingCompra(true);
 
-      const { nombre, email, telefono, referencia, comprobante, codigoPais } = formData;
+      const { nombre, email, telefono, referencia, comprobante, codigoPais } =
+        formData;
       const telefonoLimpio = telefono.replace(/[^\d]/g, "");
 
       if (!rifaActiva?.id) {
@@ -815,7 +848,12 @@ const rifaCompleta =
         />
 
         <header className="floating-header">
-          <img src="/logo.png" alt="Logo" className="floating-logo" />
+          <SiteLogo
+            src={logoUrl}
+            alt="Logo"
+            fallbackText={config?.nombre_marca || "R"}
+            size="preview"
+          />
           <div className="floating-center">
             <h3>Cargando rifa...</h3>
             <p>Espera un momento</p>
@@ -856,7 +894,12 @@ const rifaCompleta =
       />
 
       <header className="floating-header">
-        <img src="/logo.png" alt="Logo" className="floating-logo" />
+        <SiteLogo
+          src={logoUrl}
+          alt="Logo"
+          fallbackText={config?.nombre_marca || "R"}
+          size="preview"
+        />
         <div className="floating-center">
           <h3>{nombreRifa || "Rifa disponible"}</h3>
           <p>{descripcionRifa || "Disponible"}</p>
@@ -903,7 +946,9 @@ const rifaCompleta =
 
             <div className="hero-title-block">
               {nombreRifa && <h1>{nombreRifa}</h1>}
-              {descripcionRifa && <p className="hero-subtitle-dark">{descripcionRifa}</p>}
+              {descripcionRifa && (
+                <p className="hero-subtitle-dark">{descripcionRifa}</p>
+              )}
 
               {(fechaRifa || horaRifa) && (
                 <p className="hero-date-line">
@@ -913,7 +958,9 @@ const rifaCompleta =
 
               {(premios.length > 0 || precioPorTicket > 0) && (
                 <div className="hero-prize-box">
-                  {premios.length > 0 && <span className="hero-prize-label">PREMIO:</span>}
+                  {premios.length > 0 && (
+                    <span className="hero-prize-label">PREMIO:</span>
+                  )}
 
                   {premios.map((premio, index) => (
                     <p key={`${premio}-${index}`}>• {premio}</p>
@@ -931,10 +978,7 @@ const rifaCompleta =
 
           {totalNumeros > 0 && (
             <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
-              <ProgressVentaBar
-                value={porcentajeVendido}
-                soldOut={rifaCompleta}
-              />
+              <ProgressVentaBar value={porcentajeVendido} soldOut={rifaCompleta} />
             </section>
           )}
 
@@ -948,7 +992,11 @@ const rifaCompleta =
                 </div>
               )}
 
-              <div className={`ticket-controls ${rifaCompleta ? "ticket-controls-disabled" : ""}`}>
+              <div
+                className={`ticket-controls ${
+                  rifaCompleta ? "ticket-controls-disabled" : ""
+                }`}
+              >
                 <button
                   className="circle-btn circle-btn-muted"
                   onClick={() => setTickets((prev) => Math.max(prev - 1, 1))}
@@ -968,9 +1016,9 @@ const rifaCompleta =
 
                 <div
                   className="ticket-tooltip-wrap"
-                  data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(2)}\nRifa: ${
-                    nombreRifa || "Rifa disponible"
-                  }`}
+                  data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(
+                    2
+                  )}\nRifa: ${nombreRifa || "Rifa disponible"}`}
                 >
                   <button
                     className="circle-btn circle-btn-main"
@@ -990,7 +1038,9 @@ const rifaCompleta =
                 {[1, 2, 5, 10, 20, 50, 100].map((num) => (
                   <button
                     key={num}
-                    className={`quick-ticket-btn-red ${tickets === num ? "active" : ""}`}
+                    className={`quick-ticket-btn-red ${
+                      tickets === num ? "active" : ""
+                    }`}
                     onClick={() => setTickets(num)}
                     type="button"
                     disabled={rifaCompleta}
@@ -1096,36 +1146,42 @@ const rifaCompleta =
                 </p>
 
                 <div className="payment-options-row">
-                  {paymentMethods.map((method) => (
-                    <button
-                      key={method}
-                      className={`payment-pill ${paymentMethodsConfig[method].bgClass} ${
-                        paymentMethod === method ? "active" : ""
-                      }`}
-                      onClick={() => setPaymentMethod(method)}
-                      type="button"
-                      disabled={rifaCompleta}
-                    >
-                      <div className="payment-pill-logo-wrap">
-                        <img
-                          src={paymentMethodsConfig[method].logo}
-                          alt={method}
-                          className="payment-pill-logo-img"
-                        />
-                      </div>
+                  {paymentMethods.map((method) => {
+                    const metodoVisual = paymentMethodsConfig[method] || {};
 
-                      <span className="payment-pill-text">{method}</span>
+                    return (
+                      <button
+                        key={method}
+                        className={`payment-pill ${metodoVisual.bgClass || ""} ${
+                          paymentMethod === method ? "active" : ""
+                        }`}
+                        onClick={() => setPaymentMethod(method)}
+                        type="button"
+                        disabled={rifaCompleta}
+                      >
+                        <div className="payment-pill-logo-wrap">
+                          <img
+                            src={metodoVisual.logo || "/logo.png"}
+                            alt={method}
+                            className="payment-pill-logo-img"
+                          />
+                        </div>
 
-                      {paymentMethod === method && (
-                        <span className="payment-selected-check">✔</span>
-                      )}
-                    </button>
-                  ))}
+                        <span className="payment-pill-text">{method}</span>
+
+                        {paymentMethod === method && (
+                          <span className="payment-selected-check">✔</span>
+                        )}
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {paymentMethod === "App Pay" ? (
                   <div className="apppay-detail-box premium-card-hover">
-                    <span className="apppay-detail-label">{metodoSeleccionado.subtitulo}</span>
+                    <span className="apppay-detail-label">
+                      {metodoSeleccionado.subtitulo}
+                    </span>
 
                     <div className="apppay-brand"> Pay</div>
 
@@ -1159,6 +1215,15 @@ const rifaCompleta =
                       </div>
                     )}
 
+                    <button
+                      type="button"
+                      className="principal-white-btn small-btn"
+                      onClick={() => setShowAppPayModal(true)}
+                      style={{ marginTop: "12px" }}
+                    >
+                      Ver App Pay
+                    </button>
+
                     <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
 
                     {metodoSeleccionado.note && (
@@ -1168,7 +1233,9 @@ const rifaCompleta =
                 ) : (
                   <div className="selected-payment-box premium-card-hover">
                     <h4>{metodoSeleccionado.titulo}</h4>
-                    <span className="payment-small-label">{metodoSeleccionado.subtitulo}</span>
+                    <span className="payment-small-label">
+                      {metodoSeleccionado.subtitulo}
+                    </span>
 
                     <div className="payment-account-row">
                       <div className="payment-account">{metodoSeleccionado.cuenta}</div>
@@ -1182,7 +1249,9 @@ const rifaCompleta =
                       </button>
                     </div>
 
-                    <div className="payment-owner">TITULAR: {metodoSeleccionado.nombre}</div>
+                    <div className="payment-owner">
+                      TITULAR: {metodoSeleccionado.nombre}
+                    </div>
 
                     {Array.isArray(metodoSeleccionado.extra) &&
                       metodoSeleccionado.extra.map((item) => (
@@ -1209,7 +1278,9 @@ const rifaCompleta =
                       {tickets > 1 ? "s" : ""})
                     </div>
 
-                    <p className="payment-description">{metodoSeleccionado.descripcion}</p>
+                    <p className="payment-description">
+                      {metodoSeleccionado.descripcion}
+                    </p>
                   </div>
                 )}
               </section>
@@ -1272,7 +1343,9 @@ const rifaCompleta =
                   )}
 
                   {formData.comprobante?.type === "application/pdf" && (
-                    <div className="pdf-preview-note">PDF seleccionado correctamente.</div>
+                    <div className="pdf-preview-note">
+                      PDF seleccionado correctamente.
+                    </div>
                   )}
 
                   <p className="upload-method-summary">
@@ -1296,7 +1369,9 @@ const rifaCompleta =
                 ) : (
                   <button
                     type="submit"
-                    className={`confirm-main-btn ${rifaCompleta ? "confirm-main-btn-disabled" : ""}`}
+                    className={`confirm-main-btn ${
+                      rifaCompleta ? "confirm-main-btn-disabled" : ""
+                    }`}
                     disabled={
                       loadingCompra ||
                       !rifaActiva?.id ||
@@ -1341,26 +1416,7 @@ const rifaCompleta =
 
       <HomeEventosPreview rifas={rifasPublicadasOrdenadas} />
 
-      <footer className="footer reveal-fade-up reveal-delay-4" id="contacto">
-        <h2>Conéctate con nosotros</h2>
-        <div className="footer-links">
-          <a
-            href="https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa"
-            target="_blank"
-            rel="noreferrer"
-          >
-            WhatsApp Soporte
-          </a>
-          <a
-            href="https://www.instagram.com/samir__rivas/"
-            target="_blank"
-            rel="noreferrer"
-          >
-            Instagram
-          </a>
-        </div>
-        <p>© 2026 - Todos los derechos reservados.</p>
-      </footer>
+      <PublicFooter />
 
       <VerifyTicketsModal
         open={showVerifyModal}
@@ -1371,7 +1427,10 @@ const rifaCompleta =
       />
 
       {showAppPayModal && (
-        <div className="apppay-modal-overlay" onClick={() => setShowAppPayModal(false)}>
+        <div
+          className="apppay-modal-overlay"
+          onClick={() => setShowAppPayModal(false)}
+        >
           <div className="apppay-modal" onClick={(e) => e.stopPropagation()}>
             <button
               type="button"
@@ -1439,13 +1498,19 @@ const rifaCompleta =
 
       <PurchaseGuideFloating onOpenVerifier={() => setShowVerifyModal(true)} />
 
+      <FloatingPurchaseNotifications />
+
       <a
-        href="https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa"
+        href={`https://wa.me/${whatsappNumber}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
         target="_blank"
         rel="noreferrer"
         className="whatsapp-float"
       >
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" className="whatsapp-icon">
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 32 32"
+          className="whatsapp-icon"
+        >
           <path
             fill="white"
             d="M19.11 17.21c-.29-.15-1.71-.84-1.98-.93-.27-.1-.46-.15-.66.15-.19.29-.76.93-.93 1.12-.17.19-.34.22-.63.07-.29-.15-1.23-.45-2.34-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.49.1-.19.05-.37-.02-.51-.07-.15-.66-1.59-.9-2.18-.24-.57-.48-.49-.66-.5h-.56c-.19 0-.49.07-.74.34-.24.27-.95.93-.95 2.28s.98 2.66 1.12 2.85c.15.19 1.93 2.95 4.68 4.14.65.28 1.16.45 1.56.58.66.21 1.26.18 1.73.11.53-.08 1.71-.7 1.95-1.38.24-.68.24-1.26.17-1.38-.07-.11-.27-.18-.56-.33Z"

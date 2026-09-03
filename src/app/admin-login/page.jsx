@@ -181,7 +181,7 @@ export default function AdminLogin() {
               margin: "0 auto 14px",
               display: "grid",
               placeItems: "center",
-              background: "linear-gradient(135deg, #111827, #1f2937)",
+              background: "linear-gradient(135deg, #ff00ae, #1f2937)",
               color: "#fff",
               boxShadow: "0 12px 30px rgba(17,24,39,0.28)",
             }}

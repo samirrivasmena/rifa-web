@@ -1,0 +1,133 @@
+.floating-purchase-notification {
+  position: fixed;
+  left: 14px;
+  bottom: 88px;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  width: min(330px, calc(100vw - 28px));
+  padding: 12px 14px;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #111827;
+  border: 1px solid rgba(220, 38, 38, 0.18);
+  box-shadow: 0 14px 38px rgba(220, 38, 38, 0.16);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  animation: purchaseToastIn 0.4s ease;
+}
+
+.floating-purchase-icon {
+  width: 39px;
+  height: 39px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: rgba(220, 38, 38, 0.88);
+  color: #fff;
+  font-size: 19px;
+  flex: 0 0 auto;
+}
+
+.purchase-live {
+  font-size: 10px;
+  font-weight: 900;
+  color: #dc2626;
+  margin-bottom: 2px;
+}
+
+.floating-purchase-content strong {
+  display: block;
+  font-size: 13px;
+  color: #dc2626;
+  font-weight: 900;
+  line-height: 1.1;
+}
+
+.floating-purchase-content p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: #111827;
+  font-weight: 800;
+}
+
+.floating-purchase-content span {
+  display: block;
+  font-size: 11px;
+  color: #4b5563;
+  font-weight: 700;
+}
+
+@keyframes purchaseToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (max-width: 640px) {
+  .floating-purchase-notification {
+    left: 10px;
+    right: 10px;
+    bottom: 82px;
+    width: auto;
+    max-width: 310px;
+    padding: 10px 12px;
+    border-radius: 16px;
+    background: rgba(255, 255, 255, 0.68);
+  }
+
+  .floating-purchase-icon {
+    width: 36px;
+    height: 36px;
+    font-size: 17px;
+  }
+}
+.purchase-toast-exit {
+  animation: purchaseToastOut 0.5s ease forwards;
+}
+
+@keyframes purchaseToastOut {
+  from {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  to {
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+  }
+}
+.purchase-close-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 999px;
+  background: #dc2626;
+  color: #fff;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.purchase-close-btn:hover {
+  transform: scale(1.08);
+  background: #b91c1c;
+}
+
+.purchase-close-btn:active {
+  transform: scale(0.95);
+}

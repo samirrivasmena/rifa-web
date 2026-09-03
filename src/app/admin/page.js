@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Swal from "sweetalert2";
 
 import { getAdminAuthHeaders } from "../../lib/getAdminAuthHeaders";
@@ -19,6 +19,7 @@ import AdminGanadorSection from "../../components/admin/sections/AdminGanadorSec
 import AdminGanadoresSection from "../../components/admin/sections/AdminGanadoresSection";
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
 import AdminRifasSection from "../../components/admin/sections/AdminRifasSection";
+import AdminConfiguracionSection from "@/components/admin/sections/AdminConfiguracionSection";
 
 import {
   enriquecerListaRifasConResumen,
@@ -30,6 +31,7 @@ import { useAdminNavigation } from "../../hooks/admin/useAdminNavigation";
 import { useAdminRanking } from "../../hooks/admin/useAdminRanking";
 import { useAdminGanador } from "../../hooks/admin/useAdminGanador";
 import { useAdminCompras } from "../../hooks/admin/useAdminCompras";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 
 import "./admin.css";
 
@@ -40,7 +42,6 @@ export default function Admin() {
     refs: {
       topRef,
       dashboardRef,
-      mapaTicketsRef,
       dashboardFilterRef,
       comprasSectionRef,
       ganadorRef,
@@ -69,60 +70,69 @@ export default function Admin() {
   const [loadingRechazo, setLoadingRechazo] = useState(null);
   const [loadingEliminacion, setLoadingEliminacion] = useState(null);
 
+  const { config: siteConfig } = useSiteConfig();
+  const logoUrl = siteConfig?.logo_url || "/logo.png";
+
   const [modalManualOpen, setModalManualOpen] = useState(false);
   const [compraManualSeleccionada, setCompraManualSeleccionada] = useState(null);
   const [ticketsManualSeleccionados, setTicketsManualSeleccionados] = useState([]);
   const [preselectedManualNumber, setPreselectedManualNumber] = useState(null);
 
-  const cargarDashboard = useCallback(async () => {
-    if (!accesoPermitido) return { compras: [], tickets: [] };
+  const esPublicada = (value) =>
+    value === true || value === 1 || value === "1" || value === "true";
 
-    try {
-      const headers = await getAdminAuthHeaders();
+  const cargarDashboard = useCallback(
+    async (headersParam = null) => {
+      if (!accesoPermitido) return { compras: [], tickets: [] };
 
-      if (!headers.Authorization) {
-        console.warn("No hay token admin listo todavía para cargar dashboard");
-        return { compras: [], tickets: [] };
-      }
-
-      const res = await fetch("/api/admin-compras", {
-        method: "GET",
-        headers,
-        cache: "no-store",
-      });
-
-      const rawText = await res.text();
-
-      let data;
       try {
-        data = JSON.parse(rawText);
-      } catch {
-        console.error("Respuesta inválida en /api/admin-compras");
+        const headers = headersParam || (await getAdminAuthHeaders());
+
+        if (!headers.Authorization) {
+          console.warn("No hay token admin listo todavía para cargar dashboard");
+          return { compras: [], tickets: [] };
+        }
+
+        const res = await fetch("/api/admin-compras", {
+          method: "GET",
+          headers,
+          cache: "no-store",
+        });
+
+        const rawText = await res.text();
+
+        let data;
+        try {
+          data = JSON.parse(rawText);
+        } catch {
+          console.error("Respuesta inválida en /api/admin-compras");
+          return { compras: [], tickets: [] };
+        }
+
+        if (!res.ok) {
+          console.error("Error admin compras:", data.error);
+          return { compras: [], tickets: [] };
+        }
+
+        const comprasData = Array.isArray(data.compras) ? data.compras : [];
+        const ticketsData = Array.isArray(data.tickets) ? data.tickets : [];
+
+        setCompras(comprasData);
+        setTickets(ticketsData);
+
+        return { compras: comprasData, tickets: ticketsData };
+      } catch (err) {
+        console.error("Error cargando dashboard:", err);
+        await Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: "No se pudo cargar el dashboard",
+        });
         return { compras: [], tickets: [] };
       }
-
-      if (!res.ok) {
-        console.error("Error admin compras:", data.error);
-        return { compras: [], tickets: [] };
-      }
-
-      const comprasData = Array.isArray(data.compras) ? data.compras : [];
-      const ticketsData = Array.isArray(data.tickets) ? data.tickets : [];
-
-      setCompras(comprasData);
-      setTickets(ticketsData);
-
-      return { compras: comprasData, tickets: ticketsData };
-    } catch (err) {
-      console.error("Error cargando dashboard:", err);
-      await Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo cargar el dashboard",
-      });
-      return { compras: [], tickets: [] };
-    }
-  }, [accesoPermitido]);
+    },
+    [accesoPermitido]
+  );
 
   const cargarRifasGlobal = useCallback(async () => {
     try {
@@ -186,7 +196,16 @@ export default function Admin() {
         cache: "no-store",
       });
 
-      const data = await res.json();
+      const rawText = await res.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        console.error("Respuesta inválida en /api/rifa-activa");
+        setRifaActiva(null);
+        return;
+      }
 
       if (!res.ok) {
         console.error(data.error || "No se pudo cargar la rifa activa");
@@ -222,7 +241,8 @@ export default function Admin() {
         return { compras: [], tickets: [] };
       }
 
-      const { compras: comprasData, tickets: ticketsData } = await cargarDashboard();
+      const { compras: comprasData, tickets: ticketsData } =
+        await cargarDashboard(headers);
 
       await Promise.all([cargarRifasGlobal(), cargarRifaActiva()]);
 
@@ -289,6 +309,15 @@ export default function Admin() {
     recargarTodo,
   });
 
+  const comprasDeRifaSeleccionada = useMemo(() => {
+    if (!rifaSeleccionadaId) return [];
+    return compras.filter(
+      (compra) => String(compra.rifa_id) === String(rifaSeleccionadaId)
+    );
+  }, [compras, rifaSeleccionadaId]);
+
+  const comprasFiltradasPorRifa = comprasDeRifaSeleccionada;
+
   const {
     filtrosCompras,
     setFiltrosCompras,
@@ -308,12 +337,7 @@ export default function Admin() {
     cantidadFiltrosActivos,
     eliminarFiltroIndividual,
     resetComprasState,
-  } = useAdminCompras(
-    useMemo(() => {
-      if (!rifaSeleccionadaId) return [];
-      return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
-    }, [compras, rifaSeleccionadaId])
-  );
+  } = useAdminCompras(comprasDeRifaSeleccionada);
 
   const {
     busquedaRanking,
@@ -337,17 +361,7 @@ export default function Admin() {
     ranking,
     resumenRanking,
     resetRankingState,
-  } = useAdminRanking(
-    useMemo(() => {
-      if (!rifaSeleccionadaId) return [];
-      return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
-    }, [compras, rifaSeleccionadaId])
-  );
-
-  const comprasFiltradasPorRifa = useMemo(() => {
-    if (!rifaSeleccionadaId) return [];
-    return compras.filter((compra) => String(compra.rifa_id) === String(rifaSeleccionadaId));
-  }, [compras, rifaSeleccionadaId]);
+  } = useAdminRanking(comprasDeRifaSeleccionada);
 
   const ticketsFiltradosPorRifa = useMemo(() => {
     if (!rifaSeleccionadaId) return [];
@@ -364,7 +378,8 @@ export default function Admin() {
 
   const comprasPendientes = useMemo(() => {
     return comprasFiltradasPorRifa.filter(
-      (compra) => String(compra.estado_pago || "").toLowerCase().trim() === "pendiente"
+      (compra) =>
+        String(compra.estado_pago || "").toLowerCase().trim() === "pendiente"
     );
   }, [comprasFiltradasPorRifa]);
 
@@ -496,7 +511,9 @@ export default function Admin() {
     const filas = comprasFiltradasYOrdenadas.map((compra) => {
       const monto = Number(compra.monto_total ?? compra.total ?? 0).toFixed(2);
       const fecha = formatearFecha(compra.fecha_compra || compra.created_at || "");
-      const ticketsAsignadosTexto = (ticketsPorCompra[String(compra.id)] || []).join(" | ");
+      const ticketsAsignadosTexto = (ticketsPorCompra[String(compra.id)] || []).join(
+        " | "
+      );
       const comprobante =
         compra.comprobante_url ||
         compra.comprobante ||
@@ -566,7 +583,9 @@ export default function Admin() {
     const filas = rankingFiltradoYOrdenado.map((persona, index) => {
       const porcentaje =
         resumenRanking.totalTicketsAprobados > 0
-          ? ((persona.cantidad / resumenRanking.totalTicketsAprobados) * 100).toFixed(2)
+          ? ((persona.cantidad / resumenRanking.totalTicketsAprobados) * 100).toFixed(
+              2
+            )
           : "0.00";
 
       return [
@@ -656,54 +675,54 @@ export default function Admin() {
         .map((t) => String(t.numero_ticket).padStart(padLength, "0"))
         .join(", ");
 
-const resultado = await Swal.fire({
-  icon: "success",
-  title: "🎉 Compra aprobada",
-  html: `
-    <div style="text-align:center">
-      <p>La compra fue aprobada correctamente.</p>
+      const resultado = await Swal.fire({
+        icon: "success",
+        title: "🎉 Compra aprobada",
+        html: `
+          <div style="text-align:center">
+            <p>La compra fue aprobada correctamente.</p>
 
-      <p style="margin-top:10px">
-        <strong>🎟️ Tickets asignados:</strong>
-      </p>
+            <p style="margin-top:10px">
+              <strong>🎟️ Tickets asignados:</strong>
+            </p>
 
-      <p style="
-        background:#f8fafc;
-        padding:12px;
-        border-radius:10px;
-        font-weight:700;
-        color:#16a34a;
-      ">
-        ${numerosFormateados || "Sin tickets"}
-      </p>
+            <p style="
+              background:#f8fafc;
+              padding:12px;
+              border-radius:10px;
+              font-weight:700;
+              color:#16a34a;
+            ">
+              ${numerosFormateados || "Sin tickets"}
+            </p>
 
-      <div style="
-        margin-top:15px;
-        background:#ecfdf5;
-        border:1px solid #16a34a;
-        padding:12px;
-        border-radius:10px;
-      ">
-        ✅ Compra aprobada<br/>
-        📧 Correo enviado<br/>
-        📱 WhatsApp disponible
-      </div>
-    </div>
-  `,
-  showCancelButton: !!data?.whatsapp?.url,
-  confirmButtonText: "Continuar",
-  cancelButtonText: "📱 Abrir WhatsApp",
-  confirmButtonColor: "#16a34a",
-  cancelButtonColor: "#25D366",
-});
+            <div style="
+              margin-top:15px;
+              background:#ecfdf5;
+              border:1px solid #16a34a;
+              padding:12px;
+              border-radius:10px;
+            ">
+              ✅ Compra aprobada<br/>
+              📧 Correo enviado<br/>
+              📱 WhatsApp disponible
+            </div>
+          </div>
+        `,
+        showCancelButton: !!data?.whatsapp?.url,
+        confirmButtonText: "Continuar",
+        cancelButtonText: "📱 Abrir WhatsApp",
+        confirmButtonColor: "#16a34a",
+        cancelButtonColor: "#25D366",
+      });
 
-if (resultado.dismiss === Swal.DismissReason.cancel) {
-  if (data?.whatsapp?.url) {
-    window.open(data.whatsapp.url, "_blank");
-  }
-}
+      if (resultado.dismiss === Swal.DismissReason.cancel) {
+        if (data?.whatsapp?.url) {
+          window.open(data.whatsapp.url, "_blank");
+        }
+      }
 
-await recargarTodo();
+      await recargarTodo();
     } catch (error) {
       console.error(error);
       await Swal.fire({
@@ -719,7 +738,7 @@ await recargarTodo();
   const abrirAprobacionManual = (compra, numeroPreseleccionado = null) => {
     if (!compra) return;
 
-    if (compra.estado_pago !== "pendiente") {
+    if (String(compra.estado_pago || "").toLowerCase() !== "pendiente") {
       Swal.fire({
         icon: "warning",
         title: "Compra no válida",
@@ -1053,64 +1072,76 @@ await recargarTodo();
     scrollToRef(numeroRef, 180);
   };
 
+  const handleSidebarNavigate = (id) => {
+    setFiltroDashboard(null);
+
+    switch (id) {
+      case "dashboard":
+        setSeccionActiva("dashboard");
+        scrollToRef(premioRef, 160);
+        break;
+
+      case "numero":
+        setSeccionActiva("numero");
+        scrollToRef(numeroRef, 160);
+        break;
+
+      case "rifas":
+        setSeccionActiva("rifas");
+        scrollToRef(topRef, 120);
+        break;
+
+      case "compras":
+        setSeccionActiva("compras");
+        scrollToRef(comprasSectionRef, 180);
+        break;
+
+      case "ganador":
+        setSeccionActiva("ganador");
+        scrollToRef(ganadorRef, 180);
+        break;
+
+      case "ganadores":
+        setSeccionActiva("ganadores");
+        scrollToRef(topRef, 120);
+        break;
+
+      case "ranking":
+        setSeccionActiva("ranking");
+        scrollToRef(rankingRef, 180);
+        break;
+
+      case "configuracion":
+        setSeccionActiva("configuracion");
+        scrollToRef(topRef, 120);
+        break;
+
+      default:
+        break;
+    }
+  };
+
   if (authLoading) {
     return <div className="adminpro-loading">Verificando acceso al panel...</div>;
   }
 
-  if (!accesoPermitido) return null;
+  if (!accesoPermitido) {
+    return (
+      <div className="adminpro-loading">
+        Acceso denegado o sesión inválida...
+      </div>
+    );
+  }
 
   return (
     <>
       <div className="adminpro-layout" ref={topRef}>
         <Sidebar
           activa={seccionActiva}
-          onNavigate={(id) => {
-            setFiltroDashboard(null);
-
-            if (id === "dashboard") {
-              setSeccionActiva("dashboard");
-              scrollToRef(premioRef, 160);
-              return;
-            }
-
-            if (id === "numero") {
-              setSeccionActiva("numero");
-              scrollToRef(numeroRef, 160);
-              return;
-            }
-
-            if (id === "rifas") {
-              setSeccionActiva("rifas");
-              scrollToRef(topRef, 120);
-              return;
-            }
-
-            if (id === "compras") {
-              setSeccionActiva("compras");
-              scrollToRef(comprasSectionRef, 180);
-              return;
-            }
-
-            if (id === "ganador") {
-              setSeccionActiva("ganador");
-              scrollToRef(ganadorRef, 180);
-              return;
-            }
-
-            if (id === "ganadores") {
-              setSeccionActiva("ganadores");
-              scrollToRef(topRef, 120);
-              return;
-            }
-
-            if (id === "ranking") {
-              setSeccionActiva("ranking");
-              scrollToRef(rankingRef, 180);
-              return;
-            }
-          }}
+          onNavigate={handleSidebarNavigate}
           onLogout={cerrarSesion}
           adminEmail={adminEmail}
+          logoUrl={logoUrl}
         />
 
         <main className="adminpro-main">
@@ -1123,9 +1154,7 @@ await recargarTodo();
           />
 
           {dataLoading && (
-            <div className="adminpro-top-info">
-              Cargando datos del panel...
-            </div>
+            <div className="adminpro-top-info">Cargando datos del panel...</div>
           )}
 
           {seccionActiva === "dashboard" && (
@@ -1194,6 +1223,8 @@ await recargarTodo();
               loadingRifa={loadingRifa}
             />
           )}
+
+          {seccionActiva === "configuracion" && <AdminConfiguracionSection />}
 
           {seccionActiva === "ganador" && (
             <div id="admin-ganador-anchor">
@@ -1323,7 +1354,10 @@ await recargarTodo();
       />
 
       {modalRankingOpen && participanteSeleccionado && (
-        <div className="adminpro-modal-backdrop" onClick={() => setModalRankingOpen(false)}>
+        <div
+          className="adminpro-modal-backdrop"
+          onClick={() => setModalRankingOpen(false)}
+        >
           <div
             className="adminpro-modal adminpro-ranking-modal"
             onClick={(e) => e.stopPropagation()}
@@ -1345,7 +1379,9 @@ await recargarTodo();
 
             <div className="adminpro-ranking-modal-user">
               <div className="adminpro-ranking-modal-avatar">
-                {String(participanteSeleccionado.nombre || "?").charAt(0).toUpperCase()}
+                {String(participanteSeleccionado.nombre || "?")
+                  .charAt(0)
+                  .toUpperCase()}
               </div>
 
               <div>
@@ -1368,7 +1404,9 @@ await recargarTodo();
 
               <div className="adminpro-ranking-modal-kpi">
                 <span>Monto total</span>
-                <strong>${Number(participanteSeleccionado.montoTotal || 0).toFixed(2)}</strong>
+                <strong>
+                  ${Number(participanteSeleccionado.montoTotal || 0).toFixed(2)}
+                </strong>
               </div>
 
               <div className="adminpro-ranking-modal-kpi">
@@ -1400,7 +1438,9 @@ await recargarTodo();
 
                       <div>
                         <strong>{compra.cantidad_tickets} tickets</strong>
-                        <p>${Number(compra.monto_total ?? compra.total ?? 0).toFixed(2)}</p>
+                        <p>
+                          ${Number(compra.monto_total ?? compra.total ?? 0).toFixed(2)}
+                        </p>
                       </div>
                     </div>
                   ))}

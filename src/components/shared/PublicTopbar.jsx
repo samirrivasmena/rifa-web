@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import Image from "next/image";
+
+import { useSiteConfig } from "@/hooks/useSiteConfig";
+import SiteLogo from "@/components/shared/SiteLogo";
 
 function mapHashToActive(hash) {
   const clean = String(hash || "").replace("#", "").toLowerCase();
@@ -30,6 +32,20 @@ export default function PublicTopbar({
   contactoHref = "/principal#contacto",
 }) {
   const pathname = usePathname();
+  const { config } = useSiteConfig();
+
+  const logoUrl = config?.logo_url || "/logo.png";
+  const nombreMarca = config?.nombre_marca || "Rifas LSD";
+
+  const menuLabels = {
+    inicio: config?.menu_inicio || "INICIO",
+    eventos: config?.menu_eventos || "EVENTOS",
+    resultados: config?.menu_resultados || "RESULTADOS",
+    ganadores: config?.menu_ganadores || "GANADORES",
+    pagos: config?.menu_pagos || "CUENTAS DE PAGO",
+    contacto: config?.menu_contacto || "CONTACTO",
+    verificador: config?.menu_verificador || "✔ VERIFICADOR",
+  };
 
   const [hiddenOnMobile, setHiddenOnMobile] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -174,13 +190,11 @@ export default function PublicTopbar({
           className="public-topbar-logo-link"
           onClick={() => marcarActivo("inicio")}
         >
-          <Image
-            src="/logo.png"
-            alt="Logo Rifas LSD"
-            width={58}
-            height={58}
-            priority
-            className="public-topbar-logo"
+          <SiteLogo
+            src={logoUrl}
+            alt={`Logo ${nombreMarca}`}
+            fallbackText={nombreMarca}
+            size="nav"
           />
         </Link>
 
@@ -202,71 +216,53 @@ export default function PublicTopbar({
           ref={navRef}
           className={`public-topbar-nav ${mobileMenuOpen ? "open" : ""}`}
         >
-          <Link
+          <TopbarLink
             href={inicioHref}
-            className={`public-topbar-link ${
-              currentActive === "inicio" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("inicio")}
-            aria-current={currentActive === "inicio" ? "page" : undefined}
-          >
-            INICIO
-          </Link>
+            id="inicio"
+            label={menuLabels.inicio}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
-          <Link
+          <TopbarLink
             href={eventosHref}
-            className={`public-topbar-link ${
-              currentActive === "eventos" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("eventos")}
-            aria-current={currentActive === "eventos" ? "page" : undefined}
-          >
-            EVENTOS
-          </Link>
+            id="eventos"
+            label={menuLabels.eventos}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
-          <Link
+          <TopbarLink
             href={resultadosHref}
-            className={`public-topbar-link ${
-              currentActive === "resultados" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("resultados")}
-            aria-current={currentActive === "resultados" ? "page" : undefined}
-          >
-            RESULTADOS
-          </Link>
+            id="resultados"
+            label={menuLabels.resultados}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
-          <Link
+          <TopbarLink
             href={ganadoresHref}
-            className={`public-topbar-link ${
-              currentActive === "ganadores" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("ganadores")}
-            aria-current={currentActive === "ganadores" ? "page" : undefined}
-          >
-            GANADORES
-          </Link>
+            id="ganadores"
+            label={menuLabels.ganadores}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
-          <Link
+          <TopbarLink
             href={pagosHref}
-            className={`public-topbar-link ${
-              currentActive === "pagos" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("pagos")}
-            aria-current={currentActive === "pagos" ? "page" : undefined}
-          >
-            CUENTAS DE PAGO
-          </Link>
+            id="pagos"
+            label={menuLabels.pagos}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
-          <Link
+          <TopbarLink
             href={contactoHref}
-            className={`public-topbar-link ${
-              currentActive === "contacto" ? "active" : ""
-            }`}
-            onClick={() => marcarActivo("contacto")}
-            aria-current={currentActive === "contacto" ? "page" : undefined}
-          >
-            CONTACTO
-          </Link>
+            id="contacto"
+            label={menuLabels.contacto}
+            currentActive={currentActive}
+            marcarActivo={marcarActivo}
+          />
 
           <button
             type="button"
@@ -278,10 +274,23 @@ export default function PublicTopbar({
               onOpenVerifier?.();
             }}
           >
-            ✔ VERIFICADOR
+            {menuLabels.verificador}
           </button>
         </nav>
       </div>
     </header>
+  );
+}
+
+function TopbarLink({ href, id, label, currentActive, marcarActivo }) {
+  return (
+    <Link
+      href={href}
+      className={`public-topbar-link ${currentActive === id ? "active" : ""}`}
+      onClick={() => marcarActivo(id)}
+      aria-current={currentActive === id ? "page" : undefined}
+    >
+      {label}
+    </Link>
   );
 }

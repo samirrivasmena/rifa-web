@@ -9,12 +9,15 @@ import PublicTopbar from "@/components/shared/PublicTopbar";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
 import FloatingShareButton from "@/components/shared/ShareButtons/FloatingShareButton";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
+import SiteLogo from "@/components/shared/SiteLogo";
 import { getRifaProgress } from "@/lib/getRifaProgress";
 import { enriquecerRifaConResumen } from "@/lib/rifas/enriquecerRifaConResumen";
 
 export default function EventoDetallePageClient() {
   const params = useParams();
   const router = useRouter();
+
+  const eventoId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,53 +51,67 @@ export default function EventoDetallePageClient() {
   }, []);
 
   // Cargar evento
-useEffect(() => {
-  const cargarEvento = async () => {
-    try {
-      setLoading(true);
-      setErrorRed(false);
+  useEffect(() => {
+    const cargarEvento = async () => {
+      try {
+        setLoading(true);
+        setErrorRed(false);
 
-      const res = await fetch("/api/rifa-resumen?rifaId=" + encodeURIComponent(params?.id), {
-        method: "GET",
-        cache: "no-store",
-      });
+        if (!eventoId) {
+          setEvento(null);
+          setLoading(false);
+          return;
+        }
 
-      const data = await res.json();
+        const res = await fetch(
+          "/api/rifa-resumen?rifaId=" + encodeURIComponent(eventoId),
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
 
-      if (!res.ok) {
-        console.error(data.error || "No se pudo cargar el evento");
+        const raw = await res.text();
+
+        let data;
+        try {
+          data = JSON.parse(raw);
+        } catch {
+          console.error("Respuesta inválida en /api/rifa-resumen");
+          setEvento(null);
+          setErrorRed(true);
+          return;
+        }
+
+        if (!res.ok) {
+          console.error(data.error || "No se pudo cargar el evento");
+          setEvento(null);
+          setErrorRed(true);
+          return;
+        }
+
+        const rifa = data.rifa || null;
+
+        if (!rifa) {
+          setEvento(null);
+          return;
+        }
+
+        // Si quieres, puedes reforzarlo todavía más:
+        const rifaNormalizada = await enriquecerRifaConResumen(rifa);
+
+        setEvento(rifaNormalizada);
+      } catch (error) {
+        console.error("Error cargando evento:", error);
         setEvento(null);
         setErrorRed(true);
-        return;
+      } finally {
+        setLoading(false);
       }
+    };
 
-      const rifa = data.rifa || null;
-
-      if (!rifa) {
-        setEvento(null);
-        return;
-      }
-
-      // Si quieres, puedes reforzarlo todavía más:
-      const rifaNormalizada = await enriquecerRifaConResumen(rifa);
-
-      setEvento(rifaNormalizada);
-    } catch (error) {
-      console.error("Error cargando evento:", error);
-      setEvento(null);
-      setErrorRed(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (params?.id) {
     cargarEvento();
-  } else {
-    setEvento(null);
-    setLoading(false);
-  }
-}, [params?.id]);
+  }, [eventoId]);
 
   /**
    * Share URL PRO (sin duplicar dominio/ruta)
@@ -102,13 +119,16 @@ useEffect(() => {
   useEffect(() => {
     if (typeof window === "undefined") return;
 
-    const id = params?.id;
-    if (!id) {
+    if (!eventoId) {
       setShareUrl("");
       return;
     }
 
-    let base = (process.env.NEXT_PUBLIC_SITE_URL || window.location.origin || "").trim();
+    let base = (
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      window.location.origin ||
+      ""
+    ).trim();
 
     if (base && !/^https?:\/\//i.test(base)) {
       base = `https://${base}`;
@@ -120,17 +140,22 @@ useEffect(() => {
       base = window.location.origin;
     }
 
-    setShareUrl(`${base}/evento/${id}`);
-  }, [params?.id]);
+    setShareUrl(`${base}/evento/${eventoId}`);
+  }, [eventoId]);
 
-  const estaFinalizado = useMemo(() => esEstadoFinalizado(evento?.estado), [evento]);
+  const estaFinalizado = useMemo(
+    () => esEstadoFinalizado(evento?.estado),
+    [evento]
+  );
+
   const estaAgotada = useMemo(() => esEstadoAgotado(evento?.estado), [evento]);
 
   const progreso = useMemo(() => getRifaProgress(evento || {}), [evento]);
 
   const premios = useMemo(() => {
     if (!evento) return [];
-    if (Array.isArray(evento.premios) && evento.premios.length > 0) return evento.premios;
+    if (Array.isArray(evento.premios) && evento.premios.length > 0)
+      return evento.premios;
     if (evento.premio) return [evento.premio];
     return [];
   }, [evento]);
@@ -143,9 +168,9 @@ useEffect(() => {
 
   const descripcion = evento?.descripcion || "Sin descripción disponible.";
 
-  const totalNumeros = progreso.total;
-  const ticketsVendidos = progreso.vendidos;
-  const porcentajeVendido = progreso.porcentaje;
+  const totalNumeros = Number(progreso.total || 0);
+  const ticketsVendidos = Number(progreso.vendidos || 0);
+  const porcentajeVendido = Number(progreso.porcentaje || 0);
   const rifaCompleta = progreso.soldOut || estaFinalizado || estaAgotada;
 
   return (
@@ -187,28 +212,42 @@ useEffect(() => {
               </div>
             </div>
           </section>
-
-        /* CORRECCIÓN #7: estado de error de red con mensaje y botón de reintento */
         ) : errorRed ? (
-          <div className="evento-empty-state premium">
-            <img src="/logo.png" alt="Logo" className="evento-empty-logo" />
-            <h2>Error de conexión</h2>
-            <p>No se pudo cargar el evento. Verifica tu conexión e intenta de nuevo.</p>
+          <>
+            {/* CORRECCIÓN #7: estado de error de red con mensaje y botón de reintento */}
+            <div className="evento-empty-state premium">
+              <SiteLogo
+                size="preview"
+                className="evento-empty-logo"
+                fallbackText="R"
+              />
 
-            <button
-              type="button"
-              className="principal-red-btn"
-              onClick={() => window.location.reload()}
-            >
-              Reintentar
-            </button>
-          </div>
+              <h2>Error de conexión</h2>
+              <p>
+                No se pudo cargar el evento. Verifica tu conexión e intenta de nuevo.
+              </p>
 
+              <button
+                type="button"
+                className="principal-red-btn"
+                onClick={() => window.location.reload()}
+              >
+                Reintentar
+              </button>
+            </div>
+          </>
         ) : !evento ? (
           <div className="evento-empty-state premium">
-            <img src="/logo.png" alt="Logo" className="evento-empty-logo" />
+            <SiteLogo
+              size="preview"
+              className="evento-empty-logo"
+              fallbackText="R"
+            />
+
             <h2>Evento no encontrado</h2>
-            <p>Este evento no existe, no está publicado o ya no está disponible.</p>
+            <p>
+              Este evento no existe, no está publicado o ya no está disponible.
+            </p>
 
             <Link href="/principal" className="principal-red-btn">
               Volver al inicio
@@ -241,11 +280,21 @@ useEffect(() => {
                 <div className="evento-overlay" />
 
                 {estaFinalizado && <div className="evento-ribbon">FINALIZADO</div>}
-                {!estaFinalizado && estaAgotada && <div className="evento-ribbon">AGOTADO</div>}
+                {!estaFinalizado && estaAgotada && (
+                  <div className="evento-ribbon">AGOTADO</div>
+                )}
 
                 <div className="evento-image-content">
-                  <div className={`evento-status ${estaFinalizado || estaAgotada ? "off" : "on"}`}>
-                    {estaFinalizado ? "● Finalizada" : estaAgotada ? "● Agotada" : "● Disponible"}
+                  <div
+                    className={`evento-status ${
+                      estaFinalizado || estaAgotada ? "off" : "on"
+                    }`}
+                  >
+                    {estaFinalizado
+                      ? "● Finalizada"
+                      : estaAgotada
+                      ? "● Agotada"
+                      : "● Disponible"}
                   </div>
 
                   <h1>{evento.nombre || "Evento"}</h1>
@@ -253,7 +302,6 @@ useEffect(() => {
               </div>
 
               <div className="evento-side">
-
                 <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">RESUMEN</p>
                   <h2>Datos principales</h2>
@@ -326,8 +374,8 @@ useEffect(() => {
                     <p className="evento-kicker">ESTADO DEL EVENTO</p>
                     <h2>Rifa completa</h2>
                     <p className="evento-description">
-                      Todos los boletos fueron vendidos. Este evento está agotado y pendiente del
-                      sorteo oficial.
+                      Todos los boletos fueron vendidos. Este evento está agotado y
+                      pendiente del sorteo oficial.
                     </p>
                   </div>
                 )}
@@ -345,7 +393,9 @@ useEffect(() => {
                       ))}
                     </div>
                   ) : (
-                    <div className="evento-premio-empty">No hay premios definidos todavía.</div>
+                    <div className="evento-premio-empty">
+                      No hay premios definidos todavía.
+                    </div>
                   )}
                 </div>
 
