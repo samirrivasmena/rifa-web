@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useMemo, useState } from "react";
 import Swal from "sweetalert2";
 
 function getAbsoluteUrl(url) {
@@ -51,6 +52,11 @@ export default function FloatingShareButton({
   text = "",
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const safeUrl = useMemo(() => getAbsoluteUrl(url), [url]);
   const shareText = useMemo(
@@ -87,24 +93,32 @@ export default function FloatingShareButton({
   };
 
   const handleWhatsApp = () => {
-    openPopup(`https://wa.me/?text=${encodeURIComponent(`${shareText}\n${safeUrl}`)}`);
+    openPopup(
+      `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${safeUrl}`)}`
+    );
   };
 
   const handleFacebook = () => {
     openPopup(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(safeUrl)}`
+      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(
+        safeUrl
+      )}`
     );
   };
 
   const handleX = () => {
     openPopup(
-      `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(safeUrl)}`
+      `https://x.com/intent/tweet?text=${encodeURIComponent(
+        shareText
+      )}&url=${encodeURIComponent(safeUrl)}`
     );
   };
 
   const handleTelegram = () => {
     openPopup(
-      `https://t.me/share/url?url=${encodeURIComponent(safeUrl)}&text=${encodeURIComponent(shareText)}`
+      `https://t.me/share/url?url=${encodeURIComponent(
+        safeUrl
+      )}&text=${encodeURIComponent(shareText)}`
     );
   };
 
@@ -147,13 +161,35 @@ export default function FloatingShareButton({
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <>
       <button
         type="button"
         className="share-fab"
         onClick={handleOpenShareModal}
         aria-label="Compartir evento"
+style={{
+  position: "fixed",
+  left: "50%",
+  bottom: "12px",
+  transform: "translateX(-50%)",
+  zIndex: 99999,
+  width: "fit-content",
+  minWidth: "0",
+  padding: "5px 8px",
+  borderRadius: "999px",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  gap: "4px",
+  fontSize: "10px",
+  lineHeight: "1",
+  whiteSpace: "nowrap",
+  pointerEvents: "auto",
+  boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+}}
       >
         <span className="share-fab-icon">📤</span>
         <span className="share-fab-text">Compartir</span>
@@ -164,6 +200,16 @@ export default function FloatingShareButton({
           className="share-modal-backdrop"
           onClick={() => setOpen(false)}
           role="presentation"
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100000,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(0,0,0,0.5)",
+            padding: "16px",
+          }}
         >
           <div
             className="share-modal"
@@ -171,6 +217,14 @@ export default function FloatingShareButton({
             role="dialog"
             aria-modal="true"
             aria-label="Compartir evento"
+            style={{
+              width: "100%",
+              maxWidth: "420px",
+              background: "#fff",
+              borderRadius: "18px",
+              padding: "18px",
+              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+            }}
           >
             <div className="share-modal-header">
               <div>
@@ -189,11 +243,19 @@ export default function FloatingShareButton({
             </div>
 
             <div className="share-grid">
-              <button type="button" className="share-btn whatsapp" onClick={handleWhatsApp}>
+              <button
+                type="button"
+                className="share-btn whatsapp"
+                onClick={handleWhatsApp}
+              >
                 💬 WhatsApp
               </button>
 
-              <button type="button" className="share-btn facebook" onClick={handleFacebook}>
+              <button
+                type="button"
+                className="share-btn facebook"
+                onClick={handleFacebook}
+              >
                 📘 Facebook
               </button>
 
@@ -201,21 +263,34 @@ export default function FloatingShareButton({
                 𝕏 X
               </button>
 
-              <button type="button" className="share-btn telegram" onClick={handleTelegram}>
+              <button
+                type="button"
+                className="share-btn telegram"
+                onClick={handleTelegram}
+              >
                 ✈ Telegram
               </button>
 
-              <button type="button" className="share-btn instagram" onClick={handleInstagram}>
+              <button
+                type="button"
+                className="share-btn instagram"
+                onClick={handleInstagram}
+              >
                 📸 Instagram
               </button>
 
-              <button type="button" className="share-btn copy" onClick={handleCopyLink}>
+              <button
+                type="button"
+                className="share-btn copy"
+                onClick={handleCopyLink}
+              >
                 🔗 Copiar link
               </button>
             </div>
           </div>
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }

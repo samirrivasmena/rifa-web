@@ -131,3 +131,19 @@
 .purchase-close-btn:active {
   transform: scale(0.95);
 }
+.floating-purchase-notification {
+  position: fixed;
+  top: 90px;
+  right: 16px;
+  bottom: auto;
+  z-index: 9999;
+}
+
+@media (max-width: 768px) {
+  .floating-purchase-notification {
+    top: 78px;
+    left: 12px;
+    right: 12px;
+    bottom: auto;
+  }
+}
