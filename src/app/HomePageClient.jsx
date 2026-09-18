@@ -24,6 +24,7 @@ import AppPayButton from "@/components/shared/AppPayButton";
 import PurchaseGuideFloating from "@/components/shared/PurchaseGuideFloating";
 import FloatingPurchaseNotifications from "@/components/shared/FloatingPurchaseNotifications";
 import PublicFooter from "@/components/shared/PublicFooter";
+import FloatingWhatsAppButton from "@/components/shared/FloatingWhatsAppButton";
 
 export default function HomePageClient() {
   const { config } = useSiteConfig();
@@ -78,8 +79,6 @@ export default function HomePageClient() {
 
   const logoUrl = config?.logo_url || "/logo.png";
   const whatsappNumber = config?.whatsapp || "17738277463";
-  const instagramUrl =
-    config?.instagram || "https://www.instagram.com/samir__rivas/";
 
   const searchParams = useSearchParams();
   const rifaDesdeQuery = searchParams.get("rifa");
@@ -116,6 +115,11 @@ export default function HomePageClient() {
   const esActivo = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
 
+  const esEventoFinalizado = (estado) =>
+    ["finalizada", "finalizado", "cerrada"].includes(
+      String(estado || "").toLowerCase()
+    );
+
   const estaDisponibleParaCompra = (estado) =>
     ["activa", "disponible", "publicada"].includes(
       String(estado || "").toLowerCase()
@@ -133,12 +137,16 @@ export default function HomePageClient() {
       }
     };
 
-    window.addEventListener("scroll", handleScroll);
+    handleScroll();
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
     window.addEventListener("keydown", handleEscape);
+    window.addEventListener("resize", handleScroll);
 
     return () => {
       window.removeEventListener("scroll", handleScroll);
       window.removeEventListener("keydown", handleEscape);
+      window.removeEventListener("resize", handleScroll);
     };
   }, []);
 
@@ -307,6 +315,10 @@ export default function HomePageClient() {
       return fechaB - fechaA;
     });
   }, [rifas]);
+
+  const rifasFinalizadas = useMemo(() => {
+    return rifasPublicadasOrdenadas.filter((r) => esEventoFinalizado(r.estado));
+  }, [rifasPublicadasOrdenadas]);
 
   const progresoRifaActiva = useMemo(() => {
     return getRifaProgress(rifaActiva || {});
@@ -881,542 +893,585 @@ export default function HomePageClient() {
   }
 
   return (
-    <main className="page" id="inicio">
-      <PublicTopbar
-        active="inicio"
-        onOpenVerifier={() => setShowVerifyModal(true)}
-        logoHref="/principal"
-        inicioHref="/#inicio"
-        eventosHref="/principal#eventos-disponibles"
-        resultadosHref="/principal#resultados-oficiales"
-        pagosHref="/#pagos"
-        contactoHref="/#contacto"
-      />
-
-      <header className="floating-header">
-        <SiteLogo
-          src={logoUrl}
-          alt="Logo"
-          fallbackText={config?.nombre_marca || "R"}
-          size="preview"
+    <>
+      <main className="page" id="inicio">
+        <PublicTopbar
+          active="inicio"
+          onOpenVerifier={() => setShowVerifyModal(true)}
+          logoHref="/principal"
+          inicioHref="/#inicio"
+          eventosHref="/principal#eventos-disponibles"
+          resultadosHref="/principal#resultados-oficiales"
+          pagosHref="/#pagos"
+          contactoHref="/#contacto"
         />
-        <div className="floating-center">
-          <h3>{nombreRifa || "Rifa disponible"}</h3>
-          <p>{descripcionRifa || "Disponible"}</p>
-        </div>
-      </header>
 
-      {!rifaActiva ? (
-        <section className="home-empty-wrap">
-          <div className="home-empty-box">
-            <div className="home-empty-icon">🎟️</div>
-            <h2>No hay rifa disponible</h2>
-            <p>
-              En este momento no hay una rifa publicada para comprar. Revisa los
-              eventos disponibles más abajo o vuelve pronto.
-            </p>
+        <header className="floating-header">
+          <SiteLogo
+            src={logoUrl}
+            alt="Logo"
+            fallbackText={config?.nombre_marca || "R"}
+            size="preview"
+          />
+          <div className="floating-center">
+            <h3>{nombreRifa || "Rifa disponible"}</h3>
+            <p>{descripcionRifa || "Disponible"}</p>
           </div>
-        </section>
-      ) : (
-        <>
-          <section className="hero-showcase reveal-fade-up">
-            <div className="hero-showcase-image-wrap">
-              {imagenRifaPrincipal && (
-                <img
-                  src={imagenRifaPrincipal}
-                  alt={nombreRifa || "Rifa"}
-                  className={`hero-showcase-image fade-image ${
-                    showSecondImage ? "hide" : "show"
-                  }`}
-                />
-              )}
+        </header>
 
-              {imagenRifaScroll && (
-                <img
-                  src={imagenRifaScroll}
-                  alt={`${nombreRifa || "Rifa"} scroll`}
-                  className={`hero-showcase-image fade-image ${
-                    showSecondImage ? "show" : "hide"
-                  }`}
-                />
-              )}
-
-              <div className="hero-showcase-fade"></div>
-            </div>
-
-            <div className="hero-title-block">
-              {nombreRifa && <h1>{nombreRifa}</h1>}
-              {descripcionRifa && (
-                <p className="hero-subtitle-dark">{descripcionRifa}</p>
-              )}
-
-              {(fechaRifa || horaRifa) && (
-                <p className="hero-date-line">
-                  {fechaRifa && `📅 ${fechaRifa}`} {horaRifa && `⏰ ${horaRifa}`}
-                </p>
-              )}
-
-              {(premios.length > 0 || precioPorTicket > 0) && (
-                <div className="hero-prize-box">
-                  {premios.length > 0 && (
-                    <span className="hero-prize-label">PREMIO:</span>
-                  )}
-
-                  {premios.map((premio, index) => (
-                    <p key={`${premio}-${index}`}>• {premio}</p>
-                  ))}
-
-                  {precioPorTicket > 0 && (
-                    <p className="hero-price-highlight">
-                      Valor: ${precioPorTicket.toFixed(2)}
-                    </p>
-                  )}
-                </div>
-              )}
+        {!rifaActiva ? (
+          <section className="home-empty-wrap">
+            <div className="home-empty-box">
+              <div className="home-empty-icon">🎟️</div>
+              <h2>No hay rifa disponible</h2>
+              <p>
+                En este momento no hay una rifa publicada para comprar. Revisa los
+                eventos disponibles más abajo o vuelve pronto.
+              </p>
             </div>
           </section>
+        ) : (
+          <>
+            <section className="hero-showcase reveal-fade-up">
+              <div className="hero-showcase-image-wrap">
+                {imagenRifaPrincipal && (
+                  <img
+                    src={imagenRifaPrincipal}
+                    alt={nombreRifa || "Rifa"}
+                    className={`hero-showcase-image fade-image ${
+                      showSecondImage ? "hide" : "show"
+                    }`}
+                  />
+                )}
 
-          {totalNumeros > 0 && (
-            <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
-              <ProgressVentaBar value={porcentajeVendido} soldOut={rifaCompleta} />
+                {imagenRifaScroll && (
+                  <img
+                    src={imagenRifaScroll}
+                    alt={`${nombreRifa || "Rifa"} scroll`}
+                    className={`hero-showcase-image fade-image ${
+                      showSecondImage ? "show" : "hide"
+                    }`}
+                  />
+                )}
+
+                <div className="hero-showcase-fade"></div>
+              </div>
+
+              <div className="hero-title-block">
+                {nombreRifa && <h1>{nombreRifa}</h1>}
+                {descripcionRifa && (
+                  <p className="hero-subtitle-dark">{descripcionRifa}</p>
+                )}
+
+                {(fechaRifa || horaRifa) && (
+                  <p className="hero-date-line">
+                    {fechaRifa && `📅 ${fechaRifa}`} {horaRifa && `⏰ ${horaRifa}`}
+                  </p>
+                )}
+
+                {(premios.length > 0 || precioPorTicket > 0) && (
+                  <div className="hero-prize-box">
+                    {premios.length > 0 && (
+                      <span className="hero-prize-label">PREMIO:</span>
+                    )}
+
+                    {premios.map((premio, index) => (
+                      <p key={`${premio}-${index}`}>• {premio}</p>
+                    ))}
+
+                    {precioPorTicket > 0 && (
+                      <p className="hero-price-highlight">
+                        Valor: ${precioPorTicket.toFixed(2)}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
             </section>
-          )}
 
-          <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
-            <section className="card-section">
-              <h2 className="big-card-title">LISTA DE BOLETOS</h2>
+            {totalNumeros > 0 && (
+              <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
+                <ProgressVentaBar
+                  value={porcentajeVendido}
+                  soldOut={rifaCompleta}
+                />
+              </section>
+            )}
 
-              {rifaCompleta && (
-                <div className="home-soldout-banner">
-                  <span>🎟️ BOLETOS AGOTADOS</span>
-                </div>
-              )}
+            <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
+              <section className="card-section personal-data-card">
+                <h2 className="big-card-title">LISTA DE BOLETOS</h2>
 
-              <div
-                className={`ticket-controls ${
-                  rifaCompleta ? "ticket-controls-disabled" : ""
-                }`}
-              >
-                <button
-                  className="circle-btn circle-btn-muted"
-                  onClick={() => setTickets((prev) => Math.max(prev - 1, 1))}
-                  type="button"
-                  aria-label="Disminuir cantidad de boletos"
-                  disabled={rifaCompleta}
+                {rifaCompleta && (
+                  <div className="home-soldout-banner">
+                    <span>🎟️ BOLETOS AGOTADOS</span>
+                  </div>
+                )}
+
+                <div
+                  className={`ticket-controls ${
+                    rifaCompleta ? "ticket-controls-disabled" : ""
+                  }`}
                 >
-                  −
-                </button>
+                  <button
+                    className="circle-btn circle-btn-muted"
+                    onClick={() => setTickets((prev) => Math.max(prev - 1, 1))}
+                    type="button"
+                    aria-label="Disminuir cantidad de boletos"
+                    disabled={rifaCompleta}
+                  >
+                    −
+                  </button>
 
-                <div className="ticket-display">
-                  <div className="ticket-count">{tickets}</div>
-                  <div className="ticket-label-mini">
-                    BOLETO{tickets > 1 ? "S" : ""}
+                  <div className="ticket-display">
+                    <div className="ticket-count">{tickets}</div>
+                    <div className="ticket-label-mini">
+                      BOLETO{tickets > 1 ? "S" : ""}
+                    </div>
+                  </div>
+
+                  <div
+                    className="ticket-tooltip-wrap"
+                    data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(
+                      2
+                    )}\nRifa: ${nombreRifa || "Rifa disponible"}`}
+                  >
+                    <button
+                      className="circle-btn circle-btn-main"
+                      onClick={() => setTickets((prev) => Math.min(prev + 1, 100))}
+                      type="button"
+                      aria-label="Aumentar cantidad de boletos"
+                      disabled={rifaCompleta}
+                    >
+                      +
+                    </button>
                   </div>
                 </div>
 
-                <div
-                  className="ticket-tooltip-wrap"
-                  data-tooltip={`Cada ticket cuesta $${precioPorTicket.toFixed(
-                    2
-                  )}\nRifa: ${nombreRifa || "Rifa disponible"}`}
-                >
-                  <button
-                    className="circle-btn circle-btn-main"
-                    onClick={() => setTickets((prev) => Math.min(prev + 1, 100))}
-                    type="button"
-                    aria-label="Aumentar cantidad de boletos"
-                    disabled={rifaCompleta}
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
+                <p className="main-total">Total: USD {totalPagar.toFixed(2)}</p>
 
-              <p className="main-total">Total: USD {totalPagar.toFixed(2)}</p>
-
-              <div className="quick-ticket-buttons-red">
-                {[1, 2, 5, 10, 20, 50, 100].map((num) => (
-                  <button
-                    key={num}
-                    className={`quick-ticket-btn-red ${
-                      tickets === num ? "active" : ""
-                    }`}
-                    onClick={() => setTickets(num)}
-                    type="button"
-                    disabled={rifaCompleta}
-                  >
-                    {num}
-                  </button>
-                ))}
-              </div>
-            </section>
-
-            <form onSubmit={handleSubmit} className="purchase-form">
-              <section className="card-section">
-                <h3 className="section-heading">📋 DATOS PERSONALES</h3>
-
-                <div className="input-stack">
-                  <label className="input-label">Nombres y Apellidos *</label>
-                  <input
-                    type="text"
-                    name="nombre"
-                    placeholder="Ingresa tu nombre completo"
-                    value={formData.nombre}
-                    onChange={handleInputChange}
-                    required
-                    disabled={rifaCompleta}
-                  />
-
-                  <label className="input-label">Email *</label>
-                  <input
-                    type="email"
-                    name="email"
-                    placeholder="Ingresa tu correo"
-                    value={formData.email}
-                    onChange={handleInputChange}
-                    required
-                    disabled={rifaCompleta}
-                  />
-
-                  <label className="input-label">Teléfono *</label>
-                  <div className="phone-row">
-                    <select
-                      name="codigoPais"
-                      className="phone-prefix-select"
-                      value={formData.codigoPais}
-                      onChange={handleInputChange}
+                <div className="quick-ticket-buttons-red">
+                  {[1, 2, 5, 10, 20, 50, 100].map((num) => (
+                    <button
+                      key={num}
+                      className={`quick-ticket-btn-red ${
+                        tickets === num ? "active" : ""
+                      }`}
+                      onClick={() => setTickets(num)}
+                      type="button"
                       disabled={rifaCompleta}
                     >
-                      <option value="+58">🇻🇪 VE +58</option>
-                      <option value="+57">🇨🇴 CO +57</option>
-                      <option value="+1">🇺🇸 US +1</option>
-                      <option value="+52">🇲🇽 MX +52</option>
-                      <option value="+34">🇪🇸 ES +34</option>
-                      <option value="+51">🇵🇪 PE +51</option>
-                      <option value="+54">🇦🇷 AR +54</option>
-                      <option value="+56">🇨🇱 CL +56</option>
-                      <option value="+593">🇪🇨 EC +593</option>
-                      <option value="+591">🇧🇴 BO +591</option>
-                      <option value="+595">🇵🇾 PY +595</option>
-                      <option value="+598">🇺🇾 UY +598</option>
-                      <option value="+507">🇵🇦 PA +507</option>
-                      <option value="+506">🇨🇷 CR +506</option>
-                      <option value="+503">🇸🇻 SV +503</option>
-                      <option value="+502">🇬🇹 GT +502</option>
-                      <option value="+505">🇳🇮 NI +505</option>
-                      <option value="+504">🇭🇳 HN +504</option>
-                      <option value="+53">🇨🇺 CU +53</option>
-                      <option value="+1-809">🇩🇴 DO +1</option>
-                    </select>
+                      {num}
+                    </button>
+                  ))}
+                </div>
+              </section>
 
+              <form onSubmit={handleSubmit} className="purchase-form">
+                <section className="card-section">
+                  <h3 className="section-heading">📋 DATOS PERSONALES</h3>
+
+                  <div className="input-stack">
+                    <label className="input-label">Nombres y Apellidos *</label>
                     <input
-                      type="tel"
-                      name="telefono"
-                      placeholder="Número de teléfono"
-                      value={formData.telefono}
+                      type="text"
+                      name="nombre"
+                      placeholder="Ingresa tu nombre completo"
+                      value={formData.nombre}
                       onChange={handleInputChange}
                       required
                       disabled={rifaCompleta}
                     />
-                  </div>
 
-                  {!esPagoDigital && (
-                    <>
-                      <label className="input-label">Número de referencia *</label>
+                    <label className="input-label">Email *</label>
+                    <input
+                      type="email"
+                      name="email"
+                      placeholder="Ingresa tu correo"
+                      value={formData.email}
+                      onChange={handleInputChange}
+                      required
+                      disabled={rifaCompleta}
+                    />
+
+                    <label className="input-label">Teléfono *</label>
+                    <div className="phone-row">
+                      <select
+                        name="codigoPais"
+                        className="phone-prefix-select"
+                        value={formData.codigoPais}
+                        onChange={handleInputChange}
+                        disabled={rifaCompleta}
+                      >
+                        <option value="+58">🇻🇪 VE +58</option>
+                        <option value="+57">🇨🇴 CO +57</option>
+                        <option value="+1">🇺🇸 US +1</option>
+                        <option value="+52">🇲🇽 MX +52</option>
+                        <option value="+34">🇪🇸 ES +34</option>
+                        <option value="+51">🇵🇪 PE +51</option>
+                        <option value="+54">🇦🇷 AR +54</option>
+                        <option value="+56">🇨🇱 CL +56</option>
+                        <option value="+593">🇪🇨 EC +593</option>
+                        <option value="+591">🇧🇴 BO +591</option>
+                        <option value="+595">🇵🇾 PY +595</option>
+                        <option value="+598">🇺🇾 UY +598</option>
+                        <option value="+507">🇵🇦 PA +507</option>
+                        <option value="+506">🇨🇷 CR +506</option>
+                        <option value="+503">🇸🇻 SV +503</option>
+                        <option value="+502">🇬🇹 GT +502</option>
+                        <option value="+505">🇳🇮 NI +505</option>
+                        <option value="+504">🇭🇳 HN +504</option>
+                        <option value="+53">🇨🇺 CU +53</option>
+                        <option value="+1-809">🇩🇴 DO +1</option>
+                      </select>
+
                       <input
-                        type="text"
-                        name="referencia"
-                        placeholder="Ejemplo: 1234567890"
-                        value={formData.referencia}
+                        type="tel"
+                        name="telefono"
+                        placeholder="Número de teléfono"
+                        value={formData.telefono}
                         onChange={handleInputChange}
                         required
                         disabled={rifaCompleta}
                       />
-                    </>
-                  )}
-                </div>
-              </section>
+                    </div>
 
-              <section className="card-section" id="pagos">
-                <h3 className="section-heading">🏦 MODOS DE PAGO</h3>
-                <p className="section-soft-text">
-                  {rifaCompleta
-                    ? "La venta está cerrada porque la rifa alcanzó el 100%."
-                    : "Elige una opción."}
-                </p>
+                    {!esPagoDigital && (
+                      <>
+                        <label className="input-label">Número de referencia *</label>
+                        <input
+                          type="text"
+                          name="referencia"
+                          placeholder="Ejemplo: 1234567890"
+                          value={formData.referencia}
+                          onChange={handleInputChange}
+                          required
+                          disabled={rifaCompleta}
+                        />
+                      </>
+                    )}
+                  </div>
+                </section>
 
-                <div className="payment-options-row">
-                  {paymentMethods.map((method) => {
-                    const metodoVisual = paymentMethodsConfig[method] || {};
+                <section className="card-section" id="pagos">
+                  <h3 className="section-heading">🏦 MODOS DE PAGO</h3>
+                  <p className="section-soft-text">
+                    {rifaCompleta
+                      ? "La venta está cerrada porque la rifa alcanzó el 100%."
+                      : "Elige una opción."}
+                  </p>
 
-                    return (
-                      <button
-                        key={method}
-                        className={`payment-pill ${metodoVisual.bgClass || ""} ${
-                          paymentMethod === method ? "active" : ""
-                        }`}
-                        onClick={() => setPaymentMethod(method)}
-                        type="button"
-                        disabled={rifaCompleta}
-                      >
-                        <div className="payment-pill-logo-wrap">
-                          <img
-                            src={metodoVisual.logo || "/logo.png"}
-                            alt={method}
-                            className="payment-pill-logo-img"
+                  <div className="payment-options-row">
+                    {paymentMethods.map((method) => {
+                      const metodoVisual = paymentMethodsConfig[method] || {};
+
+                      return (
+                        <button
+                          key={method}
+                          className={`payment-pill ${metodoVisual.bgClass || ""} ${
+                            paymentMethod === method ? "active" : ""
+                          }`}
+                          onClick={() => setPaymentMethod(method)}
+                          type="button"
+                          disabled={rifaCompleta}
+                        >
+                          <div className="payment-pill-logo-wrap">
+                            <img
+                              src={metodoVisual.logo || "/logo.png"}
+                              alt={method}
+                              className="payment-pill-logo-img"
+                            />
+                          </div>
+
+                          <span className="payment-pill-text">{method}</span>
+
+                          {paymentMethod === method && (
+                            <span className="payment-selected-check">✔</span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {paymentMethod === "App Pay" ? (
+                    <div className="apppay-detail-box premium-card-hover">
+                      <span className="apppay-detail-label">
+                        {metodoSeleccionado.subtitulo}
+                      </span>
+
+                      <div className="apppay-brand"> Pay</div>
+
+                      <div className="apppay-total">
+                        Total: ${Number(totalPagar || 0).toFixed(2)} USD
+                      </div>
+
+                      <div className="apppay-debug-amount">
+                        Cobro confirmado: ${(
+                          Math.round(Number(totalPagar || 0) * 100) / 100
+                        ).toFixed(2)} USD
+                      </div>
+
+                      {!loadingRifa && rifaActiva?.id && (
+                        <div
+                          key={`apppay-wrap-${rifaActiva.id}-${tickets}-${totalPagar}`}
+                        >
+                          <AppPayButton
+                            key={`apppay-btn-${rifaActiva.id}-${tickets}-${totalPagar}`}
+                            totalPagar={Number(totalPagar || 0)}
+                            nombreRifa={nombreRifa}
+                            registrarCompra={registrarCompraAppPay}
+                            swalConfig={swalConfig}
+                            disabled={
+                              loadingCompra ||
+                              !rifaActiva?.id ||
+                              tickets < 1 ||
+                              precioPorTicket <= 0 ||
+                              !estaDisponibleParaCompra(rifaActiva?.estado) ||
+                              rifaCompleta
+                            }
                           />
                         </div>
+                      )}
 
-                        <span className="payment-pill-text">{method}</span>
-
-                        {paymentMethod === method && (
-                          <span className="payment-selected-check">✔</span>
-                        )}
+                      <button
+                        type="button"
+                        className="principal-white-btn small-btn"
+                        onClick={() => setShowAppPayModal(true)}
+                        style={{ marginTop: "12px" }}
+                      >
+                        Ver App Pay
                       </button>
-                    );
-                  })}
-                </div>
 
-                {paymentMethod === "App Pay" ? (
-                  <div className="apppay-detail-box premium-card-hover">
-                    <span className="apppay-detail-label">
-                      {metodoSeleccionado.subtitulo}
-                    </span>
+                      <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
 
-                    <div className="apppay-brand"> Pay</div>
-
-                    <div className="apppay-total">
-                      Total: ${Number(totalPagar || 0).toFixed(2)} USD
+                      {metodoSeleccionado.note && (
+                        <p className="apppay-disclaimer">
+                          {metodoSeleccionado.note}
+                        </p>
+                      )}
                     </div>
+                  ) : (
+                    <div className="selected-payment-box premium-card-hover">
+                      <h4>{metodoSeleccionado.titulo}</h4>
+                      <span className="payment-small-label">
+                        {metodoSeleccionado.subtitulo}
+                      </span>
 
-                    <div className="apppay-debug-amount">
-                      Cobro confirmado: ${(
-                        Math.round(Number(totalPagar || 0) * 100) / 100
-                      ).toFixed(2)} USD
+                      <div className="payment-account-row">
+                        <div className="payment-account">
+                          {metodoSeleccionado.cuenta}
+                        </div>
+                        <button
+                          type="button"
+                          className="copy-btn"
+                          onClick={() => copiarTexto(metodoSeleccionado.cuenta)}
+                          disabled={rifaCompleta}
+                        >
+                          Copiar
+                        </button>
+                      </div>
+
+                      <div className="payment-owner">
+                        TITULAR: {metodoSeleccionado.nombre}
+                      </div>
+
+                      {Array.isArray(metodoSeleccionado.extra) &&
+                        metodoSeleccionado.extra.map((item) => (
+                          <div
+                            key={`${item.label}-${item.value}`}
+                            className="payment-account-row"
+                          >
+                            <div className="payment-account">
+                              {item.label}: {item.value}
+                            </div>
+                            <button
+                              type="button"
+                              className="copy-btn"
+                              onClick={() => copiarTexto(item.value)}
+                              disabled={rifaCompleta}
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        ))}
+
+                      <div className="payment-total-banner">
+                        Total: ${totalPagar.toFixed(2)} USD ({tickets} boleto
+                        {tickets > 1 ? "s" : ""})
+                      </div>
+
+                      <p className="payment-description">
+                        {metodoSeleccionado.descripcion}
+                      </p>
                     </div>
+                  )}
+                </section>
 
-                    {!loadingRifa && rifaActiva?.id && (
-                      <div key={`apppay-wrap-${rifaActiva.id}-${tickets}-${totalPagar}`}>
-                        <AppPayButton
-                          key={`apppay-btn-${rifaActiva.id}-${tickets}-${totalPagar}`}
-                          totalPagar={Number(totalPagar || 0)}
-                          nombreRifa={nombreRifa}
-                          registrarCompra={registrarCompraAppPay}
-                          swalConfig={swalConfig}
-                          disabled={
-                            loadingCompra ||
-                            !rifaActiva?.id ||
-                            tickets < 1 ||
-                            precioPorTicket <= 0 ||
-                            !estaDisponibleParaCompra(rifaActiva?.estado) ||
-                            rifaCompleta
-                          }
+                {!esPagoDigital && (
+                  <section className="card-section">
+                    <h3 className="section-heading">📄 COMPROBANTE DE PAGO</h3>
+                    <p className="section-soft-text">Foto o Captura de Pantalla</p>
+
+                    <label className="checkbox-line">
+                      <input
+                        type="checkbox"
+                        checked={capturaInmediata}
+                        onChange={(e) => setCapturaInmediata(e.target.checked)}
+                        disabled={rifaCompleta}
+                      />
+                      <span>ENVIAR CAPTURA INMEDIATAMENTE</span>
+                    </label>
+
+                    <label className="upload-dashed-box" htmlFor="comprobante">
+                      <div className="upload-circle-icon">⬆</div>
+                      <div className="upload-box-text">
+                        {formData.comprobante
+                          ? `Archivo: ${formData.comprobante.name}`
+                          : "Foto/Captura de Pantalla"}
+                      </div>
+
+                      <input
+                        id="comprobante"
+                        ref={fileInputRef}
+                        type="file"
+                        name="comprobante"
+                        onChange={handleInputChange}
+                        hidden
+                        accept=".jpg,.jpeg,.png,.webp,.pdf"
+                        disabled={rifaCompleta}
+                      />
+                    </label>
+
+                    {formData.comprobante && (
+                      <div className="file-actions-row">
+                        <button
+                          type="button"
+                          className="remove-file-btn"
+                          onClick={limpiarArchivo}
+                        >
+                          Quitar archivo
+                        </button>
+                      </div>
+                    )}
+
+                    {previewUrl && (
+                      <div className="preview-box">
+                        <img
+                          src={previewUrl}
+                          alt="Vista previa del comprobante"
+                          className="preview-img"
                         />
                       </div>
                     )}
 
-                    <button
-                      type="button"
-                      className="principal-white-btn small-btn"
-                      onClick={() => setShowAppPayModal(true)}
-                      style={{ marginTop: "12px" }}
-                    >
-                      Ver App Pay
-                    </button>
-
-                    <p className="apppay-note">{metodoSeleccionado.descripcion}</p>
-
-                    {metodoSeleccionado.note && (
-                      <p className="apppay-disclaimer">{metodoSeleccionado.note}</p>
+                    {formData.comprobante?.type === "application/pdf" && (
+                      <div className="pdf-preview-note">
+                        PDF seleccionado correctamente.
+                      </div>
                     )}
-                  </div>
-                ) : (
-                  <div className="selected-payment-box premium-card-hover">
-                    <h4>{metodoSeleccionado.titulo}</h4>
-                    <span className="payment-small-label">
-                      {metodoSeleccionado.subtitulo}
-                    </span>
 
-                    <div className="payment-account-row">
-                      <div className="payment-account">{metodoSeleccionado.cuenta}</div>
-                      <button
-                        type="button"
-                        className="copy-btn"
-                        onClick={() => copiarTexto(metodoSeleccionado.cuenta)}
-                        disabled={rifaCompleta}
-                      >
-                        Copiar
-                      </button>
-                    </div>
-
-                    <div className="payment-owner">
-                      TITULAR: {metodoSeleccionado.nombre}
-                    </div>
-
-                    {Array.isArray(metodoSeleccionado.extra) &&
-                      metodoSeleccionado.extra.map((item) => (
-                        <div
-                          key={`${item.label}-${item.value}`}
-                          className="payment-account-row"
-                        >
-                          <div className="payment-account">
-                            {item.label}: {item.value}
-                          </div>
-                          <button
-                            type="button"
-                            className="copy-btn"
-                            onClick={() => copiarTexto(item.value)}
-                            disabled={rifaCompleta}
-                          >
-                            Copiar
-                          </button>
-                        </div>
-                      ))}
-
-                    <div className="payment-total-banner">
-                      Total: ${totalPagar.toFixed(2)} USD ({tickets} boleto
+                    <p className="upload-method-summary">
+                      {paymentMethod}: ${totalPagar.toFixed(2)} USD ({tickets} boleto
                       {tickets > 1 ? "s" : ""})
-                    </div>
-
-                    <p className="payment-description">
-                      {metodoSeleccionado.descripcion}
                     </p>
-                  </div>
+
+                    <p className="privacy-note">
+                      Al confirmar autorizo el uso de{" "}
+                      <span>Mis Datos Personales</span>
+                    </p>
+                  </section>
                 )}
-              </section>
 
-              {!esPagoDigital && (
-                <section className="card-section">
-                  <h3 className="section-heading">📄 COMPROBANTE DE PAGO</h3>
-                  <p className="section-soft-text">Foto o Captura de Pantalla</p>
-
-                  <label className="checkbox-line">
-                    <input
-                      type="checkbox"
-                      checked={capturaInmediata}
-                      onChange={(e) => setCapturaInmediata(e.target.checked)}
-                      disabled={rifaCompleta}
-                    />
-                    <span>ENVIAR CAPTURA INMEDIATAMENTE</span>
-                  </label>
-
-                  <label className="upload-dashed-box" htmlFor="comprobante">
-                    <div className="upload-circle-icon">⬆</div>
-                    <div className="upload-box-text">
-                      {formData.comprobante
-                        ? `Archivo: ${formData.comprobante.name}`
-                        : "Foto/Captura de Pantalla"}
+                <section className="card-section no-border">
+                  {paymentMethod === "App Pay" ? (
+                    <div className="apppay-submit-helper">
+                      <p className="apppay-submit-helper-text">
+                        Usa el botón negro de  Pay para completar tu pago.
+                      </p>
                     </div>
-
-                    <input
-                      id="comprobante"
-                      ref={fileInputRef}
-                      type="file"
-                      name="comprobante"
-                      onChange={handleInputChange}
-                      hidden
-                      accept=".jpg,.jpeg,.png,.webp,.pdf"
-                      disabled={rifaCompleta}
-                    />
-                  </label>
-
-                  {formData.comprobante && (
-                    <div className="file-actions-row">
-                      <button
-                        type="button"
-                        className="remove-file-btn"
-                        onClick={limpiarArchivo}
-                      >
-                        Quitar archivo
-                      </button>
-                    </div>
+                  ) : (
+                    <button
+                      type="submit"
+                      className={`confirm-main-btn ${
+                        rifaCompleta ? "confirm-main-btn-disabled" : ""
+                      }`}
+                      disabled={
+                        loadingCompra ||
+                        !rifaActiva?.id ||
+                        !estaDisponibleParaCompra(rifaActiva?.estado) ||
+                        precioPorTicket <= 0 ||
+                        rifaCompleta
+                      }
+                    >
+                      {loadingCompra
+                        ? "PROCESANDO..."
+                        : rifaCompleta
+                        ? "BOLETOS AGOTADOS"
+                        : !rifaActiva?.id
+                        ? "NO HAY RIFA DISPONIBLE"
+                        : !estaDisponibleParaCompra(rifaActiva?.estado)
+                        ? "RIFA NO DISPONIBLE"
+                        : precioPorTicket <= 0
+                        ? "PRECIO NO DISPONIBLE"
+                        : "CONFIRMAR"}
+                    </button>
                   )}
 
-                  {previewUrl && (
-                    <div className="preview-box">
-                      <img
-                        src={previewUrl}
-                        alt="Vista previa del comprobante"
-                        className="preview-img"
-                      />
-                    </div>
+                  {loadingRifa && (
+                    <p className="loading-text">Actualizando datos...</p>
                   )}
-
-                  {formData.comprobante?.type === "application/pdf" && (
-                    <div className="pdf-preview-note">
-                      PDF seleccionado correctamente.
-                    </div>
-                  )}
-
-                  <p className="upload-method-summary">
-                    {paymentMethod}: ${totalPagar.toFixed(2)} USD ({tickets} boleto
-                    {tickets > 1 ? "s" : ""})
-                  </p>
-
-                  <p className="privacy-note">
-                    Al confirmar autorizo el uso de <span>Mis Datos Personales</span>
-                  </p>
                 </section>
-              )}
+              </form>
+            </section>
+          </>
+        )}
 
-              <section className="card-section no-border">
-                {paymentMethod === "App Pay" ? (
-                  <div className="apppay-submit-helper">
-                    <p className="apppay-submit-helper-text">
-                      Usa el botón negro de  Pay para completar tu pago.
-                    </p>
-                  </div>
-                ) : (
-                  <button
-                    type="submit"
-                    className={`confirm-main-btn ${
-                      rifaCompleta ? "confirm-main-btn-disabled" : ""
-                    }`}
-                    disabled={
-                      loadingCompra ||
-                      !rifaActiva?.id ||
-                      !estaDisponibleParaCompra(rifaActiva?.estado) ||
-                      precioPorTicket <= 0 ||
-                      rifaCompleta
-                    }
-                  >
-                    {loadingCompra
-                      ? "PROCESANDO..."
-                      : rifaCompleta
-                      ? "BOLETOS AGOTADOS"
-                      : !rifaActiva?.id
-                      ? "NO HAY RIFA DISPONIBLE"
-                      : !estaDisponibleParaCompra(rifaActiva?.estado)
-                      ? "RIFA NO DISPONIBLE"
-                      : precioPorTicket <= 0
-                      ? "PRECIO NO DISPONIBLE"
-                      : "CONFIRMAR"}
-                  </button>
-                )}
+        <section className="verify-section reveal-fade-up reveal-delay-3">
+          <h2>¿Quieres verificar tus tickets?</h2>
+          <p>Ingresa el correo que usaste en la compra.</p>
 
-                {loadingRifa && <p className="loading-text">Actualizando datos...</p>}
-              </section>
-            </form>
-          </section>
-        </>
+          <button
+            onClick={() => setShowVerifyModal(true)}
+            className="verify-btn"
+            type="button"
+          >
+            Verificar mis tickets
+          </button>
+        </section>
+
+        {rifasFinalizadas.length > 0 && (
+          <HomeEventosPreview rifas={rifasFinalizadas} />
+        )}
+
+        <PublicFooter />
+      </main>
+
+      {!showVerifyModal && !showAppPayModal && (
+        <div className="home-floating-bar" aria-label="Acciones flotantes">
+          <div className="home-floating-bar-left">
+            <PurchaseGuideFloating />
+          </div>
+
+          <div className="home-floating-bar-total" aria-label="Total de la compra">
+            {rifaActiva?.id ? (
+              <>
+                <span>Total:</span> {Number(totalPagar || 0).toFixed(2)} USD{" "}
+                <small>
+                  ({tickets} boleto{tickets > 1 ? "s" : ""})
+                </small>
+              </>
+            ) : (
+              <span>&nbsp;</span>
+            )}
+          </div>
+
+          <div className="home-floating-bar-right">
+            <FloatingWhatsAppButton whatsappNumber={whatsappNumber} />
+          </div>
+        </div>
       )}
 
-      <section className="verify-section reveal-fade-up reveal-delay-3">
-        <h2>¿Quieres verificar tus tickets?</h2>
-        <p>Ingresa el correo que usaste en la compra.</p>
-
-        <button
-          onClick={() => setShowVerifyModal(true)}
-          className="verify-btn"
-          type="button"
-        >
-          Verificar mis tickets
-        </button>
-      </section>
-
-      <HomeEventosPreview rifas={rifasPublicadasOrdenadas} />
-
-      <PublicFooter />
+      <FloatingPurchaseNotifications />
 
       <VerifyTicketsModal
         open={showVerifyModal}
@@ -1479,8 +1534,14 @@ export default function HomePageClient() {
                   html: `
                     <div style="line-height:1.7;">
                       <p>El flujo visual de App Pay está listo.</p>
-                      <p>Para procesar pagos reales con Apple Pay necesitas integración con Stripe u otro proveedor compatible.</p>
-                      <p>Puedes continuar usando el formulario para registrar tu compra y comprobante.</p>
+                      <p>
+                        Para procesar pagos reales con Apple Pay necesitas
+                        integración con Stripe u otro proveedor compatible.
+                      </p>
+                      <p>
+                        Puedes continuar usando el formulario para registrar tu
+                        compra y comprobante.
+                      </p>
                     </div>
                   `,
                 });
@@ -1495,32 +1556,6 @@ export default function HomePageClient() {
           </div>
         </div>
       )}
-
-      <PurchaseGuideFloating onOpenVerifier={() => setShowVerifyModal(true)} />
-
-      <FloatingPurchaseNotifications />
-
-      <a
-        href={`https://wa.me/${whatsappNumber}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
-        target="_blank"
-        rel="noreferrer"
-        className="whatsapp-float"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 32 32"
-          className="whatsapp-icon"
-        >
-          <path
-            fill="white"
-            d="M19.11 17.21c-.29-.15-1.71-.84-1.98-.93-.27-.1-.46-.15-.66.15-.19.29-.76.93-.93 1.12-.17.19-.34.22-.63.07-.29-.15-1.23-.45-2.34-1.43-.86-.77-1.44-1.72-1.61-2.01-.17-.29-.02-.45.13-.6.13-.13.29-.34.44-.51.15-.17.19-.29.29-.49.1-.19.05-.37-.02-.51-.07-.15-.66-1.59-.9-2.18-.24-.57-.48-.49-.66-.5h-.56c-.19 0-.49.07-.74.34-.24.27-.95.93-.95 2.28s.98 2.66 1.12 2.85c.15.19 1.93 2.95 4.68 4.14.65.28 1.16.45 1.56.58.66.21 1.26.18 1.73.11.53-.08 1.71-.7 1.95-1.38.24-.68.24-1.26.17-1.38-.07-.11-.27-.18-.56-.33Z"
-          />
-          <path
-            fill="white"
-            d="M16.01 3C8.83 3 3 8.73 3 15.8c0 2.49.72 4.81 1.96 6.78L3.2 29l6.62-1.72a13.1 13.1 0 0 0 6.19 1.57h.01c7.18 0 13-5.73 13-12.8C29.02 8.73 23.19 3 16.01 3Zm0 23.54h-.01a10.8 10.8 0 0 1-5.5-1.5l-.39-.23-3.93 1.02 1.05-3.8-.25-.39a10.45 10.45 0 0 1-1.63-5.6C5.35 10.19 10.12 5.5 16 5.5c5.88 0 10.66 4.69 10.66 10.46 0 5.78-4.78 10.58-10.65 10.58Z"
-          />
-        </svg>
-      </a>
-    </main>
+    </>
   );
 }

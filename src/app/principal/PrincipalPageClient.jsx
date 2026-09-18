@@ -24,54 +24,39 @@ export default function PrincipalPageClient() {
   const { config, loadingConfig } = useSiteConfig();
 
   const logoUrl = config?.logo_url || "/logo.png";
-
   const nombreMarca = config?.nombre_marca || "RIFAS LSD";
-
   const whatsappNumber = config?.whatsapp || "17738277463";
-
   const instagramUrl = config?.instagram || "";
 
   const descripcionHome =
-    config?.descripcion_principal ||
-    "Compra tus números, sube tu comprobante y participa de forma rápida y segura. ✅";
+    config?.descripcion_principal?.trim() ?? "";
 
   const descripcionFinal =
-    config?.descripcion?.trim() ||
-    "Participación segura, clara y profesional.";
+    config?.descripcion?.trim() ?? "";
 
   const slogan1 = config?.slogan_frase_1 || "Visión, crecimiento y constancia.";
-
   const slogan2 =
-    config?.slogan_frase_2 ||
-    "Eventos creados con seriedad y compromiso.";
-
+    config?.slogan_frase_2 || "Eventos creados con seriedad y compromiso.";
   const slogan3 =
-    config?.slogan_frase_3 ||
-    "Una marca enfocada en avanzar cada día.";
-
+    config?.slogan_frase_3 || "Una marca enfocada en avanzar cada día.";
   const slogan4 =
-    config?.slogan_frase_4 ||
-    "Participación segura, clara y profesional.";
+    config?.slogan_frase_4 || "Participación segura, clara y profesional.";
 
   const homeBotonComprar = config?.home_boton_comprar || "COMPRAR AHORA";
-
-  const homeBotonVerificar =
-    config?.home_boton_verificar || "VERIFICAR TICKETS";
+  const homeBotonVerificar = config?.home_boton_verificar || "VERIFICAR TICKETS";
 
   const tituloEventos =
     config?.principal_titulo_eventos || "EVENTOS DISPONIBLES";
-
   const textoEventos =
     config?.principal_texto_eventos || "Participa en nuestras rifas activas.";
 
   const tituloResultados =
     config?.principal_titulo_resultados || "RESULTADOS OFICIALES";
-
   const tituloGanadores =
     config?.principal_titulo_ganadores || "HISTORIAL DE GANADORES";
 
-  const textoContacto = config?.principal_texto_contacto || "Conéctate con nosotros.";
-
+  const textoContacto =
+    config?.principal_texto_contacto || "Conéctate con nosotros.";
   const footerTexto = config?.footer_texto || "Todos los derechos reservados.";
 
   const metodosPagoAdmin = Array.isArray(config?.metodos_pago)
@@ -83,9 +68,7 @@ export default function PrincipalPageClient() {
 
   const metodosPagoPublicos = metodosPagoAdmin
     .filter((metodo) => esActivo(metodo?.activo))
-    .sort(
-      (a, b) => Number(a?.orden || 0) - Number(b?.orden || 0)
-    )
+    .sort((a, b) => Number(a?.orden || 0) - Number(b?.orden || 0))
     .map((metodo) => {
       const visual = paymentMethodsConfig[metodo?.nombre] || {};
 
@@ -104,9 +87,21 @@ export default function PrincipalPageClient() {
   const [verificarEmail, setVerificarEmail] = useState("");
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [rifaActiva, setRifaActiva] = useState(null);
-  const [paginaFinalizados, setPaginaFinalizados] = useState(1);
+const [paginaFinalizados, setPaginaFinalizados] = useState(1);
+const [isMobileFinalizados, setIsMobileFinalizados] = useState(false);
 
-  const itemsPorPaginaFinalizados = 1;
+useEffect(() => {
+  const handleResize = () => {
+    setIsMobileFinalizados(window.innerWidth <= 768);
+  };
+
+  handleResize();
+  window.addEventListener("resize", handleResize);
+
+  return () => window.removeEventListener("resize", handleResize);
+}, []);
+
+const itemsPorPaginaFinalizados = isMobileFinalizados ? 1 : 3;
 
   const swalConfig = {
     background: "#1f1f1f",
@@ -133,18 +128,9 @@ export default function PrincipalPageClient() {
 
   const formatearPrecioSeguro = (valor) => {
     const numero = Number(valor);
-
-    return Number.isFinite(numero)
-      ? numero.toFixed(2)
-      : "0.00";
+    return Number.isFinite(numero) ? numero.toFixed(2) : "0.00";
   };
 
-  /*
-   * COLORES GLOBALES
-   *
-   * Estos valores vienen directamente
-   * desde configuracion_sitio.
-   */
   useEffect(() => {
     if (!config) return;
 
@@ -190,9 +176,6 @@ export default function PrincipalPageClient() {
     document.body.style.color = config.color_texto || "#111827";
   }, [config]);
 
-  /*
-   * HASH / SCROLL
-   */
   useEffect(() => {
     const handleHashScroll = () => {
       const hash = window.location.hash;
@@ -258,9 +241,6 @@ export default function PrincipalPageClient() {
     return () => window.removeEventListener("hashchange", handleHashScroll);
   }, []);
 
-  /*
-   * ESC PARA CERRAR VERIFICADOR
-   */
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") {
@@ -273,9 +253,6 @@ export default function PrincipalPageClient() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  /*
-   * CARGAR RIFAS
-   */
   useEffect(() => {
     const cargarRifas = async () => {
       try {
@@ -356,9 +333,7 @@ export default function PrincipalPageClient() {
   }, [rifasPublicadas]);
 
   const eventosAgotados = useMemo(() => {
-    return ordenarRifas(
-      rifasPublicadas.filter((r) => esEventoAgotado(r?.estado))
-    );
+    return ordenarRifas(rifasPublicadas.filter((r) => esEventoAgotado(r?.estado)));
   }, [rifasPublicadas]);
 
   const eventosFinalizados = useMemo(() => {
@@ -381,9 +356,9 @@ export default function PrincipalPageClient() {
     return eventosFinalizados.slice(inicio, fin);
   }, [eventosFinalizados, paginaFinalizados]);
 
-  useEffect(() => {
-    setPaginaFinalizados(1);
-  }, [eventosFinalizados.length]);
+useEffect(() => {
+  setPaginaFinalizados(1);
+}, [eventosFinalizados.length, itemsPorPaginaFinalizados]);
 
   const primerEventoDisponible =
     eventosDisponibles[0] || eventosAgotados[0] || null;
@@ -442,280 +417,201 @@ export default function PrincipalPageClient() {
           contactoHref="/principal#contacto"
         />
 
-        {/* HERO */}
-        <section className="principal-hero reveal-fade-up">
-          <div className="principal-hero-inner">
-            <div className="principal-hero-image-box">
-              <SiteLogo
-                src={logoUrl}
-                alt={`Logo ${nombreMarca}`}
-                fallbackText={nombreMarca}
-                size="hero"
-                className="principal-hero-logo"
-              />
-            </div>
-
-            <div className="principal-hero-content">
-              <p className="principal-location">{descripcionHome}</p>
-
-              <h1>{nombreMarca}</h1>
-
-              <div className="principal-bio">
-                <p>{slogan1}</p>
-                <p>{slogan2}</p>
-                <p>{slogan3}</p>
-                <p>{slogan4}</p>
+        <div className="principal-shell">
+          {/* HERO */}
+          <section className="principal-hero reveal-fade-up">
+            <div className="principal-hero-inner">
+              <div className="principal-hero-image-box">
+                <SiteLogo
+                  src={logoUrl}
+                  alt={`Logo ${nombreMarca}`}
+                  fallbackText={nombreMarca}
+                  size="hero"
+                  className="principal-hero-logo"
+                />
               </div>
 
-              <p className="principal-message">{descripcionFinal}</p>
+              <div className="principal-hero-content">
+                {descripcionHome && (
+                  <p className="principal-location">{descripcionHome}</p>
+                )}
 
-              <div className="principal-actions hero-actions">
-                <Link href="/" className="principal-red-btn">
-                  {homeBotonComprar}
-                </Link>
+                <h1>{nombreMarca}</h1>
 
-                <Link
-                  href={
-                    primerEventoDisponible?.id
-                      ? `/evento/${primerEventoDisponible.id}`
-                      : "/principal#eventos-disponibles"
-                  }
-                  className="principal-white-btn"
-                >
-                  ENTRAR AL EVENTO
-                </Link>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* EVENTOS */}
-        <section
-          className="principal-section reveal-fade-up reveal-delay-1"
-          id="eventos-disponibles"
-        >
-          <div className="principal-section-head">
-            <p>{textoEventos}</p>
-            <h2>{tituloEventos}</h2>
-          </div>
-
-          {errorRed ? (
-            <div className="principal-empty-box premium">
-              <div className="principal-empty-icon">⚠️</div>
-
-              <h3>Error al cargar eventos</h3>
-
-              <p>
-                No se pudieron cargar los eventos en este momento. Verifica tu
-                conexión e intenta recargar la página.
-              </p>
-
-              <button
-                type="button"
-                className="principal-red-btn"
-                onClick={() => window.location.reload()}
-              >
-                Recargar página
-              </button>
-            </div>
-          ) : loadingRifas ? (
-            <div className="principal-loading-state-grid">
-              {[1, 2].map((item) => (
-                <div key={item} className="principal-skeleton-card">
-                  <div className="principal-skeleton-image" />
-                  <div className="principal-skeleton-line large" />
-                  <div className="principal-skeleton-line medium" />
-                  <div className="principal-skeleton-btn" />
+                <div className="principal-bio">
+                  <p>{slogan1}</p>
+                  <p>{slogan2}</p>
+                  <p>{slogan3}</p>
+                  <p>{slogan4}</p>
                 </div>
-              ))}
-            </div>
-          ) : eventosDisponibles.length === 0 ? (
-            <div className="principal-empty-box premium">
-              <div className="principal-empty-icon">🎯</div>
 
-              <h3>No hay eventos disponibles</h3>
+                {descripcionFinal && (
+                  <p className="principal-message">{descripcionFinal}</p>
+                )}
 
-              <p>
-                En este momento no hay rifas activas publicadas. Vuelve pronto
-                para ver nuevos eventos.
-              </p>
-            </div>
-          ) : (
-            <div className="principal-events-list">
-              {eventosDisponibles.map((evento) => {
-                const fecha =
-                  evento?.fecha_sorteo ||
-                  evento?.fecha ||
-                  evento?.fecha_rifa ||
-                  "";
+                <div className="principal-actions hero-actions">
+                  <Link href="/" className="principal-red-btn">
+                    {homeBotonComprar}
+                  </Link>
 
-                const hora =
-                  evento?.hora_sorteo ||
-                  evento?.hora ||
-                  evento?.hora_rifa ||
-                  "";
-
-                const progreso = getRifaProgress(evento);
-
-                return (
-                  <article
-                    key={evento.id}
-                    className="principal-event-card-mobile premium-card-hover reveal-fade-up"
+                  <Link
+                    href={
+                      primerEventoDisponible?.id
+                        ? `/evento/${primerEventoDisponible.id}`
+                        : "/principal#eventos-disponibles"
+                    }
+                    className="principal-white-btn"
                   >
-                    {evento?.destacada && (
-                      <div className="principal-card-badge-left">
-                        <div className="principal-destacada-badge">
-                          ⭐ Destacada
+                    ENTRAR AL EVENTO
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* EVENTOS */}
+          <section
+            className="principal-section reveal-fade-up reveal-delay-1"
+            id="eventos-disponibles"
+          >
+            <div className="principal-section-head">
+              <p>{textoEventos}</p>
+              <h2>{tituloEventos}</h2>
+            </div>
+
+            {errorRed ? (
+              <div className="principal-empty-box premium">
+                <div className="principal-empty-icon">⚠️</div>
+
+                <h3>Error al cargar eventos</h3>
+
+                <p>
+                  No se pudieron cargar los eventos en este momento. Verifica tu
+                  conexión e intenta recargar la página.
+                </p>
+
+                <button
+                  type="button"
+                  className="principal-red-btn"
+                  onClick={() => window.location.reload()}
+                >
+                  Recargar página
+                </button>
+              </div>
+            ) : loadingRifas ? (
+              <div className="principal-loading-state-grid">
+                {[1, 2].map((item) => (
+                  <div key={item} className="principal-skeleton-card">
+                    <div className="principal-skeleton-image" />
+                    <div className="principal-skeleton-line large" />
+                    <div className="principal-skeleton-line medium" />
+                    <div className="principal-skeleton-btn" />
+                  </div>
+                ))}
+              </div>
+            ) : eventosDisponibles.length === 0 ? (
+              <div className="principal-empty-box premium">
+                <div className="principal-empty-icon">🎯</div>
+
+                <h3>No hay eventos disponibles</h3>
+
+                <p>
+                  En este momento no hay rifas activas publicadas. Vuelve pronto
+                  para ver nuevos eventos.
+                </p>
+              </div>
+            ) : (
+              <div className="principal-events-list">
+                {eventosDisponibles.map((evento) => {
+                  const fecha =
+                    evento?.fecha_sorteo ||
+                    evento?.fecha ||
+                    evento?.fecha_rifa ||
+                    "";
+
+                  const hora =
+                    evento?.hora_sorteo ||
+                    evento?.hora ||
+                    evento?.hora_rifa ||
+                    "";
+
+                  const progreso = getRifaProgress(evento);
+
+                  return (
+                    <article
+                      key={evento.id}
+                      className="principal-event-card-mobile premium-card-hover reveal-fade-up"
+                    >
+                      {evento?.destacada && (
+                        <div className="principal-card-badge-left">
+                          <div className="principal-destacada-badge">
+                            ⭐ Destacada
+                          </div>
                         </div>
-                      </div>
-                    )}
-
-                    <RaffleDualImage
-                      principalSrc={evento?.portada_url}
-                      secondarySrc={evento?.portada_scroll_url}
-                      alt={evento?.nombre || "Evento disponible"}
-                      className="principal-event-image-mobile-wrap"
-                    />
-
-                    <div className="principal-event-content-mobile">
-                      <h3>{evento?.nombre || "Evento disponible"}</h3>
-
-                      {fecha && (
-                        <p className="principal-event-meta-mobile">📅 {fecha}</p>
                       )}
 
-                      {hora && (
-                        <p className="principal-event-meta-mobile">⏰ {hora}</p>
-                      )}
+                      <RaffleDualImage
+                        principalSrc={evento?.portada_url}
+                        secondarySrc={evento?.portada_scroll_url}
+                        alt={evento?.nombre || "Evento disponible"}
+                        className="principal-event-image-mobile-wrap"
+                      />
 
-                      {evento?.precio_ticket !== null &&
-                        evento?.precio_ticket !== undefined && (
+                      <div className="principal-event-content-mobile">
+                        <h3>{evento?.nombre || "Evento disponible"}</h3>
+
+                        {fecha && (
                           <p className="principal-event-meta-mobile">
-                            💰 ${formatearPrecioSeguro(evento.precio_ticket)}
+                            📅 {fecha}
                           </p>
                         )}
 
-                      <ProgressVentaBar
-                        value={progreso.porcentaje}
-                        soldOut={progreso.soldOut}
-                      />
+                        {hora && (
+                          <p className="principal-event-meta-mobile">⏰ {hora}</p>
+                        )}
 
-                      <div className="principal-event-actions-mobile">
-                        <Link
-                          href={`/evento/${evento.id}`}
-                          className="principal-red-btn small-btn"
-                        >
-                          VER EVENTO
-                        </Link>
-                      </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
-          )}
-        </section>
+                        {evento?.precio_ticket !== null &&
+                          evento?.precio_ticket !== undefined && (
+                            <p className="principal-event-meta-mobile">
+                              💰 ${formatearPrecioSeguro(evento.precio_ticket)}
+                            </p>
+                          )}
 
-        {/* AGOTADOS */}
-        {eventosAgotados.length > 0 && (
-          <section
-            className="principal-section reveal-fade-up reveal-delay-2"
-            id="eventos-agotados"
-          >
-            <div className="principal-section-head">
-              <h2>AGOTADOS</h2>
-            </div>
-
-            <div className="principal-events-list">
-              {eventosAgotados.map((evento) => {
-                const progreso = getRifaProgress(evento);
-
-                return (
-                  <article
-                    key={evento.id}
-                    className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
-                  >
-                    <div className="principal-card-badges-row">
-                      {evento?.destacada ? (
-                        <div className="principal-destacada-badge">
-                          ⭐ Destacada
+                        <div className="principal-progress-wrap">
+                          <ProgressVentaBar
+                            value={progreso.porcentaje}
+                            soldOut={progreso.soldOut}
+                          />
                         </div>
-                      ) : (
-                        <div className="principal-badge-placeholder" />
-                      )}
 
-                      <div className="principal-agotado-badge">Agotada</div>
-                    </div>
-
-                    <RaffleDualImage
-                      principalSrc={evento?.portada_url}
-                      secondarySrc={evento?.portada_scroll_url}
-                      alt={evento?.nombre || "Evento agotado"}
-                      className="principal-event-image-mobile-wrap finalizada"
-                    />
-
-                    <div className="principal-event-content-mobile">
-                      <h3>{evento?.nombre || "Evento agotado"}</h3>
-
-                      <ProgressVentaBar
-                        value={progreso.porcentaje}
-                        soldOut={progreso.soldOut}
-                      />
-
-                      <p className="principal-event-meta-mobile">
-                        ⏳ Pendiente de sorteo
-                      </p>
-
-                      <div className="principal-event-actions-mobile">
-                        <Link
-                          href={`/evento/${evento.id}`}
-                          className="principal-white-btn small-btn"
-                        >
-                          VER EVENTO
-                        </Link>
+                        <div className="principal-event-actions-mobile">
+                          <Link
+                            href={`/evento/${evento.id}`}
+                            className="principal-red-btn small-btn"
+                          >
+                            VER EVENTO
+                          </Link>
+                        </div>
                       </div>
-                    </div>
-                  </article>
-                );
-              })}
-            </div>
+                    </article>
+                  );
+                })}
+              </div>
+            )}
           </section>
-        )}
 
-        {/* FINALIZADOS */}
-        <section
-          className="principal-section reveal-fade-up reveal-delay-3"
-          id="eventos-finalizados"
-        >
-          <div className="principal-section-head">
-            <h2>FINALIZADOS</h2>
-          </div>
+          {/* AGOTADOS */}
+          {eventosAgotados.length > 0 && (
+            <section
+              className="principal-section reveal-fade-up reveal-delay-2"
+              id="eventos-agotados"
+            >
+              <div className="principal-section-head">
+                <h2>AGOTADOS</h2>
+              </div>
 
-          {loadingRifas ? (
-            <div className="principal-loading-state-grid">
-              {[1, 2].map((item) => (
-                <div key={item} className="principal-skeleton-card">
-                  <div className="principal-skeleton-image" />
-                  <div className="principal-skeleton-line large" />
-                  <div className="principal-skeleton-line medium" />
-                  <div className="principal-skeleton-btn" />
-                </div>
-              ))}
-            </div>
-          ) : eventosFinalizados.length === 0 ? (
-            <div className="principal-empty-box premium">
-              <div className="principal-empty-icon">🏁</div>
-
-              <h3>No hay eventos finalizados</h3>
-
-              <p>
-                Todavía no hay rifas finalizadas publicadas para mostrar.
-              </p>
-            </div>
-          ) : (
-            <>
               <div className="principal-events-list">
-                {eventosFinalizadosPaginados.map((evento) => {
+                {eventosAgotados.map((evento) => {
                   const progreso = getRifaProgress(evento);
 
                   return (
@@ -732,38 +628,29 @@ export default function PrincipalPageClient() {
                           <div className="principal-badge-placeholder" />
                         )}
 
-                        <div className="principal-finalizado-badge">
-                          Finalizado
-                        </div>
+                        <div className="principal-agotado-badge">Agotada</div>
                       </div>
 
                       <RaffleDualImage
                         principalSrc={evento?.portada_url}
                         secondarySrc={evento?.portada_scroll_url}
-                        alt={evento?.nombre || "Evento finalizado"}
+                        alt={evento?.nombre || "Evento agotado"}
                         className="principal-event-image-mobile-wrap finalizada"
                       />
 
                       <div className="principal-event-content-mobile">
-                        <h3>{evento?.nombre || "Evento finalizado"}</h3>
+                        <h3>{evento?.nombre || "Evento agotado"}</h3>
 
-                        {evento?.fecha_sorteo && (
-                          <p className="principal-event-meta-mobile">
-                            📅 {evento.fecha_sorteo}
-                          </p>
-                        )}
+                        <div className="principal-progress-wrap">
+                          <ProgressVentaBar
+                            value={progreso.porcentaje}
+                            soldOut={progreso.soldOut}
+                          />
+                        </div>
 
-                        {evento?.precio_ticket !== null &&
-                          evento?.precio_ticket !== undefined && (
-                            <p className="principal-event-meta-mobile">
-                              💰 ${formatearPrecioSeguro(evento.precio_ticket)}
-                            </p>
-                          )}
-
-                        <ProgressVentaBar
-                          value={progreso.porcentaje}
-                          soldOut={progreso.soldOut}
-                        />
+                        <p className="principal-event-meta-mobile">
+                          ⏳ Pendiente de sorteo
+                        </p>
 
                         <div className="principal-event-actions-mobile">
                           <Link
@@ -778,260 +665,346 @@ export default function PrincipalPageClient() {
                   );
                 })}
               </div>
-
-              <div className="principal-pagination-wrap principal-pagination-premium">
-                <button
-                  type="button"
-                  className="principal-pagination-btn premium"
-                  onClick={() =>
-                    setPaginaFinalizados((prev) => Math.max(prev - 1, 1))
-                  }
-                  disabled={paginaFinalizados === 1}
-                >
-                  ← Anterior
-                </button>
-
-                <div className="principal-pagination-current premium">
-                  <span className="principal-pagination-label">PÁGINA</span>
-
-                  <strong>
-                    {paginaFinalizados} / {totalPaginasFinalizados}
-                  </strong>
-                </div>
-
-                <button
-                  type="button"
-                  className="principal-pagination-btn premium"
-                  onClick={() =>
-                    setPaginaFinalizados((prev) =>
-                      Math.min(prev + 1, totalPaginasFinalizados)
-                    )
-                  }
-                  disabled={paginaFinalizados === totalPaginasFinalizados}
-                >
-                  Siguiente →
-                </button>
-              </div>
-            </>
+            </section>
           )}
 
-          <HistorialGanadores />
-        </section>
+          {/* FINALIZADOS */}
+          <section
+            className="principal-section reveal-fade-up reveal-delay-3"
+            id="eventos-finalizados"
+          >
+            <div className="principal-section-head">
+              <h2>FINALIZADOS</h2>
+            </div>
 
-        {/* PAGOS */}
-        <section
-          className="principal-section reveal-fade-up reveal-delay-4"
-          id="pagos"
-        >
-          <div className="principal-section-head">
-            <h2>CUENTAS DE PAGO</h2>
-          </div>
+            {loadingRifas ? (
+              <div className="principal-loading-state-grid">
+                {[1, 2].map((item) => (
+                  <div key={item} className="principal-skeleton-card">
+                    <div className="principal-skeleton-image" />
+                    <div className="principal-skeleton-line large" />
+                    <div className="principal-skeleton-line medium" />
+                    <div className="principal-skeleton-btn" />
+                  </div>
+                ))}
+              </div>
+            ) : eventosFinalizados.length === 0 ? (
+              <div className="principal-empty-box premium">
+                <div className="principal-empty-icon">🏁</div>
 
-          <div className="principal-payments-vertical">
-            {metodosPagoPublicos.map((method) => {
-              const mostrarCuenta = Boolean(method?.cuenta);
-              const mostrarTitular = Boolean(method?.titular);
+                <h3>No hay eventos finalizados</h3>
 
-              const extras = Array.isArray(method?.extra)
-                ? method.extra
-                : [];
+                <p>Todavía no hay rifas finalizadas publicadas para mostrar.</p>
+              </div>
+            ) : (
+              <>
+                <div className="principal-events-grid-finalizados">
+                  {eventosFinalizadosPaginados.map((evento) => {
+                    const progreso = getRifaProgress(evento);
 
-              const nombreMetodo =
-                method?.titulo || method?.nombre || "Método de pago";
-
-              return (
-                <div
-                  key={method?.id || method?.nombre}
-                  className="principal-payment-block premium-card-hover"
-                >
-                  {method?.logo && (
-                    <img
-                      src={method.logo}
-                      alt={nombreMetodo}
-                      className="principal-payment-icon"
-                    />
-                  )}
-
-                  <h3>{nombreMetodo}</h3>
-
-                  {method?.subtitulo && <p>{method.subtitulo}</p>}
-
-                  {mostrarCuenta && (
-                    <div className="copy-line">
-                      <strong>{method.cuenta}</strong>
-
-                      <button
-                        type="button"
-                        onClick={() => copiarTexto(method.cuenta)}
+                    return (
+                      <article
+                        key={evento.id}
+                        className="principal-event-card-mobile principal-finalizada-card premium-card-hover reveal-fade-up"
                       >
-                        📋
-                      </button>
-                    </div>
-                  )}
+                        <div className="principal-card-badges-row">
+                          {evento?.destacada ? (
+                            <div className="principal-destacada-badge">
+                              ⭐ Destacada
+                            </div>
+                          ) : (
+                            <div className="principal-badge-placeholder" />
+                          )}
 
-                  {extras.map((item) => (
-                    <div
-                      key={`${method?.id || method?.nombre}-${item?.label}-${item?.value}`}
-                    >
-                      <p>{item?.label}</p>
+                          <div className="principal-finalizado-badge">
+                            Finalizado
+                          </div>
+                        </div>
 
+                        <RaffleDualImage
+                          principalSrc={evento?.portada_url}
+                          secondarySrc={evento?.portada_scroll_url}
+                          alt={evento?.nombre || "Evento finalizado"}
+                          className="principal-event-image-mobile-wrap finalizada"
+                        />
+
+                        <div className="principal-event-content-mobile">
+                          <h3>{evento?.nombre || "Evento finalizado"}</h3>
+
+                          {evento?.fecha_sorteo && (
+                            <p className="principal-event-meta-mobile">
+                              📅 {evento.fecha_sorteo}
+                            </p>
+                          )}
+
+                          {evento?.precio_ticket !== null &&
+                            evento?.precio_ticket !== undefined && (
+                              <p className="principal-event-meta-mobile">
+                                💰 ${formatearPrecioSeguro(evento.precio_ticket)}
+                              </p>
+                            )}
+
+                          <div className="principal-progress-wrap">
+                            <ProgressVentaBar
+                              value={progreso.porcentaje}
+                              soldOut={progreso.soldOut}
+                            />
+                          </div>
+
+                          <div className="principal-event-actions-mobile">
+                            <Link
+                              href={`/evento/${evento.id}`}
+                              className="principal-white-btn small-btn"
+                            >
+                              VER EVENTO
+                            </Link>
+                          </div>
+                        </div>
+                      </article>
+                    );
+                  })}
+                </div>
+
+                {totalPaginasFinalizados > 1 && (
+                  <div
+                    className="principal-pagination-dots"
+                    aria-label="Paginación finalizados"
+                  >
+                    {Array.from({ length: totalPaginasFinalizados }).map(
+                      (_, index) => (
+                        <button
+                          key={index}
+                          type="button"
+                          className={`principal-pagination-dot ${
+                            paginaFinalizados === index + 1 ? "active" : ""
+                          }`}
+                          onClick={() => setPaginaFinalizados(index + 1)}
+                          aria-label={`Ir a la página ${index + 1}`}
+                        />
+                      )
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            <div className="principal-historial-wrap">
+              <HistorialGanadores />
+            </div>
+          </section>
+
+          {/* PAGOS */}
+          <section
+            className="principal-section reveal-fade-up reveal-delay-4"
+            id="pagos"
+          >
+            <div className="principal-section-head">
+              <h2>CUENTAS DE PAGO</h2>
+            </div>
+
+            <div className="principal-payments-vertical">
+              {metodosPagoPublicos.map((method) => {
+                const mostrarCuenta = Boolean(method?.cuenta);
+                const mostrarTitular = Boolean(method?.titular);
+
+                const extras = Array.isArray(method?.extra) ? method.extra : [];
+
+                const nombreMetodo =
+                  method?.titulo || method?.nombre || "Método de pago";
+
+                return (
+                  <div
+                    key={method?.id || method?.nombre}
+                    className="principal-payment-block premium-card-hover"
+                  >
+                    {method?.logo && (
+                      <img
+                        src={method.logo}
+                        alt={nombreMetodo}
+                        className="principal-payment-icon"
+                      />
+                    )}
+
+                    <h3>{nombreMetodo}</h3>
+
+                    {method?.subtitulo && <p>{method.subtitulo}</p>}
+
+                    {mostrarCuenta && (
                       <div className="copy-line">
-                        <strong>{item?.value}</strong>
+                        <strong>{method.cuenta}</strong>
 
                         <button
                           type="button"
-                          onClick={() => copiarTexto(item?.value)}
+                          onClick={() => copiarTexto(method.cuenta)}
                         >
                           📋
                         </button>
                       </div>
-                    </div>
-                  ))}
+                    )}
 
-                  {mostrarTitular && (
-                    <div className="copy-line">
-                      <span>
-                        <strong>Titular:</strong> {method.titular}
-                      </span>
-
-                      <button
-                        type="button"
-                        onClick={() => copiarTexto(method.titular)}
+                    {extras.map((item) => (
+                      <div
+                        key={`${method?.id || method?.nombre}-${item?.label}-${item?.value}`}
                       >
-                        📋
-                      </button>
-                    </div>
-                  )}
+                        <p>{item?.label}</p>
 
-                  {method?.descripcion && <p>{method.descripcion}</p>}
+                        <div className="copy-line">
+                          <strong>{item?.value}</strong>
+
+                          <button
+                            type="button"
+                            onClick={() => copiarTexto(item?.value)}
+                          >
+                            📋
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+
+                    {mostrarTitular && (
+                      <div className="copy-line">
+                        <span>
+                          <strong>Titular:</strong> {method.titular}
+                        </span>
+
+                        <button
+                          type="button"
+                          onClick={() => copiarTexto(method.titular)}
+                        >
+                          📋
+                        </button>
+                      </div>
+                    )}
+
+                    {method?.descripcion && <p>{method.descripcion}</p>}
+                  </div>
+                );
+              })}
+
+              {metodosPagoPublicos.length === 0 && (
+                <div className="principal-empty-box premium">
+                  <div className="principal-empty-icon">💳</div>
+
+                  <h3>No hay métodos de pago</h3>
+
+                  <p>Configura los métodos de pago desde el panel administrativo.</p>
                 </div>
-              );
-            })}
+              )}
+            </div>
+          </section>
 
-            {metodosPagoPublicos.length === 0 && (
-              <div className="principal-empty-box premium">
-                <div className="principal-empty-icon">💳</div>
-
-                <h3>No hay métodos de pago</h3>
-
-                <p>Configura los métodos de pago desde el panel administrativo.</p>
-              </div>
-            )}
-          </div>
-        </section>
-
-        {/* RESULTADOS */}
-        <section
-          className="principal-section reveal-fade-up"
-          id="resultados-oficiales"
-        >
-          <div className="principal-section-head">
-            <h2>{tituloResultados}</h2>
-          </div>
-
-          <div className="principal-results-box premium-card-hover">
-            <div className="principal-results-copy">
-              <p className="principal-results-kicker">
-                TRANSPARENCIA Y CONFIANZA
-              </p>
-
-              <h3>Consulta aquí los resultados oficiales</h3>
-
-              <p>
-                El resultado ganador de nuestras rifas se tomará con base en los
-                resultados oficiales publicados por las loterías autorizadas.
-              </p>
-
-              <a
-                href="https://supergana.com.ve/resultados.php"
-                target="_blank"
-                rel="noreferrer"
-                className="principal-red-btn"
-              >
-                VER RESULTADOS OFICIALES
-              </a>
+          {/* RESULTADOS */}
+          <section
+            className="principal-section reveal-fade-up"
+            id="resultados-oficiales"
+          >
+            <div className="principal-section-head">
+              <h2>{tituloResultados}</h2>
             </div>
 
-            <div className="principal-results-logos">
-              <div className="principal-results-logo-card">
-                <img
-                  src="/resultados/triple-tachira.png"
-                  alt="Triple Táchira"
-                  className="principal-results-logo"
-                />
+            <div className="principal-results-box premium-card-hover">
+              <div className="principal-results-copy">
+                <p className="principal-results-kicker">
+                  TRANSPARENCIA Y CONFIANZA
+                </p>
+
+                <h3>Consulta aquí los resultados oficiales</h3>
+
+                <p>
+                  El resultado ganador de nuestras rifas se tomará con base en
+                  los resultados oficiales publicados por las loterías
+                  autorizadas.
+                </p>
+
+                <a
+                  href="https://supergana.com.ve/resultados.php"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="principal-red-btn"
+                >
+                  VER RESULTADOS OFICIALES
+                </a>
               </div>
 
-              <div className="principal-results-logo-card">
-                <img
-                  src="/resultados/super-gana.png"
-                  alt="Super Gana"
-                  className="principal-results-logo"
-                />
+              <div className="principal-results-logos">
+                <div className="principal-results-logo-card">
+                  <img
+                    src="/resultados/triple-tachira.png"
+                    alt="Triple Táchira"
+                    className="principal-results-logo"
+                  />
+                </div>
+
+                <div className="principal-results-logo-card">
+                  <img
+                    src="/resultados/super-gana.png"
+                    alt="Super Gana"
+                    className="principal-results-logo"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        {/* CONTACTO */}
-        <section className="principal-section reveal-fade-up" id="contacto">
-          <div className="principal-section-head">
-            <h2>CONTACTO</h2>
+          {/* CONTACTO */}
+          <section className="principal-section reveal-fade-up" id="contacto">
+            <div className="principal-section-head">
+              <h2>CONTACTO</h2>
 
-            <p>{textoContacto}</p>
-          </div>
+              <p>{textoContacto}</p>
+            </div>
 
-          <div className="principal-contact-box premium-card-hover">
-            {whatsappNumber && (
-              <a
-                href={`https://wa.me/${String(whatsappNumber).replace(
-                  /\D/g,
-                  ""
-                )}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
-                target="_blank"
-                rel="noreferrer"
-                className="principal-red-btn contact-btn"
-              >
-                💬 WHATSAPP
-              </a>
-            )}
+            <div className="principal-contact-box premium-card-hover">
+              {whatsappNumber && (
+                <a
+                  href={`https://wa.me/${String(whatsappNumber).replace(
+                    /\D/g,
+                    ""
+                  )}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="principal-red-btn contact-btn"
+                >
+                  💬 WHATSAPP
+                </a>
+              )}
 
-            {instagramUrl && (
-              <a
-                href={instagramUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="principal-white-btn contact-btn"
-              >
-                📸 INSTAGRAM
-              </a>
-            )}
+              {instagramUrl && (
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="principal-white-btn contact-btn"
+                >
+                  📸 INSTAGRAM
+                </a>
+              )}
 
-            {config?.telegram && (
-              <a
-                href={config.telegram}
-                target="_blank"
-                rel="noreferrer"
-                className="principal-white-btn contact-btn"
-              >
-                ✈️ TELEGRAM
-              </a>
-            )}
-          </div>
-        </section>
+              {config?.telegram && (
+                <a
+                  href={config.telegram}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="principal-white-btn contact-btn"
+                >
+                  ✈️ TELEGRAM
+                </a>
+              )}
+            </div>
+          </section>
 
-        {/* FOOTER */}
-        <PublicFooter
-          texto={footerTexto}
-          mostrarRedes={config?.footer_mostrar_redes !== false}
-        />
+          {/* FOOTER */}
+          <PublicFooter
+            texto={footerTexto}
+            mostrarRedes={config?.footer_mostrar_redes !== false}
+          />
+        </div>
 
-        {/* NOTIFICACIONES */}
         {config?.notificaciones_activas !== false && (
           <FloatingPurchaseNotifications />
         )}
       </main>
 
-      {/* VERIFICADOR */}
       <VerifyTicketsModal
         open={showVerifyModal}
         onClose={() => setShowVerifyModal(false)}

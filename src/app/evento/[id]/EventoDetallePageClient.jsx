@@ -21,12 +21,9 @@ export default function EventoDetallePageClient() {
 
   const [evento, setEvento] = useState(null);
   const [loading, setLoading] = useState(true);
-  // CORRECCIÓN #7: estado de error de red separado del "no encontrado"
   const [errorRed, setErrorRed] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verificarEmail, setVerificarEmail] = useState("");
-
-  // URL final (absoluta) para compartir
   const [shareUrl, setShareUrl] = useState("");
 
   const esPublicada = (value) =>
@@ -40,7 +37,6 @@ export default function EventoDetallePageClient() {
   const esEstadoAgotado = (estado) =>
     ["agotada", "agotado"].includes(String(estado || "").toLowerCase());
 
-  // Cierra modales con Escape
   useEffect(() => {
     const handleEscape = (e) => {
       if (e.key === "Escape") setShowVerifyModal(false);
@@ -50,7 +46,6 @@ export default function EventoDetallePageClient() {
     return () => window.removeEventListener("keydown", handleEscape);
   }, []);
 
-  // Cargar evento
   useEffect(() => {
     const cargarEvento = async () => {
       try {
@@ -97,9 +92,7 @@ export default function EventoDetallePageClient() {
           return;
         }
 
-        // Si quieres, puedes reforzarlo todavía más:
         const rifaNormalizada = await enriquecerRifaConResumen(rifa);
-
         setEvento(rifaNormalizada);
       } catch (error) {
         console.error("Error cargando evento:", error);
@@ -113,9 +106,6 @@ export default function EventoDetallePageClient() {
     cargarEvento();
   }, [eventoId]);
 
-  /**
-   * Share URL PRO (sin duplicar dominio/ruta)
-   */
   useEffect(() => {
     if (typeof window === "undefined") return;
 
@@ -145,10 +135,13 @@ export default function EventoDetallePageClient() {
 
   const estaFinalizado = useMemo(
     () => esEstadoFinalizado(evento?.estado),
-    [evento]
+    [evento?.estado]
   );
 
-  const estaAgotada = useMemo(() => esEstadoAgotado(evento?.estado), [evento]);
+  const estaAgotada = useMemo(
+    () => esEstadoAgotado(evento?.estado),
+    [evento?.estado]
+  );
 
   const progreso = useMemo(() => getRifaProgress(evento || {}), [evento]);
 
@@ -213,29 +206,26 @@ export default function EventoDetallePageClient() {
             </div>
           </section>
         ) : errorRed ? (
-          <>
-            {/* CORRECCIÓN #7: estado de error de red con mensaje y botón de reintento */}
-            <div className="evento-empty-state premium">
-              <SiteLogo
-                size="preview"
-                className="evento-empty-logo"
-                fallbackText="R"
-              />
+          <div className="evento-empty-state premium">
+            <SiteLogo
+              size="preview"
+              className="evento-empty-logo"
+              fallbackText="R"
+            />
 
-              <h2>Error de conexión</h2>
-              <p>
-                No se pudo cargar el evento. Verifica tu conexión e intenta de nuevo.
-              </p>
+            <h2>Error de conexión</h2>
+            <p>
+              No se pudo cargar el evento. Verifica tu conexión e intenta de nuevo.
+            </p>
 
-              <button
-                type="button"
-                className="principal-red-btn"
-                onClick={() => window.location.reload()}
-              >
-                Reintentar
-              </button>
-            </div>
-          </>
+            <button
+              type="button"
+              className="principal-red-btn"
+              onClick={() => window.location.reload()}
+            >
+              Reintentar
+            </button>
+          </div>
         ) : !evento ? (
           <div className="evento-empty-state premium">
             <SiteLogo
@@ -303,13 +293,47 @@ export default function EventoDetallePageClient() {
 
               <div className="evento-side">
                 <div className="evento-card premium-card-hover">
+                  <p className="evento-kicker">ACCIONES</p>
+                  <h2>Participar</h2>
+
+                  <div className="evento-actions">
+                    {!estaFinalizado && !estaAgotada ? (
+                      <Link
+                        href={`/?rifa=${evento.id}#boletos`}
+                        className="principal-red-btn"
+                      >
+                        COMPRAR TICKETS
+                      </Link>
+                    ) : estaAgotada ? (
+                      <button type="button" className="evento-disabled-btn" disabled>
+                        BOLETOS AGOTADOS
+                      </button>
+                    ) : (
+                      <button type="button" className="evento-disabled-btn" disabled>
+                        EVENTO FINALIZADO
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      className="principal-white-btn"
+                      onClick={() => router.push("/principal#eventos-disponibles")}
+                    >
+                      VER MÁS EVENTOS
+                    </button>
+                  </div>
+                </div>
+
+                <div className="evento-card premium-card-hover">
                   <p className="evento-kicker">RESUMEN</p>
                   <h2>Datos principales</h2>
 
                   <div className="evento-mini-grid">
                     <div className="evento-mini-box">
                       <span>ESTADO</span>
-                      <strong className={estaFinalizado || estaAgotada ? "text-red" : "text-green"}>
+                      <strong
+                        className={estaFinalizado || estaAgotada ? "text-red" : "text-green"}
+                      >
                         {evento.estado || "Disponible"}
                       </strong>
                     </div>
@@ -398,42 +422,14 @@ export default function EventoDetallePageClient() {
                     </div>
                   )}
                 </div>
-
-                <div className="evento-card premium-card-hover">
-                  <p className="evento-kicker">ACCIONES</p>
-                  <h2>Participar</h2>
-
-                  <div className="evento-actions">
-                    {!estaFinalizado && !estaAgotada ? (
-                      <Link href={`/?rifa=${evento.id}#boletos`} className="principal-red-btn">
-                        COMPRAR TICKETS
-                      </Link>
-                    ) : estaAgotada ? (
-                      <button type="button" className="evento-disabled-btn" disabled>
-                        BOLETOS AGOTADOS
-                      </button>
-                    ) : (
-                      <button type="button" className="evento-disabled-btn" disabled>
-                        EVENTO FINALIZADO
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="principal-white-btn"
-                      onClick={() => router.push("/principal#eventos-disponibles")}
-                    >
-                      VER MÁS EVENTOS
-                    </button>
-                  </div>
-                </div>
               </div>
             </div>
           </section>
         )}
+      </main>
 
-        {/* BOTÓN DE COMPARTIR */}
-        {evento?.id && shareUrl && (
+      {evento?.id && shareUrl && (
+        <div className="evento-share-fab">
           <FloatingShareButton
             url={shareUrl}
             title={evento?.nombre || "Evento"}
@@ -447,8 +443,8 @@ export default function EventoDetallePageClient() {
 ✅ *Compra tus tickets en la PAGINA OFICIAL*
 👇 Mira todos los detalles aquí:`}
           />
-        )}
-      </main>
+        </div>
+      )}
 
       <VerifyTicketsModal
         open={showVerifyModal}
