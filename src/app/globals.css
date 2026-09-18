@@ -5988,161 +5988,87 @@ svg,
   }
 }
 
-/* ============================
-   HOME - FINALIZADOS MOBILE
-============================ */
+/* =========================================
+   FINALIZADOS - MÓVIL
+   1 CARD POR PANTALLA + SWIPE + DOTS
+   ========================================= */
 
 @media (max-width: 768px) {
-  .home-events-preview-section {
-    padding: 0 14px 20px;
-  }
-
-  .home-events-preview-inner {
-    width: 100%;
-    max-width: 100%;
-  }
-
-  .home-events-title-wrap {
-    margin-bottom: 18px;
-    text-align: center;
-  }
-
-  .home-events-title {
-    font-size: 34px;
-    line-height: 1;
-  }
-
-  .home-events-subtitle {
-    font-size: 15px;
-    margin-top: 8px;
-  }
-
   .home-events-grid-finalizados {
-    grid-template-columns: 1fr;
-    gap: 16px;
+    display: flex;
+    gap: 0;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0;
+  }
+
+  .home-events-grid-finalizados::-webkit-scrollbar {
+    display: none;
+  }
+
+  .home-events-grid-finalizados .home-event-card.finalizada {
+    flex: 0 0 100%;
+    max-width: 100%;
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    box-sizing: border-box;
+    margin: 0;
   }
 
   .home-event-card.finalizada {
-    width: 100%;
-    max-width: 390px;
-    margin: 0 auto;
-    padding: 14px 14px 16px;
     border-radius: 26px;
-    background: #fff;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
     overflow: hidden;
   }
 
   .home-card-badges-row {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
+    justify-content: center;
     gap: 8px;
-    margin-bottom: 10px;
+    padding: 12px 16px 0;
   }
 
-  .home-destacada-badge,
+  .home-badge-placeholder {
+    display: none;
+  }
+
   .home-finalizado-badge,
   .home-agotado-badge {
-    height: 30px;
-    padding: 0 12px;
+    width: fit-content;
+    max-width: calc(100% - 24px);
+    margin: 0 auto;
+    padding: 10px 18px;
     border-radius: 999px;
-    font-size: 12px;
-    font-weight: 700;
     white-space: nowrap;
   }
 
-  .home-destacada-badge {
-    max-width: 48%;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-
-  .home-event-card-image-wrap.finalizada {
-    width: 100%;
-    aspect-ratio: 1 / 0.92;
-    border-radius: 20px;
-    overflow: hidden;
-    margin: 0 auto 14px;
-    background: #f5f5f5;
-  }
-
-  .home-event-card-image-wrap.finalizada img {
-    width: 100%;
-    height: 100%;
-    object-fit: contain;
-    object-position: center;
-    display: block;
-  }
-
-  .home-event-card-placeholder {
-    width: 100%;
-    aspect-ratio: 1 / 0.92;
-    border-radius: 20px;
-    background: #f3f4f6;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 14px;
-    color: #6b7280;
-    margin-bottom: 14px;
-  }
-
   .home-event-card-body {
-    padding: 0 4px;
+    padding: 12px 16px 18px;
     text-align: center;
   }
 
   .home-event-card-body h3 {
-    font-size: 22px;
+    font-size: 24px;
     line-height: 1.1;
-    margin: 6px 0 8px;
-  }
-
-  .home-event-card-date {
-    font-size: 14px;
-    color: #4b5563;
-    margin-bottom: 12px;
-  }
-
-  .home-progress-wrap {
-    margin-top: 8px;
-  }
-
-  .home-progress-wrap .progress-bar-wrap,
-  .home-progress-wrap .progress-venta-bar,
-  .home-progress-wrap .progress-wrap {
-    margin: 0 auto;
-    width: 100%;
-  }
-
-  .home-event-card-actions {
-    margin-top: 14px;
-    display: flex;
-    justify-content: center;
-  }
-
-  .home-event-card-btn.secondary,
-  .home-event-card-btn {
-    width: 100%;
-    max-width: 280px;
-    height: 50px;
-    border-radius: 999px;
-    font-size: 16px;
-    font-weight: 800;
-    letter-spacing: 0.2px;
   }
 
   .home-events-dots {
-    margin-top: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
     gap: 8px;
+    margin-top: 14px;
   }
 
   .home-event-dot {
-    width: 9px;
-    height: 9px;
+    width: 10px;
+    height: 10px;
+    border: none;
+    border-radius: 999px;
+    background: #d1d5db;
+    padding: 0;
+    transition: transform 0.2s ease, background 0.2s ease;
   }
-}
 
   .home-event-dot.active {
     background: #111827;
@@ -6308,5 +6234,160 @@ svg,
   .principal-events-grid-finalizados {
     grid-template-columns: 1fr;
     gap: 18px;
+  }
+}
+/* ============================
+   HOME - FINALIZADOS MOBILE
+============================ */
+
+@media (max-width: 768px) {
+  .home-events-preview-section {
+    padding: 0 14px 20px;
+  }
+
+  .home-events-preview-inner {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  .home-events-title-wrap {
+    margin-bottom: 18px;
+    text-align: center;
+  }
+
+  .home-events-title {
+    font-size: 34px;
+    line-height: 1;
+  }
+
+  .home-events-subtitle {
+    font-size: 15px;
+    margin-top: 8px;
+  }
+
+  .home-events-grid-finalizados {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .home-event-card.finalizada {
+    width: 100%;
+    max-width: 390px;
+    margin: 0 auto;
+    padding: 14px 14px 16px;
+    border-radius: 26px;
+    background: #fff;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+  }
+
+  .home-card-badges-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .home-destacada-badge,
+  .home-finalizado-badge,
+  .home-agotado-badge {
+    height: 30px;
+    padding: 0 12px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 700;
+    white-space: nowrap;
+  }
+
+  .home-destacada-badge {
+    max-width: 48%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .home-event-card-image-wrap.finalizada {
+    width: 100%;
+    aspect-ratio: 1 / 0.92;
+    border-radius: 20px;
+    overflow: hidden;
+    margin: 0 auto 14px;
+    background: #f5f5f5;
+  }
+
+  .home-event-card-image-wrap.finalizada img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+  }
+
+  .home-event-card-placeholder {
+    width: 100%;
+    aspect-ratio: 1 / 0.92;
+    border-radius: 20px;
+    background: #f3f4f6;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    color: #6b7280;
+    margin-bottom: 14px;
+  }
+
+  .home-event-card-body {
+    padding: 0 4px;
+    text-align: center;
+  }
+
+  .home-event-card-body h3 {
+    font-size: 22px;
+    line-height: 1.1;
+    margin: 6px 0 8px;
+  }
+
+  .home-event-card-date {
+    font-size: 14px;
+    color: #4b5563;
+    margin-bottom: 12px;
+  }
+
+  .home-progress-wrap {
+    margin-top: 8px;
+  }
+
+  .home-progress-wrap .progress-bar-wrap,
+  .home-progress-wrap .progress-venta-bar,
+  .home-progress-wrap .progress-wrap {
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  .home-event-card-actions {
+    margin-top: 14px;
+    display: flex;
+    justify-content: center;
+  }
+
+  .home-event-card-btn.secondary,
+  .home-event-card-btn {
+    width: 100%;
+    max-width: 280px;
+    height: 50px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 800;
+    letter-spacing: 0.2px;
+  }
+
+  .home-events-dots {
+    margin-top: 12px;
+    gap: 8px;
+  }
+
+  .home-event-dot {
+    width: 9px;
+    height: 9px;
   }
 }
