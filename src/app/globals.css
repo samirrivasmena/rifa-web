@@ -6277,9 +6277,11 @@ svg,
     padding: 14px 14px 16px;
     border-radius: 26px;
     background: #fff;
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+border-radius: 32px;
+box-shadow: none;
+filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     overflow: hidden;
-  }
+  } 
 
   .home-card-badges-row {
     display: flex;
@@ -6389,5 +6391,273 @@ svg,
   .home-event-dot {
     width: 9px;
     height: 9px;
+  }
+}
+/* ========= FINALIZADOS PRINCIPAL: etiquetas más pequeñas ========= */
+
+.principal-events-grid-finalizados .principal-card-badges-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 12px 0;
+}
+
+.principal-events-grid-finalizados .principal-destacada-badge {
+  padding: 10px 10px;
+  font-size: 15px;
+  border-radius: 999px;
+  line-height: 1;
+}
+
+.principal-events-grid-finalizados .principal-finalizado-badge {
+  min-width: 68px;
+  max-width: 90px;
+  padding: 10px 50px;
+  font-size: 13px;
+  border-radius: 999px;
+  line-height: 1;
+}
+@media (max-width: 768px) {
+  .principal-events-grid-finalizados {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    overflow-y: visible;
+    scroll-snap-type: x mandatory;
+    scroll-padding-inline: 16px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    padding: 0 16px 8px;
+    touch-action: pan-x pan-y pinch-zoom;
+    overscroll-behavior-x: contain;
+    overscroll-behavior-y: auto;
+  }
+
+  .principal-events-grid-finalizados::-webkit-scrollbar {
+    display: none;
+  }
+
+  .principal-events-grid-finalizados .principal-finalizada-card {
+    flex: 0 0 auto;
+    width: min(275px, calc(100vw - 40px));
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    box-shadow: 0 28px 70px rgba(15, 23, 42, 0.01);
+    margin: 0 auto;
+  }
+
+  .principal-pagination-dots {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    flex-wrap: wrap;
+  }
+
+  .principal-pagination-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    border: none;
+    background: rgba(220, 38, 38, 0.18);
+    padding: 0;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  .principal-pagination-dot.active {
+    background: #dc2626;
+    transform: scale(1.25);
+    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
+  }
+
+  .principal-pagination-dot:hover {
+    transform: scale(1.1);
+    background: #ef4444;
+  }
+}
+/* ==================================================
+   PUNTICOS REUTILIZABLES
+   Sirven para Historial de ganadores, Finalizados,
+   y cualquier carrusel de punticos
+================================================== */
+.carousel-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 10px 10px 14px;
+  min-height: 34px;
+  box-sizing: border-box;
+  flex-wrap: nowrap;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  touch-action: auto;
+}
+
+.carousel-dots::-webkit-scrollbar {
+  display: none;
+}
+
+.carousel-dots .carousel-dot {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: #d1d5db;
+  cursor: pointer;
+  position: relative;
+  transition: transform 0.25s ease, background-color 0.25s ease, opacity 0.25s ease;
+}
+
+.carousel-dots .carousel-dot.active {
+  background: #dc2626;
+  transform: scale(1.2);
+}
+
+/* ==================================================
+   HISTORIAL DE GANADORES
+================================================== */
+.winner-history-section {
+  overflow-x: hidden;
+}
+
+.winner-history-section .principal-winners-carousel-viewport {
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+}
+
+.winner-history-section .principal-winners-carousel {
+  display: flex;
+  flex-wrap: nowrap;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  touch-action: auto;
+  overscroll-behavior-x: contain;
+  box-sizing: border-box;
+}
+
+.winner-history-section .principal-winners-carousel::-webkit-scrollbar {
+  display: none;
+}
+
+.winner-history-section .principal-winner-slide {
+  flex: 0 0 100%;
+  min-width: 100%;
+  max-width: 100%;
+  scroll-snap-align: start;
+  scroll-snap-stop: always;
+  box-sizing: border-box;
+  display: flex;
+  justify-content: center;
+  padding: 0;
+}
+
+.winner-history-section .winner-result-card {
+  width: min(943vw, 600px);
+  max-width: 920px;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 28px;
+  border: 1px solid rgba(220, 38, 38, 0.08);
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+}
+
+.winner-history-section .winner-result-card,
+.winner-history-section .winner-result-card * {
+  box-sizing: border-box;
+}
+
+.winner-history-section .winner-result-card img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+.winner-history-section .winner-result-card .winner-result-badges {
+  margin-bottom: 8px;
+}
+
+.winner-history-section .winner-result-card .winner-image-wrapper {
+  margin-bottom: 3px;
+}
+
+.winner-history-section .winner-result-card .principal-event-content-mobile {
+  padding: 12px 10px 16px;
+}
+
+.winner-history-section .winner-result-card .winner-result-details {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.winner-history-section .winner-result-card .principal-event-meta-mobile {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.winner-history-section .winner-pagination-dots.carousel-dots {
+  margin-top: 18px;
+}
+
+/* ==================================================
+   MÓVIL
+================================================== */
+@media (max-width: 768px) {
+  .winner-history-section {
+    padding-left: 4px !important;
+    padding-right: 4px !important;
+  }
+
+  .winner-history-section .principal-winners-carousel-viewport {
+    padding: 0 !important;
+  }
+
+  .winner-history-section .principal-winners-carousel {
+    scroll-padding-left: 6px;
+    scroll-padding-right: 6px;
+  }
+
+  .winner-history-section .principal-winner-slide {
+    padding: 0 6px !important;
+  }
+
+  .winner-history-section .winner-result-card {
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 auto !important;
+    border-radius: 24px;
+    box-shadow: 0 6px 18px rgba(15, 23, 42, 0.06);
+  }
+
+  .winner-history-section .winner-result-card .principal-event-content-mobile {
+    padding: 10px 12px 14px;
+  }
+
+  .winner-history-section .winner-result-card .winner-image-wrapper {
+    margin-bottom: 6px;
+  }
+
+  .winner-history-section .winner-pagination-dots.carousel-dots {
+    padding: 10px 10px 12px;
   }
 }

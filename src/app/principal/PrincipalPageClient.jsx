@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import Swal from "sweetalert2";
 import Link from "next/link";
 
@@ -28,11 +28,8 @@ export default function PrincipalPageClient() {
   const whatsappNumber = config?.whatsapp || "17738277463";
   const instagramUrl = config?.instagram || "";
 
-  const descripcionHome =
-    config?.descripcion_principal?.trim() ?? "";
-
-  const descripcionFinal =
-    config?.descripcion?.trim() ?? "";
+  const descripcionHome = config?.descripcion_principal?.trim() ?? "";
+  const descripcionFinal = config?.descripcion?.trim() ?? "";
 
   const slogan1 = config?.slogan_frase_1 || "Visión, crecimiento y constancia.";
   const slogan2 =
@@ -87,21 +84,24 @@ export default function PrincipalPageClient() {
   const [verificarEmail, setVerificarEmail] = useState("");
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [rifaActiva, setRifaActiva] = useState(null);
-const [paginaFinalizados, setPaginaFinalizados] = useState(1);
-const [isMobileFinalizados, setIsMobileFinalizados] = useState(false);
 
-useEffect(() => {
-  const handleResize = () => {
-    setIsMobileFinalizados(window.innerWidth <= 768);
-  };
+  const [paginaFinalizados, setPaginaFinalizados] = useState(1);
+  const [isMobileFinalizados, setIsMobileFinalizados] = useState(false);
+  const [activeFinalizadoIndex, setActiveFinalizadoIndex] = useState(0);
+  const scrollFinalizadosRef = useRef(null);
 
-  handleResize();
-  window.addEventListener("resize", handleResize);
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileFinalizados(window.innerWidth <= 768);
+    };
 
-  return () => window.removeEventListener("resize", handleResize);
-}, []);
+    handleResize();
+    window.addEventListener("resize", handleResize);
 
-const itemsPorPaginaFinalizados = isMobileFinalizados ? 1 : 3;
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const itemsPorPaginaFinalizados = isMobileFinalizados ? 1 : 3;
 
   const swalConfig = {
     background: "#1f1f1f",
@@ -347,18 +347,75 @@ const itemsPorPaginaFinalizados = isMobileFinalizados ? 1 : 3;
       Math.ceil(eventosFinalizados.length / itemsPorPaginaFinalizados),
       1
     );
-  }, [eventosFinalizados.length]);
+  }, [eventosFinalizados.length, itemsPorPaginaFinalizados]);
 
   const eventosFinalizadosPaginados = useMemo(() => {
     const inicio = (paginaFinalizados - 1) * itemsPorPaginaFinalizados;
     const fin = inicio + itemsPorPaginaFinalizados;
 
     return eventosFinalizados.slice(inicio, fin);
-  }, [eventosFinalizados, paginaFinalizados]);
+  }, [eventosFinalizados, paginaFinalizados, itemsPorPaginaFinalizados]);
 
-useEffect(() => {
-  setPaginaFinalizados(1);
-}, [eventosFinalizados.length, itemsPorPaginaFinalizados]);
+  const finalizadosParaVista = isMobileFinalizados
+    ? eventosFinalizados
+    : eventosFinalizadosPaginados;
+
+  useEffect(() => {
+    setPaginaFinalizados(1);
+    setActiveFinalizadoIndex(0);
+
+    if (scrollFinalizadosRef.current) {
+      scrollFinalizadosRef.current.scrollTo({
+        left: 0,
+        behavior: "auto",
+      });
+    }
+  }, [eventosFinalizados.length, isMobileFinalizados]);
+
+  const handleScrollFinalizados = () => {
+    if (!isMobileFinalizados || !scrollFinalizadosRef.current) return;
+
+    const cards = scrollFinalizadosRef.current.querySelectorAll(
+      ".principal-finalizada-card"
+    );
+
+    const center =
+      scrollFinalizadosRef.current.scrollLeft +
+      scrollFinalizadosRef.current.clientWidth / 2;
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+
+    cards.forEach((card, index) => {
+      const cardCenter = card.offsetLeft + card.offsetWidth / 2;
+      const distance = Math.abs(center - cardCenter);
+
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
+      }
+    });
+
+    setActiveFinalizadoIndex(closestIndex);
+  };
+
+  const irAFinalizado = (index) => {
+    if (!isMobileFinalizados || !scrollFinalizadosRef.current) return;
+
+    const cards = scrollFinalizadosRef.current.querySelectorAll(
+      ".principal-finalizada-card"
+    );
+
+    const card = cards[index];
+    if (!card) return;
+
+    scrollFinalizadosRef.current.scrollTo({
+      left: card.offsetLeft - 16,
+      behavior: "smooth",
+    });
+
+    setActiveFinalizadoIndex(index);
+  };
 
   const primerEventoDisponible =
     eventosDisponibles[0] || eventosAgotados[0] || null;
@@ -698,8 +755,12 @@ useEffect(() => {
               </div>
             ) : (
               <>
-                <div className="principal-events-grid-finalizados">
-                  {eventosFinalizadosPaginados.map((evento) => {
+                <div
+                  ref={scrollFinalizadosRef}
+                  onScroll={isMobileFinalizados ? handleScrollFinalizados : undefined}
+                  className="principal-events-grid-finalizados"
+                >
+                  {finalizadosParaVista.map((evento) => {
                     const progreso = getRifaProgress(evento);
 
                     return (
@@ -765,25 +826,44 @@ useEffect(() => {
                   })}
                 </div>
 
-                {totalPaginasFinalizados > 1 && (
-                  <div
-                    className="principal-pagination-dots"
-                    aria-label="Paginación finalizados"
-                  >
-                    {Array.from({ length: totalPaginasFinalizados }).map(
-                      (_, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          className={`principal-pagination-dot ${
-                            paginaFinalizados === index + 1 ? "active" : ""
-                          }`}
-                          onClick={() => setPaginaFinalizados(index + 1)}
-                          aria-label={`Ir a la página ${index + 1}`}
-                        />
-                      )
-                    )}
-                  </div>
+                {isMobileFinalizados ? (
+<div
+  className="principal-pagination-dots carousel-dots"
+  aria-label="Paginación finalizados"
+>
+  {Array.from({ length: totalPaginasFinalizados }).map((_, index) => (
+    <button
+      key={index}
+      type="button"
+      className={`principal-pagination-dot carousel-dot ${
+        paginaFinalizados === index + 1 ? "active" : ""
+      }`}
+      onClick={() => setPaginaFinalizados(index + 1)}
+      aria-label={`Ir a la página ${index + 1}`}
+    />
+  ))}
+</div>
+                ) : (
+                  totalPaginasFinalizados > 1 && (
+                    <div
+                      className="principal-pagination-dots"
+                      aria-label="Paginación finalizados"
+                    >
+                      {Array.from({ length: totalPaginasFinalizados }).map(
+                        (_, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            className={`principal-pagination-dot ${
+                              paginaFinalizados === index + 1 ? "active" : ""
+                            }`}
+                            onClick={() => setPaginaFinalizados(index + 1)}
+                            aria-label={`Ir a la página ${index + 1}`}
+                          />
+                        )
+                      )}
+                    </div>
+                  )
                 )}
               </>
             )}
