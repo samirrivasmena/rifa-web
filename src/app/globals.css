@@ -6661,3 +6661,55 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     padding: 10px 10px 12px;
   }
 }
+@media (max-width: 768px) {
+  /* Quita espacio lateral general en estas dos secciones */
+  .principal-section#resultados-oficiales,
+  .principal-section#contacto {
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  /* RESULTADOS OFICIALES: un poco más ancho y centrado */
+  .principal-section#resultados-oficiales .principal-results-box {
+    width: calc(100% - 4px) !important;
+    max-width: calc(100% - 4px) !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+    box-sizing: border-box;
+  }
+
+  .principal-section#resultados-oficiales .principal-results-copy,
+  .principal-section#resultados-oficiales .principal-results-logos {
+    margin-left: auto !important;
+    margin-right: auto !important;
+    text-align: center !important;
+    align-items: center !important;
+  }
+
+  .principal-section#resultados-oficiales .principal-results-logos {
+    justify-content: center !important;
+  }
+
+  /* CONTACTO: centrado limpio */
+  .principal-section#contacto .principal-contact-box {
+    width: calc(100% - 16px) !important;
+    max-width: calc(100% - 16px) !important;
+    margin-left: 4px !important;
+    margin-right: auto !important;
+    justify-content: center !important;
+    box-sizing: border-box;
+  }
+
+  /* Botones un poco más a la izquierda */
+  .principal-section#contacto .principal-contact-box .contact-btn {
+    width: calc(100% - 20px) !important;
+    max-width: 1px !important;
+    margin-left: 0 !important;
+    margin-right: 4px !important;
+    transform: translateX(-6px) !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    text-align: center !important;
+  }
+}
