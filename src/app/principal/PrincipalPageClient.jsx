@@ -731,7 +731,7 @@ export default function PrincipalPageClient() {
             id="eventos-finalizados"
           >
             <div className="principal-section-head">
-              <h2>FINALIZADOS</h2>
+              <h2>EVENTOS FINALIZADOS</h2>
             </div>
 
             {loadingRifas ? (

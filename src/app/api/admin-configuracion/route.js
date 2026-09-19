@@ -71,8 +71,29 @@ const CAMPOS_CONFIGURACION = [
   "principal_titulo_ganadores",
   "principal_texto_contacto",
 
+  "footer_titulo",
+  "footer_subtitulo",
   "footer_texto",
+  "footer_reseña",
+  "footer_logo_url",
+  "footer_mostrar_navegacion",
   "footer_mostrar_redes",
+  "footer_whatsapp",
+  "footer_instagram",
+  "footer_telegram",
+  "footer_facebook",
+  "footer_tiktok",
+  "footer_youtube",
+  "footer_correo",
+  "footer_web_url",
+  "footer_pais",
+  "footer_direccion",
+  "footer_color_fondo",
+  "footer_color_fondo_2",
+  "footer_color_texto",
+  "footer_color_acento",
+  "footer_color_borde",
+  "footer_color_hover",
 
   "saturacion_global",
   "brillo_global",
@@ -104,8 +125,7 @@ function respuestaSinCache(data, status = 200) {
   return NextResponse.json(data, {
     status,
     headers: {
-      "Cache-Control":
-        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate",
       Pragma: "no-cache",
       Expires: "0",
     },
@@ -126,10 +146,7 @@ export async function GET() {
       .maybeSingle();
 
     if (error) {
-      console.error(
-        "Error GET configuracion_sitio:",
-        error
-      );
+      console.error("Error GET configuracion_sitio:", error);
 
       return respuestaSinCache(
         {
@@ -144,8 +161,7 @@ export async function GET() {
       return respuestaSinCache(
         {
           ok: false,
-          error:
-            "No existe ninguna configuración en configuracion_sitio.",
+          error: "No existe ninguna configuración en configuracion_sitio.",
         },
         404
       );
@@ -156,17 +172,12 @@ export async function GET() {
       configuracion: data,
     });
   } catch (error) {
-    console.error(
-      "Error GET admin-configuracion:",
-      error
-    );
+    console.error("Error GET admin-configuracion:", error);
 
     return respuestaSinCache(
       {
         ok: false,
-        error:
-          error?.message ||
-          "Error cargando configuración",
+        error: error?.message || "Error cargando configuración",
       },
       500
     );
@@ -199,39 +210,21 @@ export async function PUT(request) {
     ----------------------------------------------------- */
 
     if (Array.isArray(payload.metodos_pago)) {
-      payload.metodos_pago = payload.metodos_pago.map(
-        (metodo, index) => ({
-          id:
-            metodo?.id ||
-            `metodo-${Date.now()}-${index}`,
-
-          activo:
-            metodo?.activo !== false,
-
-          orden:
-            Number.isFinite(Number(metodo?.orden))
-              ? Number(metodo.orden)
-              : index + 1,
-
-          nombre:
-            metodo?.nombre || "",
-
-          cuenta:
-            metodo?.cuenta || "",
-
-          titular:
-            metodo?.titular || "",
-
-          subtitulo:
-            metodo?.subtitulo || "",
-
-          descripcion:
-            metodo?.descripcion || "",
-
-          logo:
-            metodo?.logo || "",
-        })
-      );
+      payload.metodos_pago = payload.metodos_pago.map((metodo, index) => ({
+        id: metodo?.id || `metodo-${Date.now()}-${index}`,
+        activo: metodo?.activo !== false,
+        orden: Number.isFinite(Number(metodo?.orden))
+          ? Number(metodo.orden)
+          : index + 1,
+        nombre: metodo?.nombre || "",
+        cuenta: metodo?.cuenta || "",
+        titular: metodo?.titular || "",
+        subtitulo: metodo?.subtitulo || "",
+        descripcion: metodo?.descripcion || "",
+        logo: metodo?.logo || "",
+        extra: Array.isArray(metodo?.extra) ? metodo.extra : [],
+        nota: metodo?.nota || "",
+      }));
     }
 
     /* -----------------------------------------------------
@@ -244,20 +237,14 @@ export async function PUT(request) {
        Buscar configuración existente
     ----------------------------------------------------- */
 
-    const {
-      data: actual,
-      error: errorActual,
-    } = await supabaseAdmin
+    const { data: actual, error: errorActual } = await supabaseAdmin
       .from("configuracion_sitio")
       .select("id")
       .limit(1)
       .maybeSingle();
 
     if (errorActual) {
-      console.error(
-        "Error buscando configuración:",
-        errorActual
-      );
+      console.error("Error buscando configuración:", errorActual);
 
       return respuestaSinCache(
         {
@@ -307,10 +294,7 @@ export async function PUT(request) {
     ----------------------------------------------------- */
 
     if (error) {
-      console.error(
-        "Error guardando configuración:",
-        error
-      );
+      console.error("Error guardando configuración:", error);
 
       return respuestaSinCache(
         {
@@ -326,17 +310,12 @@ export async function PUT(request) {
       configuracion: data,
     });
   } catch (error) {
-    console.error(
-      "Error PUT admin-configuracion:",
-      error
-    );
+    console.error("Error PUT admin-configuracion:", error);
 
     return respuestaSinCache(
       {
         ok: false,
-        error:
-          error?.message ||
-          "Error guardando configuración",
+        error: error?.message || "Error guardando configuración",
       },
       500
     );

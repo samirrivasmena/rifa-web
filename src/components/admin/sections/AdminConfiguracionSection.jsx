@@ -12,6 +12,7 @@ const TABS = [
   { id: "pagos", label: "Métodos de pago", icon: "💳" },
   { id: "seo", label: "SEO", icon: "🌎" },
   { id: "popup", label: "Popup", icon: "📢" },
+  { id: "footer", label: "Footer", icon: "🦶" },
 ];
 
 const COLOR_FIELDS = [
@@ -146,12 +147,7 @@ function crearId() {
 }
 
 function esVerdadero(value) {
-  return (
-    value === true ||
-    value === 1 ||
-    value === "1" ||
-    value === "true"
-  );
+  return value === true || value === 1 || value === "1" || value === "true";
 }
 
 function normalizarMetodosPago(lista) {
@@ -163,9 +159,7 @@ function normalizarMetodosPago(lista) {
     ...metodo,
     id: metodo?.id || crearId(),
     activo: metodo?.activo !== false,
-    orden: Number.isFinite(Number(metodo?.orden))
-      ? Number(metodo.orden)
-      : index + 1,
+    orden: Number.isFinite(Number(metodo?.orden)) ? Number(metodo.orden) : index + 1,
     nombre: metodo?.nombre || "",
     cuenta: metodo?.cuenta || "",
     titular: metodo?.titular || "",
@@ -176,7 +170,28 @@ function normalizarMetodosPago(lista) {
     nota: metodo?.nota || "",
   }));
 }
+function colorSeguro(valor, fallback = "#d91f1f") {
+  const limpio = String(valor ?? "").trim();
+  return /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(limpio)
+    ? limpio
+    : fallback;
+}
 
+function normalizarColorManual(valor, fallback = "") {
+  const limpio = String(valor ?? "").trim();
+
+  if (!limpio) return fallback;
+
+  if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(limpio)) {
+    return limpio.toUpperCase();
+  }
+
+  if (/^[0-9a-fA-F]{3}$/.test(limpio) || /^[0-9a-fA-F]{6}$/.test(limpio)) {
+    return `#${limpio.toUpperCase()}`;
+  }
+
+  return limpio;
+}
 function normalizarConfig(data) {
   return {
     ...data,
@@ -249,6 +264,34 @@ function normalizarConfig(data) {
     color_hover: data?.color_hover || "#b91c1c",
     color_progreso: data?.color_progreso || "#dc2626",
     color_progreso_fondo: data?.color_progreso_fondo || "#e5e7eb",
+
+    footer_titulo: data?.footer_titulo || "",
+    footer_subtitulo: data?.footer_subtitulo || "",
+    footer_texto: data?.footer_texto || "",
+    footer_reseña: data?.footer_reseña || "",
+    footer_logo_url: data?.footer_logo_url || "",
+    footer_mostrar_navegacion: data?.footer_mostrar_navegacion !== false,
+    footer_mostrar_redes: data?.footer_mostrar_redes !== false,
+    footer_whatsapp: data?.footer_whatsapp || data?.whatsapp || "",
+    footer_instagram: data?.footer_instagram || data?.instagram || "",
+    footer_telegram: data?.footer_telegram || data?.telegram || "",
+    footer_facebook: data?.footer_facebook || data?.facebook || "",
+    footer_tiktok: data?.footer_tiktok || data?.tiktok || "",
+    footer_youtube: data?.footer_youtube || data?.youtube || "",
+    footer_correo: data?.footer_correo || data?.correo || "",
+    footer_web_url: data?.footer_web_url || data?.web_url || data?.website || "",
+    footer_pais: data?.footer_pais || data?.pais || "",
+    footer_direccion: data?.footer_direccion || data?.direccion || "",
+    footer_color_fondo: data?.footer_color_fondo || "#d91f1f",
+    footer_color_fondo_2: data?.footer_color_fondo_2 || "#c81b1b",
+    footer_color_texto: data?.footer_color_texto || "#ffffff",
+    footer_color_acento: data?.footer_color_acento || "#fff4b8",
+    footer_color_borde: data?.footer_color_borde || "rgba(255,255,255,0.18)",
+    footer_color_hover: data?.footer_color_hover || "rgba(255,255,255,0.14)",
+    color_punticos: data?.color_punticos || "#dc2626",
+notificaciones_color_fondo: data?.notificaciones_color_fondo || "#111827",
+notificaciones_color_texto: data?.notificaciones_color_texto || "#ffffff",
+notificaciones_color_acento: data?.notificaciones_color_acento || "#dc2626",
   };
 }
 
@@ -258,9 +301,7 @@ async function leerJsonSeguro(res, etiqueta = "API") {
   try {
     return JSON.parse(raw);
   } catch {
-    throw new Error(
-      raw || `La respuesta de ${etiqueta} no devolvió un JSON válido.`
-    );
+    throw new Error(raw || `La respuesta de ${etiqueta} no devolvió un JSON válido.`);
   }
 }
 
@@ -522,23 +563,18 @@ export default function AdminConfiguracionSection() {
         home_boton_comprar:
           limpiarTextoBasico(config.home_boton_comprar) || "COMPRAR AHORA",
         home_boton_verificar:
-          limpiarTextoBasico(config.home_boton_verificar) ||
-          "VERIFICAR TICKETS",
+          limpiarTextoBasico(config.home_boton_verificar) || "VERIFICAR TICKETS",
 
         home_imagen_principal: config.home_imagen_principal || null,
         home_imagen_secundaria: config.home_imagen_secundaria || null,
 
         menu_inicio: limpiarTextoBasico(config.menu_inicio) || "INICIO",
         menu_eventos: limpiarTextoBasico(config.menu_eventos) || "EVENTOS",
-        menu_resultados:
-          limpiarTextoBasico(config.menu_resultados) || "RESULTADOS",
-        menu_ganadores:
-          limpiarTextoBasico(config.menu_ganadores) || "GANADORES",
-        menu_pagos:
-          limpiarTextoBasico(config.menu_pagos) || "CUENTAS DE PAGO",
+        menu_resultados: limpiarTextoBasico(config.menu_resultados) || "RESULTADOS",
+        menu_ganadores: limpiarTextoBasico(config.menu_ganadores) || "GANADORES",
+        menu_pagos: limpiarTextoBasico(config.menu_pagos) || "CUENTAS DE PAGO",
         menu_contacto: limpiarTextoBasico(config.menu_contacto) || "CONTACTO",
-        menu_verificador:
-          limpiarTextoBasico(config.menu_verificador) || "✔ VERIFICADOR",
+        menu_verificador: limpiarTextoBasico(config.menu_verificador) || "✔ VERIFICADOR",
 
         color_primario: config.color_primario || "#dc2626",
         color_secundario: config.color_secundario || "#111827",
@@ -557,8 +593,7 @@ export default function AdminConfiguracionSection() {
         metodos_pago: normalizarMetodosPago(config.metodos_pago),
 
         seo_titulo:
-          limpiarTextoBasico(config.seo_titulo) ||
-          "Rifas LSD | Compra tus tickets",
+          limpiarTextoBasico(config.seo_titulo) || "Rifas LSD | Compra tus tickets",
         seo_descripcion:
           limpiarTextoMarketing(config.seo_descripcion) ||
           "Compra tus tickets, verifica tus números y consulta eventos disponibles.",
@@ -595,11 +630,32 @@ export default function AdminConfiguracionSection() {
           limpiarTextoMarketing(config.principal_texto_contacto) ||
           "Conéctate con nosotros.",
 
-        footer_texto:
-          limpiarTextoMarketing(config.footer_texto) ||
-          "Todos los derechos reservados.",
+        footer_titulo: limpiarTextoBasico(config.footer_titulo) || null,
+        footer_subtitulo: limpiarTextoMarketing(config.footer_subtitulo) || null,
+        footer_texto: limpiarTextoMarketing(config.footer_texto) || null,
+        footer_reseña: limpiarTextoMarketing(config.footer_reseña) || null,
+        footer_logo_url: config.footer_logo_url || null,
+        footer_mostrar_navegacion: config.footer_mostrar_navegacion !== false,
+        footer_mostrar_redes: config.footer_mostrar_redes !== false,
+        footer_whatsapp: config.footer_whatsapp || null,
+        footer_instagram: config.footer_instagram || null,
+        footer_telegram: config.footer_telegram || null,
+        footer_facebook: config.footer_facebook || null,
+        footer_tiktok: config.footer_tiktok || null,
+        footer_youtube: config.footer_youtube || null,
+        footer_correo: config.footer_correo || null,
+        footer_web_url: config.footer_web_url || null,
+        footer_pais: config.footer_pais || null,
+        footer_direccion: config.footer_direccion || null,
+        footer_color_fondo: config.footer_color_fondo || "#d91f1f",
+        footer_color_fondo_2: config.footer_color_fondo_2 || "#c81b1b",
+        footer_color_texto: config.footer_color_texto || "#ffffff",
+        footer_color_acento: config.footer_color_acento || "#fff4b8",
+        footer_color_borde: config.footer_color_borde || "rgba(255,255,255,0.18)",
+        footer_color_hover: config.footer_color_hover || "rgba(255,255,255,0.14)",
 
-        footer_mostrar_redes: Boolean(config.footer_mostrar_redes),
+        footer_texto: limpiarTextoMarketing(config.footer_texto) || "Todos los derechos reservados.",
+        footer_mostrar_redes: config.footer_mostrar_redes !== false,
 
         saturacion_global: Number(config.saturacion_global ?? 100),
         brillo_global: Number(config.brillo_global ?? 100),
@@ -704,8 +760,7 @@ export default function AdminConfiguracionSection() {
         limpiarTextoMarketing(config?.home_mensaje) ||
         "Compra tus números, sube tu comprobante y participa de forma rápida y segura. ✅",
 
-      botonComprar:
-        limpiarTextoBasico(config?.home_boton_comprar) || "COMPRAR AHORA",
+      botonComprar: limpiarTextoBasico(config?.home_boton_comprar) || "COMPRAR AHORA",
 
       colorPrimario: config?.color_primario || "#dc2626",
       colorBoton: config?.color_boton || "#dc2626",
@@ -773,8 +828,8 @@ export default function AdminConfiguracionSection() {
           <h2>⚙️ Configuración general</h2>
 
           <p>
-            Controla la identidad, textos, colores, pagos, redes y apariencia
-            de tu sitio desde un solo lugar.
+            Controla la identidad, textos, colores, pagos, redes y apariencia de tu
+            sitio desde un solo lugar.
           </p>
         </div>
 
@@ -820,15 +875,12 @@ export default function AdminConfiguracionSection() {
             <div className="admin-config-card identidad-sitio-card">
               <div className="identidad-header">
                 <div>
-                  <span className="identidad-kicker">
-                    CONFIGURACIÓN DE MARCA
-                  </span>
+                  <span className="identidad-kicker">CONFIGURACIÓN DE MARCA</span>
 
                   <h3>🏷️ IDENTIDAD DEL SITIO</h3>
 
                   <p>
-                    Personaliza la identidad principal de tu sitio sin tocar
-                    código.
+                    Personaliza la identidad principal de tu sitio sin tocar código.
                   </p>
                 </div>
               </div>
@@ -838,9 +890,7 @@ export default function AdminConfiguracionSection() {
                 <div className="section-title-row">
                   <div>
                     <h4>LOGO DE LA MARCA</h4>
-                    <span>
-                      Imagen principal utilizada para representar tu marca.
-                    </span>
+                    <span>Imagen principal utilizada para representar tu marca.</span>
                   </div>
                 </div>
 
@@ -853,12 +903,7 @@ export default function AdminConfiguracionSection() {
                       />
                     ) : (
                       <div className="logo-placeholder">
-                        <span>
-                          {(config.nombre_marca || "R")
-                            .charAt(0)
-                            .toUpperCase()}
-                        </span>
-
+                        <span>{(config.nombre_marca || "R").charAt(0).toUpperCase()}</span>
                         <small>LOGO ACTUAL</small>
                       </div>
                     )}
@@ -866,9 +911,7 @@ export default function AdminConfiguracionSection() {
 
                   <div className="logo-upload-actions">
                     <label
-                      className={`btn-upload-logo ${
-                        subiendoLogo ? "uploading" : ""
-                      }`}
+                      className={`btn-upload-logo ${subiendoLogo ? "uploading" : ""}`}
                     >
                       {subiendoLogo ? "⏳ SUBIENDO..." : "📤 CAMBIAR LOGO"}
 
@@ -900,9 +943,7 @@ export default function AdminConfiguracionSection() {
                   <input
                     className="identidad-input"
                     value={config.nombre_marca || ""}
-                    onChange={(e) =>
-                      cambiarCampo("nombre_marca", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("nombre_marca", e.target.value)}
                     placeholder="RIFAS LSD"
                   />
                 </Field>
@@ -930,19 +971,14 @@ export default function AdminConfiguracionSection() {
               <div className="identidad-section">
                 <div className="identidad-subheading">
                   <h4>SLOGAN</h4>
-
-                  <p>
-                    Estas frases pueden utilizarse en diferentes áreas del sitio.
-                  </p>
+                  <p>Estas frases pueden utilizarse en diferentes áreas del sitio.</p>
                 </div>
 
                 <div className="slogan-list">
                   <Field label="FRASE 1">
                     <input
                       value={config.slogan_frase_1 || ""}
-                      onChange={(e) =>
-                        cambiarCampo("slogan_frase_1", e.target.value)
-                      }
+                      onChange={(e) => cambiarCampo("slogan_frase_1", e.target.value)}
                       placeholder="Visión, crecimiento y constancia."
                     />
                   </Field>
@@ -950,9 +986,7 @@ export default function AdminConfiguracionSection() {
                   <Field label="FRASE 2">
                     <input
                       value={config.slogan_frase_2 || ""}
-                      onChange={(e) =>
-                        cambiarCampo("slogan_frase_2", e.target.value)
-                      }
+                      onChange={(e) => cambiarCampo("slogan_frase_2", e.target.value)}
                       placeholder="Eventos creados con seriedad y compromiso."
                     />
                   </Field>
@@ -960,9 +994,7 @@ export default function AdminConfiguracionSection() {
                   <Field label="FRASE 3">
                     <input
                       value={config.slogan_frase_3 || ""}
-                      onChange={(e) =>
-                        cambiarCampo("slogan_frase_3", e.target.value)
-                      }
+                      onChange={(e) => cambiarCampo("slogan_frase_3", e.target.value)}
                       placeholder="Una marca enfocada en avanzar cada día."
                     />
                   </Field>
@@ -970,9 +1002,7 @@ export default function AdminConfiguracionSection() {
                   <Field label="FRASE 4">
                     <input
                       value={config.slogan_frase_4 || ""}
-                      onChange={(e) =>
-                        cambiarCampo("slogan_frase_4", e.target.value)
-                      }
+                      onChange={(e) => cambiarCampo("slogan_frase_4", e.target.value)}
                       placeholder="Participación segura, clara y profesional."
                     />
                   </Field>
@@ -981,10 +1011,7 @@ export default function AdminConfiguracionSection() {
 
               {/* DESCRIPCIÓN */}
               <div className="identidad-section">
-                <Field
-                  label="DESCRIPCIÓN"
-                  help="Descripción amplia de la marca."
-                >
+                <Field label="DESCRIPCIÓN" help="Descripción amplia de la marca.">
                   <textarea
                     className="identidad-textarea identidad-descripcion"
                     value={config.descripcion || ""}
@@ -1103,9 +1130,7 @@ RENDIRSE🛑.`}
                 <Field label="Subtítulo">
                   <input
                     value={config.home_subtitulo || ""}
-                    onChange={(e) =>
-                      cambiarCampo("home_subtitulo", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("home_subtitulo", e.target.value)}
                     placeholder="Eventos creados con seriedad y compromiso"
                   />
                 </Field>
@@ -1190,9 +1215,7 @@ RENDIRSE🛑.`}
                 <Field label="Resultados">
                   <input
                     value={config.menu_resultados || ""}
-                    onChange={(e) =>
-                      cambiarCampo("menu_resultados", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("menu_resultados", e.target.value)}
                     placeholder="RESULTADOS"
                   />
                 </Field>
@@ -1216,9 +1239,7 @@ RENDIRSE🛑.`}
                 <Field label="Contacto">
                   <input
                     value={config.menu_contacto || ""}
-                    onChange={(e) =>
-                      cambiarCampo("menu_contacto", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("menu_contacto", e.target.value)}
                     placeholder="CONTACTO"
                   />
                 </Field>
@@ -1226,9 +1247,7 @@ RENDIRSE🛑.`}
                 <Field label="Verificador">
                   <input
                     value={config.menu_verificador || ""}
-                    onChange={(e) =>
-                      cambiarCampo("menu_verificador", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("menu_verificador", e.target.value)}
                     placeholder="✔ VERIFICADOR"
                   />
                 </Field>
@@ -1352,9 +1371,7 @@ RENDIRSE🛑.`}
 
               <div className="admin-payments-list">
                 {metodosOrdenados.map((metodo) => {
-                  const index = config.metodos_pago.findIndex(
-                    (m) => m.id === metodo.id
-                  );
+                  const index = config.metodos_pago.findIndex((m) => m.id === metodo.id);
 
                   return (
                     <div
@@ -1457,11 +1474,7 @@ RENDIRSE🛑.`}
                             type="number"
                             value={metodo.orden || 0}
                             onChange={(e) =>
-                              cambiarMetodo(
-                                index,
-                                "orden",
-                                Number(e.target.value)
-                              )
+                              cambiarMetodo(index, "orden", Number(e.target.value))
                             }
                           />
                         </Field>
@@ -1512,9 +1525,7 @@ RENDIRSE🛑.`}
                 <Field label="Descripción SEO" full>
                   <textarea
                     value={config.seo_descripcion || ""}
-                    onChange={(e) =>
-                      cambiarCampo("seo_descripcion", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("seo_descripcion", e.target.value)}
                     placeholder="Compra tus tickets, verifica tus números y consulta eventos disponibles."
                   />
                 </Field>
@@ -1545,9 +1556,7 @@ RENDIRSE🛑.`}
                     <input
                       type="checkbox"
                       checked={Boolean(config.popup_activo)}
-                      onChange={(e) =>
-                        cambiarCampo("popup_activo", e.target.checked)
-                      }
+                      onChange={(e) => cambiarCampo("popup_activo", e.target.checked)}
                     />
                     <span />
                   </label>
@@ -1556,9 +1565,7 @@ RENDIRSE🛑.`}
                 <Field label="Título">
                   <input
                     value={config.popup_titulo || ""}
-                    onChange={(e) =>
-                      cambiarCampo("popup_titulo", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("popup_titulo", e.target.value)}
                     placeholder="🔥 Últimos números disponibles"
                   />
                 </Field>
@@ -1566,9 +1573,7 @@ RENDIRSE🛑.`}
                 <Field label="Mensaje" full>
                   <textarea
                     value={config.popup_mensaje || ""}
-                    onChange={(e) =>
-                      cambiarCampo("popup_mensaje", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("popup_mensaje", e.target.value)}
                     placeholder="Participa antes de que se agoten los tickets."
                   />
                 </Field>
@@ -1576,9 +1581,7 @@ RENDIRSE🛑.`}
                 <Field label="Texto del botón">
                   <input
                     value={config.popup_boton || ""}
-                    onChange={(e) =>
-                      cambiarCampo("popup_boton", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("popup_boton", e.target.value)}
                     placeholder="Comprar ahora"
                   />
                 </Field>
@@ -1586,9 +1589,7 @@ RENDIRSE🛑.`}
                 <Field label="Imagen del popup">
                   <input
                     value={config.popup_imagen || ""}
-                    onChange={(e) =>
-                      cambiarCampo("popup_imagen", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("popup_imagen", e.target.value)}
                     placeholder="/logo.png"
                   />
                 </Field>
@@ -1596,15 +1597,412 @@ RENDIRSE🛑.`}
                 <Field label="Link del popup">
                   <input
                     value={config.popup_link || ""}
-                    onChange={(e) =>
-                      cambiarCampo("popup_link", e.target.value)
-                    }
+                    onChange={(e) => cambiarCampo("popup_link", e.target.value)}
                     placeholder="/principal#eventos-disponibles"
                   />
                 </Field>
               </div>
             </ConfigCard>
           )}
+
+          {/* =====================================================
+              FOOTER
+          ===================================================== */}
+{tab === "footer" && (
+  <ConfigCard
+    icon="🦶"
+    title="Footer / Pie de página"
+    description="Edita el pie de página completo: textos, colores, redes, contacto y visibilidad."
+  >
+    <div className="admin-config-form-grid">
+      <Field label="Título del footer">
+        <input
+          value={config.footer_titulo || ""}
+          onChange={(e) => cambiarCampo("footer_titulo", e.target.value)}
+          placeholder="RIFAS LSD"
+        />
+      </Field>
+
+      <Field label="Subtítulo del footer" full>
+        <textarea
+          value={config.footer_subtitulo || ""}
+          onChange={(e) => cambiarCampo("footer_subtitulo", e.target.value)}
+          placeholder="Sorteos, eventos y experiencias creadas con seriedad, transparencia y compromiso."
+          rows={3}
+        />
+      </Field>
+
+      <Field label="Texto principal / Nosotros" full>
+        <textarea
+          value={config.footer_texto || ""}
+          onChange={(e) => cambiarCampo("footer_texto", e.target.value)}
+          placeholder="Todos los derechos reservados."
+          rows={3}
+        />
+      </Field>
+
+      <Field label="Reseña" full>
+        <textarea
+          value={config.footer_reseña || ""}
+          onChange={(e) => cambiarCampo("footer_reseña", e.target.value)}
+          placeholder="Rifas LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes."
+          rows={3}
+        />
+      </Field>
+
+      <Field label="Logo del footer">
+        <input
+          value={config.footer_logo_url || ""}
+          onChange={(e) => cambiarCampo("footer_logo_url", e.target.value)}
+          placeholder="/logo.png"
+        />
+      </Field>
+
+      <Field label="WhatsApp">
+        <input
+          value={config.footer_whatsapp || ""}
+          onChange={(e) => cambiarCampo("footer_whatsapp", e.target.value)}
+          placeholder="17738277463"
+        />
+      </Field>
+
+      <Field label="Instagram">
+        <input
+          value={config.footer_instagram || ""}
+          onChange={(e) => cambiarCampo("footer_instagram", e.target.value)}
+          placeholder="https://instagram.com/..."
+        />
+      </Field>
+
+      <Field label="Telegram">
+        <input
+          value={config.footer_telegram || ""}
+          onChange={(e) => cambiarCampo("footer_telegram", e.target.value)}
+          placeholder="https://t.me/..."
+        />
+      </Field>
+
+      <Field label="Facebook">
+        <input
+          value={config.footer_facebook || ""}
+          onChange={(e) => cambiarCampo("footer_facebook", e.target.value)}
+          placeholder="https://facebook.com/..."
+        />
+      </Field>
+
+      <Field label="TikTok">
+        <input
+          value={config.footer_tiktok || ""}
+          onChange={(e) => cambiarCampo("footer_tiktok", e.target.value)}
+          placeholder="https://tiktok.com/@..."
+        />
+      </Field>
+
+      <Field label="YouTube">
+        <input
+          value={config.footer_youtube || ""}
+          onChange={(e) => cambiarCampo("footer_youtube", e.target.value)}
+          placeholder="https://youtube.com/..."
+        />
+      </Field>
+
+      <Field label="Correo">
+        <input
+          type="email"
+          value={config.footer_correo || ""}
+          onChange={(e) => cambiarCampo("footer_correo", e.target.value)}
+          placeholder="correo@rifaslsd.com"
+        />
+      </Field>
+
+      <Field label="Web">
+        <input
+          value={config.footer_web_url || ""}
+          onChange={(e) => cambiarCampo("footer_web_url", e.target.value)}
+          placeholder="https://tusitio.com"
+        />
+      </Field>
+
+      <Field label="País">
+        <input
+          value={config.footer_pais || ""}
+          onChange={(e) => cambiarCampo("footer_pais", e.target.value)}
+          placeholder="Colombia"
+        />
+      </Field>
+
+      <Field label="Dirección">
+        <input
+          value={config.footer_direccion || ""}
+          onChange={(e) => cambiarCampo("footer_direccion", e.target.value)}
+          placeholder="Tu dirección"
+        />
+      </Field>
+
+{/* COLOR FONDO 1 */}
+<div className="admin-color-box">
+  <div className="admin-color-box-top">
+    <div>
+      <span>Color fondo 1</span>
+      <small>Personalización</small>
+    </div>
+
+    <label
+      style={{
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: colorSeguro(config.footer_color_fondo, "#d91f1f"),
+        border: "1px solid rgba(255,255,255,0.15)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
+      title={config.footer_color_fondo || "#d91f1f"}
+    >
+      <input
+        type="color"
+        value={colorSeguro(config.footer_color_fondo, "#d91f1f")}
+        onChange={(e) =>
+          cambiarCampo("footer_color_fondo", e.target.value.toUpperCase())
+        }
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          padding: 0,
+          opacity: 0,
+          cursor: "pointer",
+        }}
+      />
+    </label>
+  </div>
+
+  <input
+    type="text"
+    value={config.footer_color_fondo || ""}
+    onChange={(e) =>
+      cambiarCampo("footer_color_fondo", e.target.value.toUpperCase())
+    }
+    placeholder="#D91F1F"
+  />
+</div>
+
+{/* COLOR FONDO 2 */}
+<div className="admin-color-box">
+  <div className="admin-color-box-top">
+    <div>
+      <span>Color fondo 2</span>
+      <small>Personalización</small>
+    </div>
+
+    <label
+      style={{
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: colorSeguro(config.footer_color_fondo_2, "#c81b1b"),
+        border: "1px solid rgba(255,255,255,0.15)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
+      title={config.footer_color_fondo_2 || "#c81b1b"}
+    >
+      <input
+        type="color"
+        value={colorSeguro(config.footer_color_fondo_2, "#c81b1b")}
+        onChange={(e) =>
+          cambiarCampo("footer_color_fondo_2", e.target.value.toUpperCase())
+        }
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          padding: 0,
+          opacity: 0,
+          cursor: "pointer",
+        }}
+      />
+    </label>
+  </div>
+
+  <input
+    type="text"
+    value={config.footer_color_fondo_2 || ""}
+    onChange={(e) =>
+      cambiarCampo("footer_color_fondo_2", e.target.value.toUpperCase())
+    }
+    placeholder="#C81B1B"
+  />
+</div>
+
+{/* COLOR TEXTO */}
+<div className="admin-color-box">
+  <div className="admin-color-box-top">
+    <div>
+      <span>Color texto</span>
+      <small>Personalización</small>
+    </div>
+
+    <label
+      style={{
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: colorSeguro(config.footer_color_texto, "#ffffff"),
+        border: "1px solid rgba(255,255,255,0.15)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
+      title={config.footer_color_texto || "#ffffff"}
+    >
+      <input
+        type="color"
+        value={colorSeguro(config.footer_color_texto, "#ffffff")}
+        onChange={(e) =>
+          cambiarCampo("footer_color_texto", e.target.value.toUpperCase())
+        }
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          padding: 0,
+          opacity: 0,
+          cursor: "pointer",
+        }}
+      />
+    </label>
+  </div>
+
+  <input
+    type="text"
+    value={config.footer_color_texto || ""}
+    onChange={(e) =>
+      cambiarCampo("footer_color_texto", e.target.value.toUpperCase())
+    }
+    placeholder="#FFFFFF"
+  />
+</div>
+
+{/* COLOR ACENTO */}
+<div className="admin-color-box">
+  <div className="admin-color-box-top">
+    <div>
+      <span>Color acento</span>
+      <small>Personalización</small>
+    </div>
+
+    <label
+      style={{
+        width: "42px",
+        height: "42px",
+        borderRadius: "12px",
+        background: colorSeguro(config.footer_color_acento, "#fff4b8"),
+        border: "1px solid rgba(255,255,255,0.15)",
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        cursor: "pointer",
+        overflow: "hidden",
+      }}
+      title={config.footer_color_acento || "#fff4b8"}
+    >
+      <input
+        type="color"
+        value={colorSeguro(config.footer_color_acento, "#fff4b8")}
+        onChange={(e) =>
+          cambiarCampo("footer_color_acento", e.target.value.toUpperCase())
+        }
+        style={{
+          width: "100%",
+          height: "100%",
+          border: "none",
+          padding: 0,
+          opacity: 0,
+          cursor: "pointer",
+        }}
+      />
+    </label>
+  </div>
+
+  <input
+    type="text"
+    value={config.footer_color_acento || ""}
+    onChange={(e) =>
+      cambiarCampo("footer_color_acento", e.target.value.toUpperCase())
+    }
+    placeholder="#FFF4B8"
+  />
+</div>
+
+      {/* COLOR BORDE */}
+      <div className="admin-color-box">
+        <div className="admin-color-box-top">
+          <div>
+            <span>Color borde</span>
+            <small>Personalización</small>
+          </div>
+
+          <input
+            value={config.footer_color_borde || "rgba(255,255,255,0.18)"}
+            onChange={(e) => cambiarCampo("footer_color_borde", e.target.value)}
+            placeholder="rgba(255,255,255,0.18)"
+          />
+        </div>
+      </div>
+
+      {/* COLOR HOVER */}
+      <div className="admin-color-box">
+        <div className="admin-color-box-top">
+          <div>
+            <span>Color hover</span>
+            <small>Personalización</small>
+          </div>
+
+          <input
+            value={config.footer_color_hover || "rgba(255,255,255,0.14)"}
+            onChange={(e) => cambiarCampo("footer_color_hover", e.target.value)}
+            placeholder="rgba(255,255,255,0.14)"
+          />
+        </div>
+      </div>
+
+      <Field label="Mostrar navegación" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={config.footer_mostrar_navegacion !== false}
+            onChange={(e) =>
+              cambiarCampo("footer_mostrar_navegacion", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      <Field label="Mostrar redes" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={config.footer_mostrar_redes !== false}
+            onChange={(e) =>
+              cambiarCampo("footer_mostrar_redes", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+    </div>
+  </ConfigCard>
+)}
         </div>
 
         {/* =====================================================
@@ -1637,11 +2035,7 @@ RENDIRSE🛑.`}
                       alt={`Logo ${previewData.nombreMarca}`}
                     />
                   ) : (
-                    <span>
-                      {(previewData.nombreMarca || "R")
-                        .charAt(0)
-                        .toUpperCase()}
-                    </span>
+                    <span>{(previewData.nombreMarca || "R").charAt(0).toUpperCase()}</span>
                   )}
                 </div>
 
@@ -1730,8 +2124,7 @@ RENDIRSE🛑.`}
             <div className="preview-info-box">
               <span>💡</span>
               <p>
-                Los cambios de texto, color y logo se reflejan aquí
-                inmediatamente.
+                Los cambios de texto, color y logo se reflejan aquí inmediatamente.
               </p>
             </div>
           </div>
@@ -1762,20 +2155,13 @@ function ConfigCard({ icon, title, description, children }) {
   );
 }
 
-function Field({
-  label,
-  children,
-  full = false,
-  help = "",
-  asLabel = true,
-}) {
+function Field({ label, children, full = false, help = "", asLabel = true }) {
   const Wrapper = asLabel ? "label" : "div";
 
   return (
     <Wrapper className={`admin-config-field ${full ? "full" : ""}`}>
       <div className="admin-field-label">
         <span>{label}</span>
-
         {help && <small>{help}</small>}
       </div>
 
@@ -1784,16 +2170,7 @@ function Field({
   );
 }
 
-function RangeControl({
-  icon,
-  title,
-  description,
-  value,
-  min,
-  max,
-  suffix,
-  onChange,
-}) {
+function RangeControl({ icon, title, description, value, min, max, suffix, onChange }) {
   return (
     <div className="admin-master-control">
       <div className="master-control-info">

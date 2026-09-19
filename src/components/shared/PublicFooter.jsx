@@ -5,19 +5,28 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 export default function PublicFooter({ texto, mostrarRedes }) {
   const { config } = useSiteConfig();
 
-  const nombreMarca = config?.nombre_marca || "RIFAS LSD";
-  const logoUrl = config?.logo_url || "/logo.png";
+  const nombreMarca =
+    config?.footer_titulo || config?.nombre_marca || "RIFAS LSD";
+  const logoUrl = config?.footer_logo_url || config?.logo_url || "/logo.png";
 
-  const whatsapp = String(config?.whatsapp || "17738277463").replace(/\D/g, "");
-  const instagram = config?.instagram || "";
-  const telegram = config?.telegram || "";
-  const facebook = config?.facebook || "";
-  const tiktok = config?.tiktok || "";
-  const youtube = config?.youtube || "";
-  const correo = config?.correo || "";
-  const pais = config?.pais || "";
-  const direccion = config?.direccion || "";
-  const website = config?.web_url || config?.website || config?.pagina_web || "";
+  const whatsapp = String(
+    config?.footer_whatsapp || config?.whatsapp || "17738277463"
+  ).replace(/\D/g, "");
+
+  const instagram = config?.footer_instagram || config?.instagram || "";
+  const telegram = config?.footer_telegram || config?.telegram || "";
+  const facebook = config?.footer_facebook || config?.facebook || "";
+  const tiktok = config?.footer_tiktok || config?.tiktok || "";
+  const youtube = config?.footer_youtube || config?.youtube || "";
+  const correo = config?.footer_correo || config?.correo || "";
+  const pais = config?.footer_pais || config?.pais || "";
+  const direccion = config?.footer_direccion || config?.direccion || "";
+  const website =
+    config?.footer_web_url ||
+    config?.web_url ||
+    config?.website ||
+    config?.pagina_web ||
+    "";
 
   const footerTexto =
     texto || config?.footer_texto || "Todos los derechos reservados.";
@@ -25,6 +34,8 @@ export default function PublicFooter({ texto, mostrarRedes }) {
   const reviewText =
     config?.footer_reseña ||
     "Rifas LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes.";
+
+  const showNav = config?.footer_mostrar_navegacion !== false;
 
   const showRedes =
     typeof mostrarRedes === "boolean"
@@ -50,22 +61,37 @@ export default function PublicFooter({ texto, mostrarRedes }) {
   ];
 
   return (
-    <footer className="public-footer" id="site-footer">
-      <div className="public-footer-topnav">
-        {secciones.map((item) => (
-          <a key={item.label} href={item.href} className="public-footer-navlink">
-            {item.label}
-          </a>
-        ))}
-      </div>
+    <footer
+      className="public-footer"
+      id="site-footer"
+      style={{
+        "--footer-bg": config?.footer_color_fondo || "#d91f1f",
+        "--footer-bg-2": config?.footer_color_fondo_2 || "#c81b1b",
+        "--footer-text": config?.footer_color_texto || "#ffffff",
+        "--footer-accent": config?.footer_color_acento || "#fff4b8",
+        "--footer-border":
+          config?.footer_color_borde || "rgba(255,255,255,0.18)",
+        "--footer-hover":
+          config?.footer_color_hover || "rgba(255,255,255,0.14)",
+      }}
+    >
+      {showNav && (
+        <div className="public-footer-topnav">
+          {secciones.map((item) => (
+            <a key={item.label} href={item.href} className="public-footer-navlink">
+              {item.label}
+            </a>
+          ))}
+        </div>
+      )}
 
       <div className="public-footer-inner">
-        {/* MARCA */}
         <div className="public-footer-col public-footer-brand">
           <h3 className="public-footer-title">{nombreMarca}</h3>
 
           <p className="public-footer-subtitle">
-            {config?.principal_texto_eventos ||
+            {config?.footer_subtitulo ||
+              config?.principal_texto_eventos ||
               "Sorteos, eventos y experiencias creadas con seriedad, transparencia y compromiso."}
           </p>
 
@@ -78,7 +104,6 @@ export default function PublicFooter({ texto, mostrarRedes }) {
           </div>
         </div>
 
-        {/* NOSOTROS */}
         <div className="public-footer-col">
           <h3 className="public-footer-heading">NOSOTROS</h3>
           <p className="public-footer-text">{footerTexto}</p>
@@ -89,7 +114,6 @@ export default function PublicFooter({ texto, mostrarRedes }) {
           </div>
         </div>
 
-        {/* CONTACTO */}
         <div className="public-footer-col">
           <h3 className="public-footer-heading">CONTACTO</h3>
 
@@ -137,7 +161,6 @@ export default function PublicFooter({ texto, mostrarRedes }) {
           )}
         </div>
 
-        {/* REDES */}
         <div className="public-footer-col">
           <h3 className="public-footer-heading">SÍGUENOS</h3>
 
