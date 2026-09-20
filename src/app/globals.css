@@ -7102,7 +7102,7 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     position: absolute !important;
     top: calc(100% + 8px) !important;
     right: 1px !important;
-    left: 170 !important;
+    left: 210 !important;
 
     width: min(72vw, 240px) !important;
     max-height: calc(100dvh - 90px) !important;
