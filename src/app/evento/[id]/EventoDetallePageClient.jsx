@@ -799,7 +799,7 @@ export default function EventoDetallePageClient() {
     }));
   }, []);
 const compartirFreeDrop = async () => {
-  const url =
+  const urlBase =
     shareUrl ||
     (typeof window !== "undefined"
       ? window.location.href
@@ -822,9 +822,9 @@ const compartirFreeDrop = async () => {
       ? premioRaw
       : String(
           premioRaw?.nombre ||
-          premioRaw?.titulo ||
-          premioRaw?.premio ||
-          "Disponible"
+            premioRaw?.titulo ||
+            premioRaw?.premio ||
+            "Disponible"
         ).trim();
 
   const disponibles = Math.max(
@@ -836,8 +836,8 @@ const compartirFreeDrop = async () => {
   // MARCADORES ASCII
   //
   // IMPORTANTE:
-  // No ponemos emojis reales aquí.
-  // Primero construimos todo usando texto ASCII.
+  // Conservamos este sistema porque ya está funcionando
+  // correctamente con los emojis en producción.
   // =========================================================
 
   const E = {
@@ -858,19 +858,20 @@ const compartirFreeDrop = async () => {
   };
 
   // =========================================================
-  // MENSAJE
+  // CONSTRUIR MENSAJE
   // =========================================================
 
-  let texto = "";
+  const construirMensaje = (urlCompartir) => {
+    let texto = "";
 
-  switch (freeDropEstado) {
-    // =======================================================
-    // ACTIVO
-    // =======================================================
+    switch (freeDropEstado) {
+      // =====================================================
+      // ACTIVO
+      // =====================================================
 
-    case "activo":
-      texto =
-        `${E.fuego} *${nombreEvento}*
+      case "activo":
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.regalo} *¡FREE DROP ACTIVO!*
 
@@ -885,16 +886,16 @@ ${E.reloj} Los cupos son limitados y están sujetos a disponibilidad.
 ${E.check} *PARTICIPA DESDE LA PÁGINA OFICIAL*
 
 ${E.abajo} Entra aquí:
-${url}`;
-      break;
+${urlCompartir}`;
+        break;
 
-    // =======================================================
-    // PAUSADO
-    // =======================================================
+      // =====================================================
+      // PAUSADO
+      // =====================================================
 
-    case "pausado":
-      texto =
-        `${E.fuego} *${nombreEvento}*
+      case "pausado":
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.pausa} *FREE DROP PAUSADO TEMPORALMENTE*
 
@@ -905,50 +906,50 @@ ${E.regalo} El FREE DROP está pausado en este momento.
 ${E.ojos} Entra a la página oficial para consultar cuándo vuelve a estar disponible.
 
 ${E.abajo} Ver evento:
-${url}`;
-      break;
+${urlCompartir}`;
+        break;
 
-    // =======================================================
-    // PROGRAMADO
-    // =======================================================
+      // =====================================================
+      // PROGRAMADO
+      // =====================================================
 
-    case "programado": {
-      const fechaProgramada =
-        freeDropProgramadoVisible?.fecha_inicio
-          ? formatearFechaSegura(
-              freeDropProgramadoVisible.fecha_inicio
-            )
-          : "";
+      case "programado": {
+        const fechaProgramada =
+          freeDropProgramadoVisible?.fecha_inicio
+            ? formatearFechaSegura(
+                freeDropProgramadoVisible.fecha_inicio
+              )
+            : "";
 
-      texto =
-        `${E.fuego} *${nombreEvento}*
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.reloj} *PRÓXIMO FREE DROP*
 
 ${E.trofeo} *Premio:* ${premioPrincipal}
 ${E.ticket} *Participación:* GRATIS${
-          fechaProgramada
-            ? `\n${E.calendario} *Disponible desde:* ${fechaProgramada}`
-            : ""
-        }
+            fechaProgramada
+              ? `\n${E.calendario} *Disponible desde:* ${fechaProgramada}`
+              : ""
+          }
 
 ${E.regalo} Próximamente podrás participar gratis.
 
 ${E.ojos} Entra a la página oficial para consultar el estado y los requisitos.
 
 ${E.abajo} Ver evento:
-${url}`;
+${urlCompartir}`;
 
-      break;
-    }
+        break;
+      }
 
-    // =======================================================
-    // AGOTADO
-    // =======================================================
+      // =====================================================
+      // AGOTADO
+      // =====================================================
 
-    case "agotado":
-      texto =
-        `${E.fuego} *${nombreEvento}*
+      case "agotado":
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.prohibido} *FREE DROP AGOTADO*
 
@@ -959,16 +960,16 @@ ${E.rayo} Los cupos gratis de este FREE DROP ya fueron utilizados.
 ${E.ojos} Entra a la página oficial para consultar próximos FREE DROPS.
 
 ${E.abajo} Ver evento:
-${url}`;
-      break;
+${urlCompartir}`;
+        break;
 
-    // =======================================================
-    // CERRADO
-    // =======================================================
+      // =====================================================
+      // CERRADO
+      // =====================================================
 
-    case "cerrado":
-      texto =
-        `${E.fuego} *${nombreEvento}*
+      case "cerrado":
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.candado} *FREE DROP CERRADO*
 
@@ -979,18 +980,18 @@ ${E.regalo} Este FREE DROP ya no está aceptando nuevas participaciones.
 ${E.ojos} Entra a la página oficial para consultar futuras oportunidades.
 
 ${E.abajo} Ver evento:
-${url}`;
-      break;
+${urlCompartir}`;
+        break;
 
-    // =======================================================
-    // DESACTIVADO / SIN ACTIVO
-    // =======================================================
+      // =====================================================
+      // DESACTIVADO / SIN ACTIVO
+      // =====================================================
 
-    case "desactivado":
-    case "sin_activo":
-    default:
-      texto =
-        `${E.fuego} *${nombreEvento}*
+      case "desactivado":
+      case "sin_activo":
+      default:
+        texto =
+          `${E.fuego} *${nombreEvento}*
 
 ${E.trofeo} *Premio:* ${premioPrincipal}
 
@@ -999,20 +1000,19 @@ ${E.ticket} Actualmente no hay un FREE DROP disponible para participar gratis.
 ${E.ojos} Entra a la página oficial y mantente pendiente de los próximos FREE DROPS.
 
 ${E.abajo} Ver evento:
-${url}`;
-      break;
-  }
+${urlCompartir}`;
+        break;
+    }
+
+    return texto;
+  };
 
   // =========================================================
   // CODIFICACIÓN ESPECIAL PARA WHATSAPP
   //
-  // Primero encodeURIComponent() procesa solamente texto.
-  //
-  // Después insertamos DIRECTAMENTE la codificación UTF-8
-  // de cada emoji.
-  //
-  // Así evitamos que cualquier transformación convierta
-  // los emojis en U+FFFD (�).
+  // NO CAMBIAR:
+  // Este sistema es el que ya comprobamos que mantiene
+  // correctamente los emojis en producción.
   // =========================================================
 
   const codificarMensajeWhatsApp = (mensaje) => {
@@ -1048,11 +1048,10 @@ ${url}`;
   };
 
   // =========================================================
-  // MÓVIL
+  // MÓVIL / COMPARTIR NATIVO
   //
-  // Para navigator.share necesitamos convertir los marcadores
-  // a caracteres. En móvil moderno String.fromCodePoint evita
-  // depender de emojis escritos en el archivo.
+  // En móvil conservamos el enlace normal.
+  // No agregamos ninguna versión de caché aquí.
   // =========================================================
 
   if (
@@ -1060,28 +1059,35 @@ ${url}`;
     typeof navigator.share === "function"
   ) {
     try {
+      const textoMovil =
+        construirMensaje(urlBase);
+
       const emojisNativos = {
         [E.fuego]: String.fromCodePoint(0x1f525),
         [E.regalo]: String.fromCodePoint(0x1f381),
         [E.trofeo]: String.fromCodePoint(0x1f3c6),
+
         [E.ticket]:
           String.fromCodePoint(0x1f39f) +
           String.fromCodePoint(0xfe0f),
+
         [E.rayo]: String.fromCodePoint(0x26a1),
         [E.camara]: String.fromCodePoint(0x1f4f8),
         [E.reloj]: String.fromCodePoint(0x23f3),
         [E.check]: String.fromCodePoint(0x2705),
         [E.abajo]: String.fromCodePoint(0x1f447),
+
         [E.pausa]:
           String.fromCodePoint(0x23f8) +
           String.fromCodePoint(0xfe0f),
+
         [E.ojos]: String.fromCodePoint(0x1f440),
         [E.calendario]: String.fromCodePoint(0x1f4c5),
         [E.prohibido]: String.fromCodePoint(0x1f6ab),
         [E.candado]: String.fromCodePoint(0x1f512),
       };
 
-      let textoNativo = texto;
+      let textoNativo = textoMovil;
 
       Object.entries(emojisNativos).forEach(
         ([marcador, emoji]) => {
@@ -1109,12 +1115,56 @@ ${url}`;
   }
 
   // =========================================================
-  // PC / WHATSAPP
+  // PC / LAPTOP / WHATSAPP WEB
+  //
+  // WhatsApp Web puede conservar en caché la vista previa
+  // del mismo enlace.
+  //
+  // Generamos una versión diaria:
+  //
+  // ?share=20260928
+  //
+  // De esta forma:
+  // - la página sigue siendo exactamente el mismo evento;
+  // - WhatsApp puede volver a solicitar Open Graph;
+  // - la URL no cambia en cada clic;
+  // - al día siguiente puede refrescar la vista previa.
   // =========================================================
 
   if (typeof window !== "undefined") {
+    let urlWhatsApp = urlBase;
+
+    try {
+      const urlObj = new URL(
+        urlBase,
+        window.location.origin
+      );
+
+      const ahora = new Date();
+
+      const versionDiaria =
+        `${ahora.getFullYear()}` +
+        `${String(ahora.getMonth() + 1).padStart(2, "0")}` +
+        `${String(ahora.getDate()).padStart(2, "0")}`;
+
+      urlObj.searchParams.set(
+        "share",
+        versionDiaria
+      );
+
+      urlWhatsApp = urlObj.toString();
+    } catch (error) {
+      console.warn(
+        "No se pudo generar la versión del enlace para WhatsApp:",
+        error
+      );
+    }
+
+    const textoWhatsApp =
+      construirMensaje(urlWhatsApp);
+
     const mensajeCodificado =
-      codificarMensajeWhatsApp(texto);
+      codificarMensajeWhatsApp(textoWhatsApp);
 
     const whatsappUrl =
       `https://wa.me/?text=${mensajeCodificado}`;
@@ -1136,9 +1186,9 @@ ${url}`;
     if (
       typeof navigator !== "undefined" &&
       navigator.clipboard &&
-      url
+      urlBase
     ) {
-      await navigator.clipboard.writeText(url);
+      await navigator.clipboard.writeText(urlBase);
     }
   } catch (error) {
     console.warn(
