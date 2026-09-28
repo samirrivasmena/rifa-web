@@ -73,17 +73,23 @@ function TurnstileWidget({ onToken }) {
   const widgetIdRef = useRef(null);
 
   useEffect(() => {
-    const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+    const siteKey =
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
     if (!siteKey) {
-      console.warn("Falta NEXT_PUBLIC_TURNSTILE_SITE_KEY");
+      console.warn(
+        "Falta NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+      );
       return;
     }
 
     let cancelled = false;
-    let existingScript = null;
-    let scriptCreado = null;
-    let onLoadExistente = null;
+    let intentos = 0;
+    let timerId = null;
+
+    // =========================================================
+    // LIMPIAR WIDGET
+    // =========================================================
 
     const limpiarWidget = () => {
       const widgetId = widgetIdRef.current;
@@ -96,7 +102,10 @@ function TurnstileWidget({ onToken }) {
         try {
           window.turnstile.remove(widgetId);
         } catch (error) {
-          console.warn("No se pudo limpiar Turnstile:", error);
+          console.warn(
+            "No se pudo limpiar Turnstile:",
+            error
+          );
         }
       }
 
@@ -107,100 +116,189 @@ function TurnstileWidget({ onToken }) {
       }
     };
 
+    // =========================================================
+    // RENDERIZAR
+    // =========================================================
+
     const renderWidget = () => {
-      if (cancelled || !containerRef.current || !window.turnstile) return;
+      if (
+        cancelled ||
+        !containerRef.current ||
+        !window.turnstile
+      ) {
+        return false;
+      }
 
       limpiarWidget();
 
-      if (cancelled || !containerRef.current) return;
+      if (
+        cancelled ||
+        !containerRef.current
+      ) {
+        return false;
+      }
 
       try {
-        const widgetId = window.turnstile.render(containerRef.current, {
-          sitekey: siteKey,
-          callback: (token) => {
-            if (!cancelled) onToken(token);
-          },
-          "expired-callback": () => {
-            if (!cancelled) onToken("");
-          },
-          "error-callback": () => {
-            if (!cancelled) onToken("");
-          },
-        });
+        const widgetId =
+          window.turnstile.render(
+            containerRef.current,
+            {
+              sitekey: siteKey,
+
+              callback: (token) => {
+                if (!cancelled) {
+                  onToken(token);
+                }
+              },
+
+              "expired-callback": () => {
+                if (!cancelled) {
+                  onToken("");
+                }
+              },
+
+              "error-callback": () => {
+                if (!cancelled) {
+                  onToken("");
+                }
+              },
+            }
+          );
 
         widgetIdRef.current = widgetId;
+
+        return true;
       } catch (error) {
-        console.error("No se pudo renderizar Turnstile:", error);
-        if (!cancelled) onToken("");
+        console.error(
+          "No se pudo renderizar Turnstile:",
+          error
+        );
+
+        if (!cancelled) {
+          onToken("");
+        }
+
+        return false;
       }
     };
+
+    // =========================================================
+    // ESPERAR A QUE CLOUDFLARE ESTÉ DISPONIBLE
+    //
+    // Esto evita depender únicamente del evento "load".
+    // Si el script ya estaba cargado, seguimos comprobando
+    // window.turnstile hasta que esté disponible.
+    // =========================================================
+
+    const esperarTurnstile = () => {
+      if (cancelled) return;
+
+      if (
+        window.turnstile &&
+        containerRef.current
+      ) {
+        renderWidget();
+        return;
+      }
+
+      intentos += 1;
+
+      /*
+       * 100 intentos x 100 ms = aproximadamente 10 segundos.
+       */
+      if (intentos >= 100) {
+        console.error(
+          "Cloudflare Turnstile no estuvo disponible después de esperar."
+        );
+
+        if (!cancelled) {
+          onToken("");
+        }
+
+        return;
+      }
+
+      timerId = window.setTimeout(
+        esperarTurnstile,
+        100
+      );
+    };
+
+    // =========================================================
+    // SI TURNSTILE YA EXISTE
+    // =========================================================
 
     if (window.turnstile) {
       renderWidget();
 
       return () => {
         cancelled = true;
-        limpiarWidget();
-      };
-    }
 
-    existingScript = document.querySelector(
-      'script[data-turnstile="true"]'
-    );
-
-    if (existingScript) {
-      onLoadExistente = () => renderWidget();
-      existingScript.addEventListener("load", onLoadExistente);
-
-      if (window.turnstile) {
-        renderWidget();
-      }
-
-      return () => {
-        cancelled = true;
-
-        if (onLoadExistente) {
-          existingScript?.removeEventListener("load", onLoadExistente);
+        if (timerId) {
+          window.clearTimeout(timerId);
         }
 
         limpiarWidget();
       };
     }
 
-    const script = document.createElement("script");
-    script.src =
-      "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-    script.async = true;
-    script.defer = true;
-    script.dataset.turnstile = "true";
+    // =========================================================
+    // BUSCAR SCRIPT EXISTENTE
+    // =========================================================
 
-    script.onload = () => {
-      if (!cancelled) renderWidget();
-    };
+    let script = document.querySelector(
+      'script[data-turnstile="true"]'
+    );
 
-    script.onerror = () => {
-      if (!cancelled) {
-        console.error("No se pudo cargar Cloudflare Turnstile");
-        onToken("");
-      }
-    };
+    // =========================================================
+    // SI NO EXISTE, CREARLO
+    // =========================================================
 
-    document.head.appendChild(script);
-    scriptCreado = script;
+    if (!script) {
+      script = document.createElement("script");
+
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+      script.async = true;
+      script.defer = true;
+
+      script.dataset.turnstile = "true";
+
+      document.head.appendChild(script);
+    }
+
+    // =========================================================
+    // IMPORTANTE
+    //
+    // No dependemos del evento load.
+    // Comenzamos a comprobar inmediatamente si
+    // window.turnstile está disponible.
+    // =========================================================
+
+    esperarTurnstile();
+
+    // =========================================================
+    // CLEANUP
+    // =========================================================
 
     return () => {
       cancelled = true;
 
-      if (scriptCreado) {
-        scriptCreado.onload = null;
-        scriptCreado.onerror = null;
+      if (timerId) {
+        window.clearTimeout(timerId);
       }
 
       limpiarWidget();
     };
   }, [onToken]);
 
-  return <div className="turnstile-wrap" ref={containerRef} />;
+  return (
+    <div
+      className="turnstile-wrap"
+      ref={containerRef}
+    />
+  );
 }
 
 function formatearFechaSegura(valor) {
