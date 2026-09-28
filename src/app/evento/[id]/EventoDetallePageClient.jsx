@@ -1016,25 +1016,9 @@ ${urlCompartir}`;
   // =========================================================
 
 const codificarMensajeWhatsApp = (mensaje) => {
-  // =========================================================
-  // 1. CODIFICAR TODO EL TEXTO NORMAL
-  // =========================================================
-
-  let encoded = encodeURIComponent(mensaje);
-
-  // =========================================================
-  // 2. REEMPLAZAR LOS MARCADORES POR EMOJIS REALES
-  //
-  // IMPORTANTE:
-  // Los emojis se crean con code points para evitar problemas
-  // de codificación del archivo fuente.
-  // =========================================================
-
   const emojis = {
     __EMOJI_FIRE__: String.fromCodePoint(0x1f525),
-
     __EMOJI_GIFT__: String.fromCodePoint(0x1f381),
-
     __EMOJI_TROPHY__: String.fromCodePoint(0x1f3c6),
 
     __EMOJI_TICKET__:
@@ -1042,13 +1026,9 @@ const codificarMensajeWhatsApp = (mensaje) => {
       String.fromCodePoint(0xfe0f),
 
     __EMOJI_BOLT__: String.fromCodePoint(0x26a1),
-
     __EMOJI_CAMERA__: String.fromCodePoint(0x1f4f8),
-
     __EMOJI_HOURGLASS__: String.fromCodePoint(0x23f3),
-
     __EMOJI_CHECK__: String.fromCodePoint(0x2705),
-
     __EMOJI_DOWN__: String.fromCodePoint(0x1f447),
 
     __EMOJI_PAUSE__:
@@ -1056,28 +1036,23 @@ const codificarMensajeWhatsApp = (mensaje) => {
       String.fromCodePoint(0xfe0f),
 
     __EMOJI_EYES__: String.fromCodePoint(0x1f440),
-
     __EMOJI_CALENDAR__: String.fromCodePoint(0x1f4c5),
-
     __EMOJI_NO__: String.fromCodePoint(0x1f6ab),
-
     __EMOJI_LOCK__: String.fromCodePoint(0x1f512),
   };
 
-  // =========================================================
-  // 3. SUSTITUIR CADA MARCADOR
-  // =========================================================
+  let mensajeFinal = mensaje;
 
   Object.entries(emojis).forEach(
     ([marcador, emoji]) => {
-      encoded = encoded.replaceAll(
-        encodeURIComponent(marcador),
-        encodeURIComponent(emoji)
+      mensajeFinal = mensajeFinal.replaceAll(
+        marcador,
+        emoji
       );
     }
   );
 
-  return encoded;
+  return encodeURIComponent(mensajeFinal);
 };
 
 // =========================================================
