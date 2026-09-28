@@ -805,6 +805,10 @@ const compartirFreeDrop = async () => {
       ? window.location.href
       : "");
 
+  // =========================================================
+  // DATOS
+  // =========================================================
+
   const nombreEvento =
     String(evento?.nombre || "Evento").trim();
 
@@ -829,11 +833,17 @@ const compartirFreeDrop = async () => {
   );
 
   // =========================================================
-  // MENSAJE
+  // MENSAJE PARA TELÉFONOS
+  //
+  // Conservamos los emojis porque en teléfono funcionan bien.
   // =========================================================
 
-  const construirTexto = () => {
+  const construirTextoMovil = () => {
     switch (freeDropEstado) {
+      // =====================================================
+      // ACTIVO
+      // =====================================================
+
       case "activo":
         return `🔥 *${nombreEvento}*
 
@@ -851,6 +861,10 @@ const compartirFreeDrop = async () => {
 
 👇 Entra aquí:`;
 
+      // =====================================================
+      // PAUSADO
+      // =====================================================
+
       case "pausado":
         return `🔥 *${nombreEvento}*
 
@@ -863,6 +877,10 @@ const compartirFreeDrop = async () => {
 👀 Entra a la página oficial para consultar cuándo vuelve a estar disponible.
 
 👇 Ver evento:`;
+
+      // =====================================================
+      // PROGRAMADO
+      // =====================================================
 
       case "programado": {
         const fechaProgramada =
@@ -890,6 +908,10 @@ const compartirFreeDrop = async () => {
 👇 Ver evento:`;
       }
 
+      // =====================================================
+      // AGOTADO
+      // =====================================================
+
       case "agotado":
         return `🔥 *${nombreEvento}*
 
@@ -903,6 +925,10 @@ const compartirFreeDrop = async () => {
 
 👇 Ver evento:`;
 
+      // =====================================================
+      // CERRADO
+      // =====================================================
+
       case "cerrado":
         return `🔥 *${nombreEvento}*
 
@@ -915,6 +941,10 @@ const compartirFreeDrop = async () => {
 👀 Entra a la página oficial para consultar futuras oportunidades.
 
 👇 Ver evento:`;
+
+      // =====================================================
+      // SIN FREE DROP ACTIVO
+      // =====================================================
 
       case "desactivado":
       case "sin_activo":
@@ -932,7 +962,142 @@ const compartirFreeDrop = async () => {
   };
 
   // =========================================================
-  // DETECTAR MÓVIL
+  // MENSAJE PARA LAPTOP / PC
+  //
+  // SIN EMOJIS.
+  //
+  // Esto evita los caracteres � que WhatsApp Web está
+  // mostrando en el mensaje FREE DROP.
+  // =========================================================
+
+  const construirTextoPC = () => {
+    switch (freeDropEstado) {
+      // =====================================================
+      // ACTIVO
+      // =====================================================
+
+      case "activo":
+        return `*${nombreEvento}*
+
+*¡FREE DROP ACTIVO!*
+
+*Premio:* ${premioPrincipal}
+*Participación:* GRATIS
+*Cupos disponibles:* ${disponibles}
+
+Completa los requisitos y consigue tu participación gratis.
+
+Los cupos son limitados y están sujetos a disponibilidad.
+
+*PARTICIPA DESDE LA PÁGINA OFICIAL*
+
+Entra aquí:`;
+
+      // =====================================================
+      // PAUSADO
+      // =====================================================
+
+      case "pausado":
+        return `*${nombreEvento}*
+
+*FREE DROP PAUSADO TEMPORALMENTE*
+
+*Premio:* ${premioPrincipal}
+
+El FREE DROP está pausado en este momento.
+
+Entra a la página oficial para consultar cuándo vuelve a estar disponible.
+
+Ver evento:`;
+
+      // =====================================================
+      // PROGRAMADO
+      // =====================================================
+
+      case "programado": {
+        const fechaProgramada =
+          freeDropProgramadoVisible?.fecha_inicio
+            ? formatearFechaSegura(
+                freeDropProgramadoVisible.fecha_inicio
+              )
+            : "";
+
+        return `*${nombreEvento}*
+
+*PRÓXIMO FREE DROP*
+
+*Premio:* ${premioPrincipal}
+*Participación:* GRATIS${
+          fechaProgramada
+            ? `\n*Disponible desde:* ${fechaProgramada}`
+            : ""
+        }
+
+Próximamente podrás participar gratis.
+
+Entra a la página oficial para consultar el estado y los requisitos.
+
+Ver evento:`;
+      }
+
+      // =====================================================
+      // AGOTADO
+      // =====================================================
+
+      case "agotado":
+        return `*${nombreEvento}*
+
+*FREE DROP AGOTADO*
+
+*Premio:* ${premioPrincipal}
+
+Los cupos gratis de este FREE DROP ya fueron utilizados.
+
+Entra a la página oficial para consultar próximos FREE DROPS.
+
+Ver evento:`;
+
+      // =====================================================
+      // CERRADO
+      // =====================================================
+
+      case "cerrado":
+        return `*${nombreEvento}*
+
+*FREE DROP CERRADO*
+
+*Premio:* ${premioPrincipal}
+
+Este FREE DROP ya no está aceptando nuevas participaciones.
+
+Entra a la página oficial para consultar futuras oportunidades.
+
+Ver evento:`;
+
+      // =====================================================
+      // SIN FREE DROP ACTIVO
+      // =====================================================
+
+      case "desactivado":
+      case "sin_activo":
+      default:
+        return `*${nombreEvento}*
+
+*Premio:* ${premioPrincipal}
+
+Actualmente no hay un FREE DROP disponible para participar gratis.
+
+Entra a la página oficial y mantente pendiente de los próximos FREE DROPS.
+
+Ver evento:`;
+    }
+  };
+
+  // =========================================================
+  // DETECTAR TELÉFONO / TABLET
+  //
+  // No usamos solamente navigator.share porque Chrome
+  // de escritorio también puede soportarlo.
   // =========================================================
 
   const esDispositivoMovil =
@@ -945,9 +1110,12 @@ const compartirFreeDrop = async () => {
     );
 
   // =========================================================
-  // TELÉFONOS
+  // TELÉFONO
   //
-  // Conservamos el comportamiento que ya estaba funcionando.
+  // Conservamos:
+  // - emojis
+  // - URL limpia
+  // - compartir nativo
   // =========================================================
 
   if (
@@ -958,7 +1126,7 @@ const compartirFreeDrop = async () => {
     try {
       await navigator.share({
         title: nombreEvento,
-        text: construirTexto(),
+        text: construirTextoMovil(),
         url: urlBase,
       });
 
@@ -978,9 +1146,12 @@ const compartirFreeDrop = async () => {
   // =========================================================
   // LAPTOP / PC
   //
-  // Generamos URL especial SOLO para WhatsApp.
-  // Esto evita la vista previa vieja que WhatsApp tenía
-  // guardada en caché.
+  // Aquí mantenemos la solución que ya comprobamos:
+  //
+  // ?share=AAAAMMDD
+  //
+  // Esa URL nueva hace que WhatsApp vuelva a solicitar
+  // la vista previa Open Graph y aparezca la foto.
   // =========================================================
 
   if (typeof window !== "undefined") {
@@ -1013,16 +1184,15 @@ const compartirFreeDrop = async () => {
     }
 
     // =======================================================
-    // MISMO FORMATO QUE FloatingShareButton
+    // MENSAJE FINAL DE PC
     //
-    // 1. Texto normal con emojis.
-    // 2. Salto de línea.
-    // 3. URL.
-    // 4. encodeURIComponent UNA SOLA VEZ.
+    // Sin emojis.
+    // Conservamos negritas de WhatsApp.
+    // Conservamos la URL versionada para la foto.
     // =======================================================
 
     const shareText =
-      construirTexto();
+      construirTextoPC();
 
     const mensajeWhatsApp =
       `${shareText}\n${urlWhatsApp}`;
