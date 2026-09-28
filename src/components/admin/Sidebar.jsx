@@ -208,6 +208,33 @@ function IconConfig() {
     </svg>
   );
 }
+function IconFreeDrop() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
+      <rect
+        x="3"
+        y="8"
+        width="18"
+        height="13"
+        rx="3"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M12 8v13M3 12h18"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M12 8c-2.5 0-4-1.2-4-2.6C8 4 9 3 10.2 3 11.6 3 12 4.6 12 8Zm0 0c2.5 0 4-1.2 4-2.6C16 4 15 3 13.8 3 12.4 3 12 4.6 12 8Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
 
 /* =========================================================
    SIDEBAR
@@ -278,6 +305,7 @@ export default function Sidebar({
     { id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },
     { id: "ganadores", icon: <IconGanadores />, label: "Ganadores" },
     { id: "ranking", icon: <IconRanking />, label: "Ranking" },
+    { id: "freeDrops", icon: <IconFreeDrop />, label: "Free Drops" },
     { id: "configuracion", icon: <IconConfig />, label: "Configuración" },
   ];
 

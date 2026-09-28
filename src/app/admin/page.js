@@ -20,6 +20,9 @@ import AdminGanadoresSection from "../../components/admin/sections/AdminGanadore
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
 import AdminRifasSection from "../../components/admin/sections/AdminRifasSection";
 import AdminConfiguracionSection from "@/components/admin/sections/AdminConfiguracionSection";
+import AdminFreeDropsSection from "@/components/admin/sections/AdminFreeDropsSection";
+import AdminFreeDropsSettingsSection from "@/components/admin/sections/AdminFreeDropsSettingsSection";
+import AdminFreeDropParticipationsSection from "@/components/admin/sections/AdminFreeDropParticipationsSection";
 
 import {
   enriquecerListaRifasConResumen,
@@ -1111,6 +1114,11 @@ export default function Admin() {
         scrollToRef(rankingRef, 180);
         break;
 
+      case "freeDrops":
+        setSeccionActiva("freeDrops");
+        scrollToRef(topRef, 120);
+        break;
+
       case "configuracion":
         setSeccionActiva("configuracion");
         scrollToRef(topRef, 120);
@@ -1289,6 +1297,24 @@ export default function Admin() {
                 resumenPaginacionRanking={resumenPaginacionRanking}
               />
             </div>
+          )}
+
+          {seccionActiva === "freeDrops" && (
+            <>
+              <AdminFreeDropsSettingsSection rifaSeleccionada={rifaSeleccionada} />
+
+              <AdminFreeDropsSection
+                rifaSeleccionada={rifaSeleccionada}
+                recargarTodo={recargarTodo}
+                formatearFecha={formatearFecha}
+              />
+
+              <AdminFreeDropParticipationsSection
+                rifaSeleccionada={rifaSeleccionada}
+                formatearFecha={formatearFecha}
+                recargarTodo={recargarTodo}
+              />
+            </>
           )}
 
           {seccionActiva === "compras" && (

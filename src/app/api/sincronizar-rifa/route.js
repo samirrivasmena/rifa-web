@@ -15,6 +15,33 @@ function limpiarTexto(valor) {
   return String(valor ?? "").trim();
 }
 
+function normalizarTexto(valor) {
+  return String(valor ?? "").trim().toLowerCase();
+}
+
+function esTicketFree(ticket = {}) {
+  return Boolean(
+    ticket?.free_drop_id ||
+      ticket?.free_drop_participation_id ||
+      normalizarTexto(ticket?.tipo) === "free"
+  );
+}
+
+function esTicketDisponible(ticket = {}) {
+  return Boolean(
+    (ticket?.compra_id === null || ticket?.compra_id === undefined) &&
+      (ticket?.free_drop_id === null || ticket?.free_drop_id === undefined) &&
+      (ticket?.free_drop_participation_id === null ||
+        ticket?.free_drop_participation_id === undefined) &&
+      !esTicketFree(ticket) &&
+      normalizarTexto(ticket?.estado) === "disponible"
+  );
+}
+
+function esTicketOcupado(ticket = {}) {
+  return !esTicketDisponible(ticket);
+}
+
 function validarId(valor) {
   const id = limpiarTexto(valor);
   return Boolean(id) && /^[a-zA-Z0-9_-]+$/.test(id) && id.length <= 100;
@@ -29,7 +56,10 @@ function obtenerTotalNumeros(rifa = {}) {
   }
 
   const cantidad = Number(rifa?.cantidad_numeros);
-  if (Number.isFinite(cantidad) && cantidad > 0) return cantidad;
+
+  if (Number.isFinite(cantidad) && cantidad > 0) {
+    return cantidad;
+  }
 
   return String(rifa?.formato) === "3digitos" ? 1000 : 10000;
 }
@@ -49,9 +79,11 @@ function obtenerRangoNumeros(rifa = {}, totalNumeros = 0) {
 
 function construirListaNumeros(inicio, fin) {
   const lista = [];
+
   for (let n = inicio; n <= fin; n++) {
     lista.push(n);
   }
+
   return lista;
 }
 
@@ -73,17 +105,29 @@ async function asegurarTicketsBase(rifa, totalNumeros) {
 
   const { data: existentes, error: errorExistentes } = await supabaseAdmin
     .from("tickets")
-    .select("id, numero_ticket, compra_id")
+    .select(`
+      id,
+      numero_ticket,
+      compra_id,
+      rifa_id,
+      tipo,
+      estado,
+      free_drop_id,
+      free_drop_participation_id
+    `)
     .eq("rifa_id", rifa.id);
 
   if (errorExistentes) {
     return {
       ok: false,
-      error: errorExistentes.message || "No se pudieron leer los tickets existentes",
+      error:
+        errorExistentes.message ||
+        "No se pudieron leer los tickets existentes",
     };
   }
 
   const ticketsExistentes = Array.isArray(existentes) ? existentes : [];
+
   const setExistentes = new Set(
     ticketsExistentes
       .map((t) => Number(t.numero_ticket))
@@ -98,11 +142,13 @@ async function asegurarTicketsBase(rifa, totalNumeros) {
     const batchSize = 500;
 
     for (let i = 0; i < faltantes.length; i += batchSize) {
-      const batch = faltantes.slice(i, i + batchSize).map((numero) => ({
-        rifa_id: rifa.id,
-        numero_ticket: numero,
-        compra_id: null,
-      }));
+      const batch = faltantes
+        .slice(i, i + batchSize)
+        .map((numero) => ({
+          rifa_id: rifa.id,
+          numero_ticket: numero,
+          compra_id: null,
+        }));
 
       const { error: insertError } = await supabaseAdmin
         .from("tickets")
@@ -111,7 +157,9 @@ async function asegurarTicketsBase(rifa, totalNumeros) {
       if (insertError) {
         return {
           ok: false,
-          error: insertError.message || "No se pudieron crear los tickets faltantes",
+          error:
+            insertError.message ||
+            "No se pudieron crear los tickets faltantes",
         };
       }
 
@@ -119,22 +167,36 @@ async function asegurarTicketsBase(rifa, totalNumeros) {
     }
   }
 
-  const { data: ticketsActualizados, error: errorReload } = await supabaseAdmin
-    .from("tickets")
-    .select("id, numero_ticket, compra_id, rifa_id")
-    .eq("rifa_id", rifa.id)
-    .order("numero_ticket", { ascending: true });
+  const { data: ticketsActualizados, error: errorReload } =
+    await supabaseAdmin
+      .from("tickets")
+      .select(`
+        id,
+        numero_ticket,
+        compra_id,
+        rifa_id,
+        tipo,
+        estado,
+        free_drop_id,
+        free_drop_participation_id
+      `)
+      .eq("rifa_id", rifa.id)
+      .order("numero_ticket", { ascending: true });
 
   if (errorReload) {
     return {
       ok: false,
-      error: errorReload.message || "No se pudieron recargar los tickets",
+      error:
+        errorReload.message ||
+        "No se pudieron recargar los tickets",
     };
   }
 
   return {
     ok: true,
-    tickets: Array.isArray(ticketsActualizados) ? ticketsActualizados : [],
+    tickets: Array.isArray(ticketsActualizados)
+      ? ticketsActualizados
+      : [],
     ticketsCreados,
     inicio,
     fin,
@@ -153,63 +215,130 @@ async function sincronizarComprasAprobadas(rifa, tickets) {
   if (comprasError) {
     return {
       ok: false,
-      error: comprasError.message || "No se pudieron cargar las compras aprobadas",
+      error:
+        comprasError.message ||
+        "No se pudieron cargar las compras aprobadas",
     };
   }
 
-  const comprasAprobadas = Array.isArray(comprasData) ? comprasData : [];
+  const comprasAprobadas = Array.isArray(comprasData)
+    ? comprasData
+    : [];
+
   const ticketsLocal = [...tickets];
-  const libres = ticketsLocal.filter(
-    (t) => t.compra_id === null || t.compra_id === undefined
-  );
+
+  /*
+   * IMPORTANTE:
+   * Un ticket solo es libre si:
+   *
+   * - no tiene compra
+   * - no pertenece a FREE DROP
+   * - no tiene participación FREE
+   * - no tiene tipo FREE
+   * - estado = disponible
+   */
+  const libres = ticketsLocal.filter(esTicketDisponible);
 
   let ticketsAsignadosExtra = 0;
 
   for (const compra of comprasAprobadas) {
     const cantidad = Number(compra.cantidad_tickets) || 0;
-    if (cantidad <= 0) continue;
+
+    if (cantidad <= 0) {
+      continue;
+    }
 
     const asignados = ticketsLocal.filter(
       (t) => String(t.compra_id) === String(compra.id)
     );
 
     const faltantes = cantidad - asignados.length;
-    if (faltantes <= 0) continue;
+
+    if (faltantes <= 0) {
+      continue;
+    }
 
     if (libres.length < faltantes) {
       return {
         ok: false,
         error:
-          "No hay suficientes números libres para sincronizar la rifa. Hay compras aprobadas que superan la disponibilidad real.",
+          "No hay suficientes números libres para sincronizar la rifa. " +
+          "Hay compras aprobadas que superan la disponibilidad real.",
       };
     }
 
     const seleccionados = tomarAleatorios(libres, faltantes);
+
     const idsSeleccionados = seleccionados.map((t) => t.id);
 
-    const { error: updateError } = await supabaseAdmin
+    /*
+     * SEGUNDA PROTECCIÓN:
+     * Aunque JavaScript ya filtró los tickets,
+     * volvemos a comprobar las condiciones en el UPDATE.
+     *
+     * Así un FREE DROP nunca puede recibir compra_id.
+     */
+    const {
+      data: ticketsActualizadosCompra,
+      error: updateError,
+    } = await supabaseAdmin
       .from("tickets")
-      .update({ compra_id: compra.id })
-      .in("id", idsSeleccionados);
+      .update({
+        compra_id: compra.id,
+      })
+      .in("id", idsSeleccionados)
+      .is("compra_id", null)
+      .is("free_drop_id", null)
+      .is("free_drop_participation_id", null)
+      .eq("estado", "disponible")
+      .or("tipo.is.null,tipo.neq.free")
+      .select("id");
 
     if (updateError) {
       return {
         ok: false,
-        error: updateError.message || "No se pudieron sincronizar los tickets",
+        error:
+          updateError.message ||
+          "No se pudieron sincronizar los tickets",
+      };
+    }
+
+    /*
+     * Si esperábamos actualizar X tickets y Supabase
+     * actualizó menos, significa que alguno dejó de
+     * estar disponible.
+     */
+    if (
+      !Array.isArray(ticketsActualizadosCompra) ||
+      ticketsActualizadosCompra.length !== idsSeleccionados.length
+    ) {
+      return {
+        ok: false,
+        error:
+          "Uno o más números dejaron de estar disponibles durante la sincronización.",
       };
     }
 
     ticketsAsignadosExtra += idsSeleccionados.length;
 
+    /*
+     * Actualizamos también nuestra copia local.
+     */
     for (const ticket of ticketsLocal) {
       if (idsSeleccionados.includes(ticket.id)) {
         ticket.compra_id = compra.id;
       }
     }
 
+    /*
+     * Quitamos los números utilizados del pool libre.
+     */
     for (const id of idsSeleccionados) {
       const idx = libres.findIndex((t) => t.id === id);
-      if (idx !== -1) libres.splice(idx, 1);
+
+      if (idx !== -1) {
+        libres.splice(idx, 1);
+      }
     }
   }
 
@@ -225,85 +354,179 @@ export async function GET(req) {
 
   if (!auth.ok) {
     return NextResponse.json(
-      { error: auth.error },
-      { status: auth.status }
+      {
+        error: auth.error,
+      },
+      {
+        status: auth.status,
+      }
     );
   }
 
   try {
     const { searchParams } = new URL(req.url);
-    const rifaId = limpiarTexto(searchParams.get("rifaId"));
+
+    const rifaId = limpiarTexto(
+      searchParams.get("rifaId")
+    );
 
     if (!validarId(rifaId)) {
-      return errorResponse("Falta rifaId", 400);
+      return errorResponse(
+        "Falta rifaId",
+        400
+      );
     }
 
-    const { data: rifa, error: rifaError } = await supabaseAdmin
-      .from("rifas")
-      .select(
-        "id, nombre, estado, numero_inicio, numero_fin, cantidad_numeros, formato"
-      )
-      .eq("id", rifaId)
-      .maybeSingle();
+    const { data: rifa, error: rifaError } =
+      await supabaseAdmin
+        .from("rifas")
+        .select(
+          "id, nombre, estado, numero_inicio, numero_fin, cantidad_numeros, formato"
+        )
+        .eq("id", rifaId)
+        .maybeSingle();
 
     if (rifaError) {
       return errorResponse(
-        rifaError.message || "No se pudo consultar la rifa",
+        rifaError.message ||
+          "No se pudo consultar la rifa",
         500
       );
     }
 
     if (!rifa) {
-      return errorResponse("La rifa no existe", 404);
+      return errorResponse(
+        "La rifa no existe",
+        404
+      );
     }
 
-    const totalNumeros = obtenerTotalNumeros(rifa);
+    const totalNumeros =
+      obtenerTotalNumeros(rifa);
 
-    const base = await asegurarTicketsBase(rifa, totalNumeros);
+    /*
+     * Primero garantizamos que exista el inventario
+     * base de números.
+     */
+    const base = await asegurarTicketsBase(
+      rifa,
+      totalNumeros
+    );
+
     if (!base.ok) {
-      return errorResponse(base.error, 500);
+      return errorResponse(
+        base.error,
+        500
+      );
     }
 
-    const sincronizacion = await sincronizarComprasAprobadas(rifa, base.tickets);
+    /*
+     * Después sincronizamos solamente sobre tickets
+     * realmente disponibles.
+     */
+    const sincronizacion =
+      await sincronizarComprasAprobadas(
+        rifa,
+        base.tickets
+      );
+
     if (!sincronizacion.ok) {
-      return errorResponse(sincronizacion.error, 409);
+      return errorResponse(
+        sincronizacion.error,
+        409
+      );
     }
 
-    const ticketsFinales = sincronizacion.tickets || base.tickets;
+    const ticketsFinales =
+      sincronizacion.tickets ||
+      base.tickets;
 
-    const ticketsVendidos = ticketsFinales.filter(
-      (t) => t.compra_id !== null && t.compra_id !== undefined
-    ).length;
+    /*
+     * IMPORTANTE:
+     * Para disponibilidad real contamos como ocupado:
+     *
+     * - compra normal
+     * - FREE DROP
+     * - cualquier ticket que ya no sea realmente disponible
+     */
+    const ticketsVendidos =
+      ticketsFinales.filter(
+        esTicketOcupado
+      ).length;
 
-    const ticketsDisponibles = Math.max(totalNumeros - ticketsVendidos, 0);
+    /*
+     * Disponibles reales.
+     */
+    const ticketsDisponibles =
+      ticketsFinales.filter(
+        esTicketDisponible
+      ).length;
+
     const porcentajeVendido =
       totalNumeros > 0
-        ? Number(((ticketsVendidos / totalNumeros) * 100).toFixed(2))
+        ? Number(
+            (
+              (ticketsVendidos /
+                totalNumeros) *
+              100
+            ).toFixed(2)
+          )
         : 0;
 
-    const soldOut = totalNumeros > 0 && ticketsVendidos >= totalNumeros;
+    const soldOut =
+      totalNumeros > 0 &&
+      ticketsDisponibles <= 0;
 
     return NextResponse.json(
       {
         ok: true,
-        ticketsCreados: base.ticketsCreados,
-        ticketsAsignadosExtra: sincronizacion.ticketsAsignadosExtra,
+
+        ticketsCreados:
+          base.ticketsCreados,
+
+        ticketsAsignadosExtra:
+          sincronizacion.ticketsAsignadosExtra,
+
         rifa: {
           id: rifa.id,
           nombre: rifa.nombre,
-          estado: soldOut ? "agotada" : rifa.estado,
-          total_numeros: totalNumeros,
-          tickets_vendidos: ticketsVendidos,
-          tickets_disponibles: ticketsDisponibles,
-          porcentaje_vendido: porcentajeVendido,
-          sold_out: soldOut,
-          stats: {
-            total: totalNumeros,
-            vendidos: ticketsVendidos,
-            disponibles: ticketsDisponibles,
-            porcentaje: porcentajeVendido,
-            soldOut,
+
+          estado: soldOut
+            ? "agotada"
+            : rifa.estado,
+
+          total_numeros:
+            totalNumeros,
+
+          tickets_vendidos:
             ticketsVendidos,
+
+          tickets_disponibles:
+            ticketsDisponibles,
+
+          porcentaje_vendido:
+            porcentajeVendido,
+
+          sold_out:
+            soldOut,
+
+          stats: {
+            total:
+              totalNumeros,
+
+            vendidos:
+              ticketsVendidos,
+
+            disponibles:
+              ticketsDisponibles,
+
+            porcentaje:
+              porcentajeVendido,
+
+            soldOut,
+
+            ticketsVendidos,
+
             porcentajeVendido,
           },
         },
@@ -312,13 +535,25 @@ export async function GET(req) {
         headers: {
           "Cache-Control":
             "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
+
+          Pragma:
+            "no-cache",
+
+          Expires:
+            "0",
         },
       }
     );
   } catch (error) {
-    console.error("sincronizar-rifa error:", error);
-    return errorResponse(error.message || "Error interno del servidor", 500);
+    console.error(
+      "sincronizar-rifa error:",
+      error
+    );
+
+    return errorResponse(
+      error.message ||
+        "Error interno del servidor",
+      500
+    );
   }
 }

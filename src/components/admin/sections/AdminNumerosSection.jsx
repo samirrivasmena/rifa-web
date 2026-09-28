@@ -27,6 +27,16 @@ export default function AdminNumerosSection({
     let mounted = true;
     let retryTimeout = null;
 
+    const leerRespuestaSegura = async (res) => {
+      const raw = await res.text();
+
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return { raw };
+      }
+    };
+
     const cargarTickets = async () => {
       const rifaId = rifaSeleccionada?.id;
 
@@ -58,8 +68,8 @@ export default function AdminNumerosSection({
           return;
         }
 
-        // 1) Sincroniza tickets faltantes y asignaciones pendientes
-        await fetch(
+        // 1) Sincroniza tickets
+        const syncRes = await fetch(
           `/api/sincronizar-rifa?rifaId=${encodeURIComponent(rifaId)}`,
           {
             method: "GET",
@@ -67,6 +77,21 @@ export default function AdminNumerosSection({
             cache: "no-store",
           }
         );
+
+        const syncData = await leerRespuestaSegura(syncRes);
+
+        if (!syncRes.ok) {
+          console.error(
+            syncData.error ||
+              syncData.raw ||
+              "No se pudo sincronizar la rifa antes de cargar tickets"
+          );
+
+          if (mounted) {
+            setTicketsRifa([]);
+          }
+          return;
+        }
 
         // 2) Carga tickets ya sincronizados
         const res = await fetch(
@@ -78,11 +103,11 @@ export default function AdminNumerosSection({
           }
         );
 
-        const data = await res.json();
+        const data = await leerRespuestaSegura(res);
 
         if (!res.ok) {
           console.error(
-            data.error || "No se pudieron cargar los tickets de la rifa"
+            data.error || data.raw || "No se pudieron cargar los tickets de la rifa"
           );
 
           if (mounted) {

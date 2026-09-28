@@ -4,9 +4,10 @@ import { useMemo, useState } from "react";
 
 const formatearFecha = (fecha) => {
   if (!fecha) return "Sin fecha";
+
   try {
     const date = new Date(fecha);
-    if (Number.isNaN(date.getTime())) return fecha;
+    if (Number.isNaN(date.getTime())) return String(fecha);
 
     const dia = String(date.getDate()).padStart(2, "0");
     const mes = String(date.getMonth() + 1).padStart(2, "0");
@@ -19,8 +20,93 @@ const formatearFecha = (fecha) => {
 
     return `${dia}/${mes}/${anio} - ${String(horas).padStart(2, "0")}:${minutos} ${ampm}`;
   } catch {
-    return fecha;
+    return String(fecha);
   }
+};
+
+const normalizarTexto = (valor) =>
+  String(valor ?? "").trim().toLowerCase();
+
+const safeText = (value, fallback = "") => {
+  const text = String(value ?? "").trim();
+  return text || fallback;
+};
+
+const toNumber = (value) => {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
+};
+
+const compactarNombre = (nombre, apellido) =>
+  [nombre, apellido]
+    .map((v) => String(v ?? "").trim())
+    .filter(Boolean)
+    .join(" ")
+    .trim();
+
+const getFullName = (persona = {}) => {
+  const nombre = safeText(persona?.nombre);
+  const apellido = safeText(persona?.apellido);
+  return compactarNombre(nombre, apellido);
+};
+
+const esCompraAsignada = (ticket = {}) =>
+  ticket?.compra_id !== null && ticket?.compra_id !== undefined;
+
+const esFreeAsignado = (ticket = {}) =>
+  Boolean(
+    ticket?.es_free ||
+      normalizarTexto(ticket?.tipo) === "free" ||
+      ticket?.free_drop_id ||
+      ticket?.free_drop_participation_id
+  );
+
+const getEstadoVisual = (ticket = {}) => {
+  if (safeText(ticket?.estado_visual)) {
+    return ticket.estado_visual;
+  }
+
+  if (ticket?.es_free || normalizarTexto(ticket?.tipo) === "free") {
+    return "FREE";
+  }
+
+  if (
+    ticket?.ocupado ||
+    ticket?.vendido ||
+    esCompraAsignada(ticket) ||
+    esFreeAsignado(ticket)
+  ) {
+    return "OCUPADO";
+  }
+
+  const estado = safeText(ticket?.estado);
+  if (!estado) return "DISPONIBLE";
+
+  const estadoNormalizado = normalizarTexto(estado);
+
+  if (["disponible", "libre"].includes(estadoNormalizado)) return "DISPONIBLE";
+  if (["asignado"].includes(estadoNormalizado)) return "OCUPADO";
+
+  return estado.charAt(0).toUpperCase() + estado.slice(1);
+};
+
+const getDropLabel = (item = {}) => {
+  if (item?.freeDropNombre) return item.freeDropNombre;
+
+  const drop = item?.freeDrop || item?.free_drop || item?.free_drops || null;
+  if (!drop) return "Sin free drop";
+
+  if (drop?.nombre) return drop.nombre;
+
+  if (drop?.numero_drop !== undefined && drop?.numero_drop !== null) {
+    return `FREE DROP #${drop.numero_drop}`;
+  }
+
+  if (drop?.numero !== undefined && drop?.numero !== null) {
+    return `FREE DROP #${drop.numero}`;
+  }
+
+  return "FREE DROP";
 };
 
 export default function RaffleProgressPanel({
@@ -39,14 +125,6 @@ export default function RaffleProgressPanel({
 
   const padLength = rifaSeleccionada?.formato === "3digitos" ? 3 : 4;
 
-  const toNumber = (value) => {
-    const n = Number(value);
-    return Number.isFinite(n) ? n : null;
-  };
-
-  const estaAsignado = (ticket) =>
-    ticket?.compra_id !== null && ticket?.compra_id !== undefined;
-
   const numeroInicio =
     rifaSeleccionada?.numero_inicio !== undefined &&
     rifaSeleccionada?.numero_inicio !== null
@@ -61,15 +139,13 @@ export default function RaffleProgressPanel({
       ? 999
       : 9999;
 
-  const normalizarNumero = (valor) => {
-    if (valor === undefined || valor === null || valor === "") return null;
-
-    const texto = String(valor).trim();
-    const soloNumeros = texto.replace(/\D/g, "");
-    if (!soloNumeros) return null;
-
-    return String(Number(soloNumeros)).padStart(padLength, "0");
-  };
+  const comprasMap = useMemo(() => {
+    const map = new Map();
+    (compras || []).forEach((compra) => {
+      map.set(String(compra.id), compra);
+    });
+    return map;
+  }, [compras]);
 
   const numeroGanadorFormateado = useMemo(() => {
     const ganador =
@@ -80,13 +156,19 @@ export default function RaffleProgressPanel({
       rifaSeleccionada?.sorteo?.numero_oficial ??
       null;
 
-    return normalizarNumero(ganador);
+    if (ganador === null || ganador === undefined || ganador === "") return null;
+
+    const soloNumeros = String(ganador).replace(/\D/g, "");
+    if (!soloNumeros) return null;
+
+    return String(Number(soloNumeros)).padStart(padLength, "0");
   }, [
     numeroGanadorOficial,
     rifaSeleccionada?.numero_ganador,
     rifaSeleccionada?.numero_oficial,
     rifaSeleccionada?.sorteo?.numero_ganador,
     rifaSeleccionada?.sorteo?.numero_oficial,
+    padLength,
   ]);
 
   const esNumeroGanador = (numero) => {
@@ -99,13 +181,13 @@ export default function RaffleProgressPanel({
 
   const totalNumeros = useMemo(() => {
     const fromStats = toNumber(rifaSeleccionada?.stats?.total);
-    if (fromStats !== null && fromStats > 0) return fromStats;
+    if (fromStats > 0) return fromStats;
 
     const fromTotalNumeros = toNumber(rifaSeleccionada?.total_numeros);
-    if (fromTotalNumeros !== null && fromTotalNumeros > 0) return fromTotalNumeros;
+    if (fromTotalNumeros > 0) return fromTotalNumeros;
 
     const fromCantidad = toNumber(rifaSeleccionada?.cantidad_numeros);
-    if (fromCantidad !== null && fromCantidad > 0) return fromCantidad;
+    if (fromCantidad > 0) return fromCantidad;
 
     return numeroFin >= numeroInicio ? numeroFin - numeroInicio + 1 : 0;
   }, [rifaSeleccionada, numeroInicio, numeroFin]);
@@ -118,7 +200,6 @@ export default function RaffleProgressPanel({
         const numero = Number(ticket?.numero_ticket);
         if (!Number.isFinite(numero)) return null;
 
-        // Ignora números fuera del rango de la rifa
         if (numero < numeroInicio || numero > numeroFin) return null;
 
         return {
@@ -136,44 +217,137 @@ export default function RaffleProgressPanel({
       .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
   }, [tickets, numeroInicio, numeroFin]);
 
-  // Solo tickets realmente asignados a una compra
-  const ticketsAsignados = useMemo(() => {
-    return ticketsUnicos.filter((ticket) => estaAsignado(ticket));
-  }, [ticketsUnicos]);
+  const ticketsProcesados = useMemo(() => {
+    return ticketsUnicos
+      .map((ticket) => {
+        const compra =
+          comprasMap.get(String(ticket.compra_id)) || ticket.compra || null;
+
+        const usuarioCompra = compra?.usuarios || compra?.usuario || {};
+
+        const freeParticipation =
+          ticket.free_drop_participation ||
+          ticket.freeParticipation ||
+          ticket.participacion ||
+          null;
+
+        const freeDrop =
+          ticket.free_drop || ticket.freeDrop || ticket.free_drops || null;
+
+        const esFree = Boolean(ticket.es_free || esFreeAsignado(ticket));
+        const vendido = Boolean(ticket.vendido) || (esCompraAsignada(ticket) && !esFree);
+        const ocupado = Boolean(ticket.ocupado) || vendido || esFree;
+
+        const estadoVisual = getEstadoVisual({
+          ...ticket,
+          ocupado,
+          vendido,
+          es_free: esFree,
+        });
+
+        const nombreCliente = safeText(
+          ticket.nombreCliente,
+          getFullName(usuarioCompra) ||
+            safeText(compra?.nombre) ||
+            safeText(ticket.asignado_a_nombre) ||
+            "Sin nombre"
+        );
+
+        const emailCliente = safeText(
+          ticket.emailCliente,
+          safeText(usuarioCompra?.email) ||
+            safeText(compra?.email) ||
+            safeText(ticket.asignado_a_email) ||
+            "Sin email"
+        );
+
+        const telefonoCliente = safeText(
+          ticket.telefonoCliente,
+          safeText(usuarioCompra?.telefono) ||
+            safeText(compra?.telefono) ||
+            safeText(ticket.asignado_a_telefono) ||
+            "Sin teléfono"
+        );
+
+        const freeNombre = safeText(
+          ticket.freeNombre,
+          getFullName(freeParticipation) ||
+            safeText(ticket.asignado_a_nombre) ||
+            "Sin nombre"
+        );
+
+        const freeEmail = safeText(
+          ticket.freeEmail,
+          safeText(freeParticipation?.email) ||
+            safeText(ticket.asignado_a_email) ||
+            "Sin email"
+        );
+
+        const freeTelefono = safeText(
+          ticket.freeTelefono,
+          safeText(freeParticipation?.telefono) ||
+            safeText(ticket.asignado_a_telefono) ||
+            "Sin teléfono"
+        );
+
+        const codigoFree = safeText(
+          ticket.codigoFree,
+          safeText(freeParticipation?.codigo_unico) ||
+            safeText(freeParticipation?.codigo_free) ||
+            safeText(ticket?.codigo_unico) ||
+            safeText(ticket?.codigo_free) ||
+            "Sin código"
+        );
+
+        const freeDropNombre = safeText(
+          ticket.freeDropNombre,
+          getDropLabel({ freeDrop, free_drop: freeDrop })
+        );
+
+        return {
+          ...ticket,
+          compra,
+          usuario: usuarioCompra,
+          freeParticipation,
+          freeDrop,
+          ocupado,
+          vendido,
+          es_free: esFree,
+          disponible: !ocupado,
+          estadoVisual,
+          nombreCliente,
+          emailCliente,
+          telefonoCliente,
+          freeNombre,
+          freeEmail,
+          freeTelefono,
+          codigoFree,
+          freeDropNombre,
+        };
+      })
+      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
+  }, [ticketsUnicos, comprasMap]);
 
   const ticketsMap = useMemo(() => {
     const map = new Map();
-    ticketsUnicos.forEach((ticket) => {
+    ticketsProcesados.forEach((ticket) => {
       map.set(Number(ticket.numero_ticket), ticket);
     });
     return map;
-  }, [ticketsUnicos]);
+  }, [ticketsProcesados]);
 
-  const comprasMap = useMemo(() => {
-    const map = new Map();
-    compras.forEach((compra) => {
-      map.set(String(compra.id), compra);
-    });
-    return map;
-  }, [compras]);
+  const ticketsOcupados = useMemo(() => {
+    return ticketsProcesados.filter((ticket) => ticket.ocupado);
+  }, [ticketsProcesados]);
 
-  const ticketsOrdenados = useMemo(() => {
-    return ticketsAsignados
-      .map((ticket) => ({
-        ...ticket,
-        compra: comprasMap.get(String(ticket.compra_id)) || null,
-      }))
-      .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
-  }, [ticketsAsignados, comprasMap]);
+  const ocupados = ticketsOcupados.length;
+  const disponibles = Math.max(totalNumeros - ocupados, 0);
 
-  const vendidos = ticketsAsignados.length;
-  const disponibles = Math.max(totalNumeros - vendidos, 0);
-
-  const porcentajeVendido =
-    totalNumeros > 0 ? Number(((vendidos / totalNumeros) * 100).toFixed(2)) : 0;
+  const porcentajeOcupado =
+    totalNumeros > 0 ? Number(((ocupados / totalNumeros) * 100).toFixed(2)) : 0;
 
   const porcentajeDisponible =
-    totalNumeros > 0 ? Number((100 - porcentajeVendido).toFixed(2)) : 0;
+    totalNumeros > 0 ? Number((100 - porcentajeOcupado).toFixed(2)) : 0;
 
   const numeros = useMemo(() => {
     const lista = [];
@@ -183,12 +357,25 @@ export default function RaffleProgressPanel({
     return lista;
   }, [numeroInicio, numeroFin]);
 
+  const busquedaNumerica = busquedaNumero.replace(/\D/g, "").slice(0, padLength);
+
+  const numeroExactoEncontrado = useMemo(() => {
+    if (busquedaNumerica.length !== padLength) return null;
+
+    const numero = Number(busquedaNumerica);
+    if (Number.isNaN(numero)) return null;
+
+    if (numero < numeroInicio || numero > numeroFin) return null;
+
+    return numero;
+  }, [busquedaNumerica, padLength, numeroInicio, numeroFin]);
+
   const abrirDetalleNumero = (numero) => {
     const ticket = ticketsMap.get(Number(numero));
     const ganador = esNumeroGanador(numero);
-    const asignado = estaAsignado(ticket);
+    const ocupado = Boolean(ticket) && Boolean(ticket.ocupado);
 
-    if (!ticket || !asignado) {
+    if (!ticket || !ocupado) {
       setTicketDetalle({
         tipo: "disponible",
         numero,
@@ -198,58 +385,46 @@ export default function RaffleProgressPanel({
       return;
     }
 
-    const compra = comprasMap.get(String(ticket.compra_id)) || null;
+    if (ticket.es_free) {
+      setTicketDetalle({
+        tipo: "free",
+        numero,
+        ticket,
+        esGanador: ganador,
+      });
+      setDetalleOpen(true);
+      return;
+    }
 
     setTicketDetalle({
       tipo: "ticket",
       numero,
       ticket,
-      compra,
+      compra: ticket.compra || null,
       esGanador: ganador,
     });
     setDetalleOpen(true);
   };
 
-  const numeroBuscadoNormalizado = busquedaNumero.trim();
-
   const numerosFiltrados = useMemo(() => {
     return numeros.filter((numero) => {
       const ticket = ticketsMap.get(Number(numero));
-      const vendido = Boolean(ticket) && estaAsignado(ticket);
+      const ocupado = Boolean(ticket) && ticket.ocupado;
       const numeroFormateado = String(numero).padStart(padLength, "0");
       const ganador = esNumeroGanador(numero);
 
       const coincideBusqueda =
-        !numeroBuscadoNormalizado ||
-        numeroFormateado.includes(numeroBuscadoNormalizado);
+        !busquedaNumerica || numeroFormateado.includes(busquedaNumerica);
 
       let coincideFiltro = true;
 
-      if (filtroVista === "vendidos") coincideFiltro = vendido;
-      else if (filtroVista === "disponibles") coincideFiltro = !vendido && !ganador;
+      if (filtroVista === "vendidos") coincideFiltro = ocupado;
+      else if (filtroVista === "disponibles") coincideFiltro = !ocupado && !ganador;
       else if (filtroVista === "ganador") coincideFiltro = ganador;
 
       return coincideBusqueda && coincideFiltro;
     });
-  }, [
-    numeros,
-    ticketsMap,
-    numeroBuscadoNormalizado,
-    filtroVista,
-    padLength,
-    numeroGanadorFormateado,
-  ]);
-
-  const numeroExactoEncontrado = useMemo(() => {
-    if (numeroBuscadoNormalizado.length !== padLength) return null;
-
-    const numero = Number(numeroBuscadoNormalizado);
-    if (Number.isNaN(numero)) return null;
-
-    if (numero < numeroInicio || numero > numeroFin) return null;
-
-    return numero;
-  }, [numeroBuscadoNormalizado, padLength, numeroInicio, numeroFin]);
+  }, [numeros, ticketsMap, busquedaNumerica, filtroVista, padLength]);
 
   if (!rifaSeleccionada) return null;
 
@@ -264,7 +439,7 @@ export default function RaffleProgressPanel({
             </p>
           </div>
 
-          <div className="adminpro-badge-box">🎯 Avance: {porcentajeVendido}%</div>
+          <div className="adminpro-badge-box">🎯 Avance: {porcentajeOcupado}%</div>
         </div>
 
         <div className="adminpro-raffle-stats-grid">
@@ -290,16 +465,16 @@ export default function RaffleProgressPanel({
             className="adminpro-raffle-stat-item green clickable"
             onClick={() => {
               setTicketDetalle({
-                tipo: "lista-vendidos",
-                titulo: "Tickets vendidos",
-                valor: vendidos,
-                tickets: ticketsOrdenados,
+                tipo: "lista-ocupados",
+                titulo: "Tickets ocupados",
+                valor: ocupados,
+                tickets: ticketsOcupados,
               });
               setDetalleOpen(true);
             }}
           >
-            <span>Vendidos</span>
-            <strong>{vendidos}</strong>
+            <span>Ocupados</span>
+            <strong>{ocupados}</strong>
           </button>
 
           <button
@@ -326,10 +501,10 @@ export default function RaffleProgressPanel({
             onClick={() => {
               setTicketDetalle({
                 tipo: "resumen",
-                titulo: "Falta por vender",
+                titulo: "Falta por ocupar",
                 valor: `${porcentajeDisponible}%`,
                 descripcion:
-                  "Porcentaje restante de números que todavía no han sido vendidos.",
+                  "Porcentaje restante de números que todavía no han sido ocupados.",
               });
               setDetalleOpen(true);
             }}
@@ -342,12 +517,12 @@ export default function RaffleProgressPanel({
         <div className="adminpro-progress">
           <div
             className="adminpro-progress-fill"
-            style={{ width: `${Math.min(Number(porcentajeVendido), 100)}%` }}
+            style={{ width: `${Math.min(Number(porcentajeOcupado), 100)}%` }}
           />
         </div>
 
         <div className="adminpro-progress-meta">
-          <span>Vendido: {porcentajeVendido}%</span>
+          <span>Ocupado: {porcentajeOcupado}%</span>
           <span>Disponible: {porcentajeDisponible}%</span>
         </div>
 
@@ -362,10 +537,14 @@ export default function RaffleProgressPanel({
             <input
               type="text"
               className="adminpro-input"
-              placeholder={padLength === 3 ? "Buscar número: 000" : "Buscar número: 0000"}
+              placeholder={
+                padLength === 3 ? "Buscar número: 000" : "Buscar número: 0000"
+              }
               value={busquedaNumero}
               onChange={(e) =>
-                setBusquedaNumero(e.target.value.replace(/\D/g, "").slice(0, padLength))
+                setBusquedaNumero(
+                  e.target.value.replace(/\D/g, "").slice(0, padLength)
+                )
               }
               onKeyDown={(e) => {
                 if (e.key === "Enter" && numeroExactoEncontrado !== null) {
@@ -378,7 +557,9 @@ export default function RaffleProgressPanel({
           <div className="adminpro-raffle-filters">
             <button
               type="button"
-              className={`adminpro-raffle-filter-btn ${filtroVista === "todos" ? "active" : ""}`}
+              className={`adminpro-raffle-filter-btn ${
+                filtroVista === "todos" ? "active" : ""
+              }`}
               onClick={() => setFiltroVista("todos")}
             >
               Todos
@@ -386,10 +567,12 @@ export default function RaffleProgressPanel({
 
             <button
               type="button"
-              className={`adminpro-raffle-filter-btn ${filtroVista === "vendidos" ? "active" : ""}`}
+              className={`adminpro-raffle-filter-btn ${
+                filtroVista === "vendidos" ? "active" : ""
+              }`}
               onClick={() => setFiltroVista("vendidos")}
             >
-              Vendidos
+              Ocupados
             </button>
 
             <button
@@ -404,7 +587,9 @@ export default function RaffleProgressPanel({
 
             <button
               type="button"
-              className={`adminpro-raffle-filter-btn ${filtroVista === "ganador" ? "active" : ""}`}
+              className={`adminpro-raffle-filter-btn ${
+                filtroVista === "ganador" ? "active" : ""
+              }`}
               onClick={() => setFiltroVista("ganador")}
             >
               Ganador
@@ -426,7 +611,7 @@ export default function RaffleProgressPanel({
 
         <div className="adminpro-legend">
           <div>
-            <span className="legend-box sold" /> Vendido / aprobado
+            <span className="legend-box sold" /> Ocupado / FREE asignado
           </div>
           <div>
             <span className="legend-box free" /> Disponible
@@ -457,16 +642,16 @@ export default function RaffleProgressPanel({
           <div className="adminpro-ticket-grid">
             {numerosFiltrados.map((numero) => {
               const ticket = ticketsMap.get(Number(numero));
-              const vendido = Boolean(ticket) && estaAsignado(ticket);
+              const ocupado = Boolean(ticket) && ticket.ocupado;
               const numeroFormateado = String(numero).padStart(padLength, "0");
               const ganador = esNumeroGanador(numero);
               const esBusquedaExacta =
-                busquedaNumero.length === padLength &&
-                numeroFormateado === numeroBuscadoNormalizado;
+                busquedaNumerica.length === padLength &&
+                numeroFormateado === busquedaNumerica;
 
               let className = "free";
               if (ganador) className = "winner";
-              else if (vendido) className = "sold";
+              else if (ocupado) className = "sold";
 
               const winnerStyle = ganador
                 ? {
@@ -489,8 +674,10 @@ export default function RaffleProgressPanel({
                   title={
                     ganador
                       ? `Número ganador ${numeroFormateado}`
-                      : vendido
-                      ? `Número vendido ${numeroFormateado}`
+                      : ticket?.es_free
+                      ? `Número FREE ${numeroFormateado}`
+                      : ocupado
+                      ? `Número ocupado ${numeroFormateado}`
                       : `Número disponible ${numeroFormateado}`
                   }
                   style={winnerStyle}
@@ -504,7 +691,10 @@ export default function RaffleProgressPanel({
       </div>
 
       {detalleOpen && ticketDetalle && (
-        <div className="adminpro-modal-backdrop" onClick={() => setDetalleOpen(false)}>
+        <div
+          className="adminpro-modal-backdrop"
+          onClick={() => setDetalleOpen(false)}
+        >
           <div
             className="adminpro-modal adminpro-raffle-detail-modal"
             onClick={(e) => e.stopPropagation()}
@@ -534,7 +724,7 @@ export default function RaffleProgressPanel({
               </div>
             )}
 
-            {ticketDetalle.tipo === "lista-vendidos" && (
+            {ticketDetalle.tipo === "lista-ocupados" && (
               <div className="adminpro-raffle-detail-summary">
                 <div className="adminpro-raffle-detail-big">
                   <span>{ticketDetalle.titulo}</span>
@@ -543,27 +733,51 @@ export default function RaffleProgressPanel({
 
                 <div className="adminpro-raffle-sold-list">
                   {ticketDetalle.tickets?.length ? (
-                    ticketDetalle.tickets.map((item) => (
-                      <div key={item.id} className="adminpro-raffle-sold-item">
-                        <div>
-                          <strong>
-                            Nº {String(item.numero_ticket).padStart(padLength, "0")}
-                          </strong>
-                          <p>Compra #{item.compra_id}</p>
-                        </div>
+                    ticketDetalle.tickets.map((item) => {
+                      const esFree = Boolean(item.es_free || item.tipo === "free");
+                      const compra = item.compra || null;
+                      const freeParticipation =
+                        item.freeParticipation || item.free_drop_participation || null;
 
-                        <div>
-                          <strong>
-                            {item.compra?.usuarios?.nombre ||
-                              item.compra?.usuarios?.email ||
-                              "Sin nombre"}
-                          </strong>
-                          <p>{item.compra?.usuarios?.telefono || "Sin teléfono"}</p>
+                      return (
+                        <div key={item.id} className="adminpro-raffle-sold-item">
+                          <div>
+                            <strong>
+                              Nº {String(item.numero_ticket).padStart(padLength, "0")}
+                            </strong>
+                            <p>
+                              {esFree
+                                ? `FREE • ${item.freeDropNombre || "Participación gratis"}`
+                                : `Compra #${item.compra_id}`}
+                            </p>
+                          </div>
+
+                          <div>
+                            <strong>
+                              {esFree
+                                ? item.freeNombre ||
+                                  getFullName(freeParticipation) ||
+                                  "Sin nombre"
+                                : item.nombreCliente ||
+                                  getFullName(compra?.usuarios) ||
+                                  compra?.usuarios?.email ||
+                                  "Sin nombre"}
+                            </strong>
+                            <p>
+                              {esFree
+                                ? item.freeEmail ||
+                                  freeParticipation?.email ||
+                                  "Sin email"
+                                : item.emailCliente ||
+                                  compra?.usuarios?.email ||
+                                  "Sin email"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    ))
+                      );
+                    })
                   ) : (
-                    <p>No hay tickets vendidos.</p>
+                    <p>No hay tickets ocupados.</p>
                   )}
                 </div>
               </div>
@@ -573,11 +787,13 @@ export default function RaffleProgressPanel({
               <div className="adminpro-raffle-detail-summary">
                 <div className="adminpro-raffle-detail-big">
                   <span>Número disponible</span>
-                  <strong>{String(ticketDetalle.numero).padStart(padLength, "0")}</strong>
+                  <strong>
+                    {String(ticketDetalle.numero).padStart(padLength, "0")}
+                  </strong>
                 </div>
 
                 <p>
-                  Este número todavía no ha sido vendido. Si hay compras pendientes,
+                  Este número todavía no ha sido ocupado. Si hay compras pendientes,
                   puedes usarlo para aprobación manual.
                 </p>
 
@@ -596,6 +812,123 @@ export default function RaffleProgressPanel({
               </div>
             )}
 
+            {ticketDetalle.tipo === "free" && (
+              <div className="adminpro-raffle-detail-card">
+                <div className="adminpro-raffle-detail-hero">
+                  <div className="adminpro-raffle-detail-number">
+                    {String(ticketDetalle.numero).padStart(padLength, "0")}
+                  </div>
+
+                  <div className="adminpro-raffle-detail-state">
+                    <span className="sold">FREE</span>
+                  </div>
+                </div>
+
+                <div className="adminpro-raffle-detail-grid">
+                  <div>
+                    <span>Tipo</span>
+                    <strong>Participación gratis</strong>
+                  </div>
+
+                  <div>
+                    <span>Estado</span>
+                    <strong>
+                      {ticketDetalle.ticket.estadoVisual ||
+                        ticketDetalle.ticket.estado ||
+                        "FREE"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Nombre</span>
+                    <strong>
+                      {ticketDetalle.ticket.freeNombre ||
+                        ticketDetalle.ticket.free_drop_participation?.nombre ||
+                        ticketDetalle.ticket.asignado_a_nombre ||
+                        "Sin nombre"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Apellido</span>
+                    <strong>
+                      {ticketDetalle.ticket.free_drop_participation?.apellido ||
+                        "Sin apellido"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Email</span>
+                    <strong>
+                      {ticketDetalle.ticket.freeEmail ||
+                        ticketDetalle.ticket.free_drop_participation?.email ||
+                        ticketDetalle.ticket.asignado_a_email ||
+                        "Sin email"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Teléfono</span>
+                    <strong>
+                      {ticketDetalle.ticket.freeTelefono ||
+                        ticketDetalle.ticket.free_drop_participation?.telefono ||
+                        ticketDetalle.ticket.asignado_a_telefono ||
+                        "Sin teléfono"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Free Drop</span>
+                    <strong>
+                      {ticketDetalle.ticket.freeDropNombre ||
+                        ticketDetalle.ticket.freeDrop?.nombre ||
+                        ticketDetalle.ticket.free_drop?.nombre ||
+                        `FREE DROP #${
+                          ticketDetalle.ticket.freeDrop?.numero_drop ||
+                          ticketDetalle.ticket.free_drop?.numero_drop ||
+                          ""
+                        }`}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Participación FREE</span>
+                    <strong>
+                      {ticketDetalle.ticket.freeParticipation?.id ||
+                        ticketDetalle.ticket.free_drop_participation?.id ||
+                        ticketDetalle.ticket.free_drop_participation_id ||
+                        "Sin participación"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Código FREE</span>
+                    <strong>
+                      {ticketDetalle.ticket.codigoFree ||
+                        ticketDetalle.ticket.free_drop_participation?.codigo_unico ||
+                        ticketDetalle.ticket.free_drop_participation?.codigo_free ||
+                        "Sin código"}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Asignado</span>
+                    <strong>
+                      {formatearFecha(
+                        ticketDetalle.ticket.asignado_at ||
+                          ticketDetalle.ticket.fecha_asignacion ||
+                          ticketDetalle.ticket.free_drop_participation?.created_at
+                      )}
+                    </strong>
+                  </div>
+                </div>
+
+                <p style={{ marginTop: "14px" }}>
+                  Este número fue asignado por FREE DROP y cuenta como ocupado.
+                </p>
+              </div>
+            )}
+
             {ticketDetalle.tipo === "ticket" && (
               <div className="adminpro-raffle-detail-card">
                 <div className="adminpro-raffle-detail-hero">
@@ -607,7 +940,9 @@ export default function RaffleProgressPanel({
                     {ticketDetalle.esGanador ? (
                       <span className="winner">Ganador oficial</span>
                     ) : (
-                      <span className="sold">Vendido / aprobado</span>
+                      <span className="sold">
+                        {ticketDetalle.ticket.estadoVisual || "Ocupado"}
+                      </span>
                     )}
                   </div>
                 </div>
@@ -624,22 +959,42 @@ export default function RaffleProgressPanel({
                   </div>
 
                   <div>
+                    <span>Estado</span>
+                    <strong>{ticketDetalle.ticket.estadoVisual || "OCUPADO"}</strong>
+                  </div>
+
+                  <div>
                     <span>Cliente</span>
                     <strong>
-                      {ticketDetalle.compra?.usuarios?.nombre ||
-                        ticketDetalle.compra?.usuarios?.email ||
+                      {ticketDetalle.ticket.nombreCliente ||
+                        ticketDetalle.compra?.usuarios?.nombre ||
+                        ticketDetalle.compra?.usuario?.nombre ||
+                        ticketDetalle.compra?.nombre ||
+                        ticketDetalle.compra?.cliente_nombre ||
                         "Sin nombre"}
                     </strong>
                   </div>
 
                   <div>
                     <span>Email</span>
-                    <strong>{ticketDetalle.compra?.usuarios?.email || "Sin email"}</strong>
+                    <strong>
+                      {ticketDetalle.ticket.emailCliente ||
+                        ticketDetalle.compra?.usuarios?.email ||
+                        ticketDetalle.compra?.usuario?.email ||
+                        ticketDetalle.compra?.email ||
+                        "Sin email"}
+                    </strong>
                   </div>
 
                   <div>
                     <span>Teléfono</span>
-                    <strong>{ticketDetalle.compra?.usuarios?.telefono || "Sin teléfono"}</strong>
+                    <strong>
+                      {ticketDetalle.ticket.telefonoCliente ||
+                        ticketDetalle.compra?.usuarios?.telefono ||
+                        ticketDetalle.compra?.usuario?.telefono ||
+                        ticketDetalle.compra?.telefono ||
+                        "Sin teléfono"}
+                    </strong>
                   </div>
 
                   <div>
@@ -647,7 +1002,9 @@ export default function RaffleProgressPanel({
                     <strong>
                       $
                       {Number(
-                        ticketDetalle.compra?.monto_total ?? ticketDetalle.compra?.total ?? 0
+                        ticketDetalle.compra?.monto_total ??
+                          ticketDetalle.compra?.total ??
+                          0
                       ).toFixed(2)}
                     </strong>
                   </div>
@@ -661,7 +1018,8 @@ export default function RaffleProgressPanel({
                     <span>Fecha</span>
                     <strong>
                       {formatearFecha(
-                        ticketDetalle.compra?.fecha_compra || ticketDetalle.compra?.created_at
+                        ticketDetalle.compra?.fecha_compra ||
+                          ticketDetalle.compra?.created_at
                       )}
                     </strong>
                   </div>

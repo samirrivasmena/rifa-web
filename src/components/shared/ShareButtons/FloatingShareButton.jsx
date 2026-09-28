@@ -191,7 +191,7 @@ style={{
   boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
 }}
       >
-        <span className="share-fab-icon">📤</span>
+        <span className="share-fab-icon">📲</span>
         <span className="share-fab-text">Compartir</span>
       </button>
 

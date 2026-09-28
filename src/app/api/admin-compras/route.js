@@ -29,6 +29,13 @@ async function traerTodosLosTickets() {
   return allTickets;
 }
 
+function normalizarCompra(compra = {}) {
+  return {
+    ...compra,
+    total: compra.monto_total ?? compra.total ?? 0,
+  };
+}
+
 export async function GET(req) {
   const auth = await requireAdmin(req);
 
@@ -37,10 +44,20 @@ export async function GET(req) {
   }
 
   try {
-    const { data: compras, error: comprasError } = await supabaseAdmin
+    const { data: comprasBase, error: comprasError } = await supabaseAdmin
       .from("compras")
       .select(`
-        *,
+        id,
+        rifa_id,
+        usuario_id,
+        cantidad_tickets,
+        monto_total,
+        referencia,
+        metodo_pago,
+        estado_pago,
+        comprobante_url,
+        fecha_compra,
+        created_at,
         usuarios (
           id,
           nombre,
@@ -69,12 +86,16 @@ export async function GET(req) {
       );
     }
 
+    const compras = Array.isArray(comprasBase)
+      ? comprasBase.map(normalizarCompra)
+      : [];
+
     const tickets = await traerTodosLosTickets();
 
     return NextResponse.json(
       {
         ok: true,
-        compras: compras || [],
+        compras,
         tickets: tickets || [],
       },
       {

@@ -2,7 +2,25 @@ import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 function validarEmail(email) {
-  return /\S+@\S+\.\S+/.test(String(email || "").trim());
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email || "").trim());
+}
+
+function limpiarTexto(valor) {
+  return String(valor ?? "").trim().toLowerCase();
+}
+
+function estadoAprobado(estado) {
+  return [
+    "aprobado",
+    "aprobada",
+    "approved",
+    "pagado",
+    "pagada",
+    "valida",
+    "válida",
+    "activo",
+    "activa",
+  ].includes(limpiarTexto(estado));
 }
 
 export async function POST(req) {
@@ -26,10 +44,30 @@ export async function POST(req) {
       );
     }
 
+    const { data: rifa, error: rifaError } = await supabaseAdmin
+      .from("rifas")
+      .select("id, nombre, formato")
+      .eq("id", rifaId)
+      .maybeSingle();
+
+    if (rifaError) {
+      return NextResponse.json(
+        { error: rifaError.message || "Error buscando la rifa" },
+        { status: 500 }
+      );
+    }
+
+    if (!rifa) {
+      return NextResponse.json(
+        { error: "La rifa no existe" },
+        { status: 404 }
+      );
+    }
+
     const { data: usuario, error: usuarioError } = await supabaseAdmin
       .from("usuarios")
-      .select("id, nombre, email, telefono")
-      .eq("email", email)
+      .select("id, nombre, email")
+      .ilike("email", email)
       .maybeSingle();
 
     if (usuarioError) {
@@ -45,6 +83,7 @@ export async function POST(req) {
         encontrado: false,
         mensaje: "No se encontraron compras con ese correo en esta rifa",
         usuario: null,
+        rifa,
         compras: [],
         tickets: [],
       });
@@ -53,7 +92,16 @@ export async function POST(req) {
     const { data: comprasData, error: comprasError } = await supabaseAdmin
       .from("compras")
       .select(`
-        *,
+        id,
+        usuario_id,
+        rifa_id,
+        estado_pago,
+        fecha_compra,
+        cantidad_tickets,
+        monto_total,
+        referencia,
+        metodo_pago,
+        created_at,
         rifas (
           id,
           nombre,
@@ -79,13 +127,14 @@ export async function POST(req) {
         encontrado: false,
         mensaje: "No se encontraron compras con ese correo en esta rifa",
         usuario,
+        rifa,
         compras: [],
         tickets: [],
       });
     }
 
-    const comprasAprobadas = compras.filter(
-      (compra) => String(compra.estado_pago || "").toLowerCase() === "aprobado"
+    const comprasAprobadas = compras.filter((compra) =>
+      estadoAprobado(compra.estado_pago)
     );
 
     const compraIdsAprobadas = comprasAprobadas.map((compra) => compra.id);
@@ -95,7 +144,15 @@ export async function POST(req) {
     if (compraIdsAprobadas.length > 0) {
       const { data: ticketsData, error: ticketsError } = await supabaseAdmin
         .from("tickets")
-        .select("*")
+        .select(`
+          id,
+          numero_ticket,
+          estado,
+          compra_id,
+          rifa_id,
+          tipo,
+          created_at
+        `)
         .in("compra_id", compraIdsAprobadas)
         .eq("rifa_id", rifaId)
         .order("numero_ticket", { ascending: true });
@@ -120,6 +177,7 @@ export async function POST(req) {
       encontrado: true,
       mensaje,
       usuario,
+      rifa,
       compras,
       tickets,
     });

@@ -927,63 +927,209 @@ export default function RifasSection({
     }
   };
 
-  const eliminarRifa = async (rifa) => {
-    const confirmar = await Swal.fire({
-      title: "¿Eliminar rifa?",
-      text: `Se intentará eliminar la rifa "${rifa.nombre}"`,
-      icon: "warning",
-      showCancelButton: true,
-      confirmButtonText: "Sí, eliminar",
-      cancelButtonText: "Cancelar",
-      confirmButtonColor: "#b91c1c",
-      cancelButtonColor: "#6b7280",
+const eliminarRifa = async (rifa) => {
+  const confirmar = await Swal.fire({
+    title: "¿Eliminar rifa?",
+    html: `
+      <div style="text-align:left; line-height:1.6;">
+        <p style="margin:0 0 10px;">
+          Se intentará eliminar la rifa
+          <strong>"${escapeHtml(rifa.nombre || "Rifa")}"</strong>.
+        </p>
+
+        <p style="margin:0; color:#94a3b8; font-size:14px;">
+          Solo podrá eliminarse si no contiene historial que deba conservarse.
+        </p>
+      </div>
+    `,
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Sí, eliminar",
+    cancelButtonText: "Cancelar",
+    confirmButtonColor: "#b91c1c",
+    cancelButtonColor: "#6b7280",
+  });
+
+  if (!confirmar.isConfirmed) return;
+
+  try {
+    setEliminandoRifa(rifa.id);
+
+    const headers = await getAdminAuthHeaders();
+
+    const res = await fetch("/api/eliminar-rifa", {
+      method: "POST",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ rifaId: rifa.id }),
     });
 
-    if (!confirmar.isConfirmed) return;
+    const data = await res.json();
 
-    try {
-      setEliminandoRifa(rifa.id);
+    if (!res.ok) {
+      if (data?.code === "RIFA_HAS_HISTORY") {
+        const history = data?.history || {};
 
-      const headers = await getAdminAuthHeaders();
+        const compras = Number(history.compras_protegidas || 0);
+        const tickets = Number(history.tickets_usados || 0);
+        const participaciones = Number(history.free_participaciones || 0);
+        const sorteos = Number(history.sorteos || 0);
+        const auditoria = Number(history.free_auditoria || 0);
 
-      const res = await fetch("/api/eliminar-rifa", {
-        method: "POST",
-        headers: {
-          ...headers,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ rifaId: rifa.id }),
-      });
+        const filas = [];
 
-      const data = await res.json();
+        if (compras > 0) {
+          filas.push(`
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:16px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:rgba(255,255,255,0.04);
+            ">
+              <span>Compras protegidas</span>
+              <strong>${compras}</strong>
+            </div>
+          `);
+        }
 
-      if (!res.ok) {
+        if (tickets > 0) {
+          filas.push(`
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:16px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:rgba(255,255,255,0.04);
+            ">
+              <span>Tickets utilizados</span>
+              <strong>${tickets}</strong>
+            </div>
+          `);
+        }
+
+        if (participaciones > 0) {
+          filas.push(`
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:16px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:rgba(255,255,255,0.04);
+            ">
+              <span>Participaciones FREE</span>
+              <strong>${participaciones}</strong>
+            </div>
+          `);
+        }
+
+        if (sorteos > 0) {
+          filas.push(`
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:16px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:rgba(255,255,255,0.04);
+            ">
+              <span>Resultados de sorteos</span>
+              <strong>${sorteos}</strong>
+            </div>
+          `);
+        }
+
+        if (auditoria > 0) {
+          filas.push(`
+            <div style="
+              display:flex;
+              justify-content:space-between;
+              gap:16px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:rgba(255,255,255,0.04);
+            ">
+              <span>Registros de auditoría FREE</span>
+              <strong>${auditoria}</strong>
+            </div>
+          `);
+        }
+
         await Swal.fire({
-          icon: "error",
-          title: "No se puede eliminar",
-          text: data.error || "No se pudo eliminar la rifa",
+          icon: "warning",
+          title: "Esta rifa no se puede eliminar",
+          html: `
+            <div style="text-align:left;">
+              <p style="margin:0 0 14px; line-height:1.55;">
+                Esta rifa contiene historial que debe conservarse.
+              </p>
+
+              ${
+                filas.length
+                  ? `
+                    <div style="
+                      display:grid;
+                      gap:8px;
+                      margin-bottom:14px;
+                    ">
+                      ${filas.join("")}
+                    </div>
+                  `
+                  : ""
+              }
+
+              <p style="
+                margin:0;
+                color:#94a3b8;
+                font-size:13px;
+                line-height:1.55;
+              ">
+                No se eliminó ningún dato.
+              </p>
+            </div>
+          `,
+          confirmButtonText: "Entendido",
+          confirmButtonColor: "#7c3aed",
         });
+
         return;
       }
 
       await Swal.fire({
-        icon: "success",
-        title: "Rifa eliminada",
-        text: "La rifa fue eliminada correctamente",
+        icon: "error",
+        title: "No se puede eliminar",
+        text: data?.error || "No se pudo eliminar la rifa",
       });
 
-      if (onRecargarRifas) await onRecargarRifas();
-    } catch (error) {
-      console.error(error);
-      await Swal.fire({
-        icon: "error",
-        title: "Error",
-        text: "No se pudo eliminar la rifa",
-      });
-    } finally {
-      setEliminandoRifa(null);
+      return;
     }
-  };
+
+    await Swal.fire({
+      icon: "success",
+      title: "Rifa eliminada",
+      text: data?.message || "La rifa fue eliminada correctamente",
+    });
+
+    if (onRecargarRifas) {
+      await onRecargarRifas();
+    }
+  } catch (error) {
+    console.error("eliminarRifa error:", error);
+
+    await Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: error?.message || "No se pudo eliminar la rifa",
+    });
+  } finally {
+    setEliminandoRifa(null);
+  }
+};
 
   const summaryCardStyle = {
     borderRadius: "22px",

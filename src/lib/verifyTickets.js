@@ -1,18 +1,32 @@
 export const validarEmail = (email) => /\S+@\S+\.\S+/.test(email);
 
-export async function verificarTicketsPorEmail(email) {
-  const response = await fetch("/api/verificar-tickets", {
+async function fetchJsonSeguro(url, body) {
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ email }),
+    body: JSON.stringify(body),
   });
 
-  const data = await response.json();
+  let data = {};
+  try {
+    data = await response.json();
+  } catch {
+    data = {};
+  }
 
   return {
     ok: response.ok,
+    status: response.status,
     data,
   };
+}
+
+export async function verificarTicketsPorEmail(email) {
+  return fetchJsonSeguro("/api/verificar-tickets", { email });
+}
+
+export async function verificarFreeCode(codigo) {
+  return fetchJsonSeguro("/api/verificar-free-code", { codigo });
 }

@@ -222,27 +222,42 @@ export function useAdminGanador({
         return;
       }
 
-      const vendido = Boolean(data.existe);
+const ocupado = Boolean(data.ocupado ?? data.existe);
+const esFree = Boolean(data.es_free);
 
-      setResultadoGanador({
-        existe: vendido,
-        numero_ticket: data.numero_ticket ?? numeroFormateado,
-        compra_id: data.compra_id ?? null,
-        usuario: data.usuario ?? null,
-        sorteo: null,
-        oficial: false,
-        persistido: false,
-      });
+setResultadoGanador({
+  existe: ocupado,
+  numero_ticket: data.numero_ticket ?? numeroFormateado,
+  numero_ganador: data.numero_oficial ?? numeroFormateado,
+  compra_id: data.compra_id ?? null,
+  usuario: data.usuario ?? null,
+  sorteo: data.sorteo ?? null,
+  oficial: false,
+  persistido: false,
+  tipo: data.tipo ?? (esFree ? "free" : "compra"),
+  es_free: esFree,
+  free_drop: data.free_drop ?? null,
+  codigo_free:
+    data.codigo_free ??
+    data.participacion?.codigo ??
+    data.participacion?.codigo_unico ??
+    null,
+  participacion: data.participacion ?? null,
+});
 
-      if (!vendido) {
-        setMensajeBusqueda(
-          `❌ El número ${numeroFormateado} no fue vendido en esta rifa`
-        );
-      } else {
-        setMensajeBusqueda(
-          `✅ El número ${numeroFormateado} sí fue vendido en esta rifa`
-        );
-      }
+if (!ocupado) {
+  setMensajeBusqueda(
+    `❌ El número ${numeroFormateado} no está ocupado en esta rifa`
+  );
+} else if (esFree) {
+  setMensajeBusqueda(
+    `🟢 El número ${numeroFormateado} fue asignado por FREE DROP`
+  );
+} else {
+  setMensajeBusqueda(
+    `✅ El número ${numeroFormateado} sí fue vendido en esta rifa`
+  );
+}
     } catch (error) {
       console.error("Error buscando ganador:", error);
       setMensajeBusqueda("❌ Error inesperado al buscar el número");
@@ -265,7 +280,7 @@ export function useAdminGanador({
       await Swal.fire({
         icon: "error",
         title: "No permitido",
-        text: "Ese número no fue vendido, no se puede registrar como ganador",
+        text: "Ese número no está ocupado, no se puede registrar como ganador",
       });
       return;
     }

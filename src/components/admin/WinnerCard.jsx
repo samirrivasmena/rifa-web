@@ -60,7 +60,19 @@ export default function WinnerCard({
     resultado?.oficial === true || numeroGanadorOficial
   );
 
-  const numeroGanadorGuardado = normalizarNumero(numeroGanadorOficial, padLength);
+  const esFree = Boolean(
+    resultado?.es_free ||
+      resultado?.tipo === "free" ||
+      resultado?.free_drop ||
+      resultado?.codigo_free ||
+      resultado?.participacion?.codigo ||
+      resultado?.participacion?.codigo_unico
+  );
+
+  const numeroGanadorGuardado = normalizarNumero(
+    numeroGanadorOficial,
+    padLength
+  );
 
   const numeroBase =
     resultado?.numero_ticket ??
@@ -79,27 +91,69 @@ export default function WinnerCard({
       ? String(numeroSeguro).padStart(padLength, "0")
       : "Sin número";
 
+  const nombreParticipante =
+    resultado?.usuario?.nombre ||
+    [
+      resultado?.participacion?.nombre,
+      resultado?.participacion?.apellido,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim() ||
+    null;
+
+  const emailParticipante =
+    resultado?.usuario?.email || resultado?.participacion?.email || null;
+
+  const telefonoParticipante =
+    resultado?.usuario?.telefono || resultado?.participacion?.telefono || null;
+
   const tieneUsuario = Boolean(
-    resultado?.usuario &&
-      (resultado.usuario.nombre ||
-        resultado.usuario.email ||
-        resultado.usuario.telefono)
+    nombreParticipante || emailParticipante || telefonoParticipante
   );
+
+  const codigoFree =
+    resultado?.codigo_free ||
+    resultado?.participacion?.codigo ||
+    resultado?.participacion?.codigo_unico ||
+    null;
+
+  const freeDropNombre =
+    resultado?.free_drop?.nombre ||
+    resultado?.participacion?.free_drop ||
+    null;
+
+  const freeDropNumero =
+    resultado?.free_drop?.numero_drop ||
+    resultado?.participacion?.free_drop_numero ||
+    null;
+
+  const fechaParticipacion =
+    resultado?.participacion?.created_at ||
+    resultado?.participacion?.updated_at ||
+    resultado?.sorteo?.fecha_sorteo ||
+    null;
 
   const estadoKey = ganadorOficialActual
     ? "official"
+    : esFree
+    ? "free"
     : resultado?.existe
     ? "sold"
     : "empty";
 
   const titulo = ganadorOficialActual
     ? "🏆 Número ganador oficial"
+    : esFree
+    ? "🎁 Número FREE"
     : resultado?.existe
     ? "✅ Número vendido"
     : "❌ Número no vendido";
 
   const descripcion = ganadorOficialActual
     ? "Este número ya quedó registrado como ganador oficial."
+    : esFree
+    ? "El número pertenece a una participación FREE y también puede convertirse en ganador."
     : resultado?.existe
     ? "El número fue vendido y puede convertirse en ganador."
     : "No existe una compra asociada a ese número.";
@@ -151,13 +205,13 @@ export default function WinnerCard({
           <div className="adminpro-winner-empty-emoji">🔎</div>
           <h3>Resultado del número</h3>
           <p>
-            Busca un número para ver aquí su estado, los datos del comprador y las
-            acciones disponibles.
+            Busca un número para ver aquí su estado, los datos del comprador o
+            de la participación FREE y las acciones disponibles.
           </p>
 
           <div className="adminpro-winner-empty-tip">
-            <strong>Tip:</strong> cuando el número sea vendido podrás registrarlo
-            como ganador oficial o quitarlo si hace falta.
+            <strong>Tip:</strong> cuando el número sea ocupado podrás
+            registrarlo como ganador oficial o quitarlo si hace falta.
           </div>
         </div>
       ) : (
@@ -165,13 +219,15 @@ export default function WinnerCard({
           <div className="adminpro-winner-card-head">
             <div className="adminpro-winner-title-block">
               <div className={`adminpro-winner-icon ${estadoKey}`}>
-                {ganadorOficialActual ? "🏆" : resultado?.existe ? "✅" : "❌"}
+                {ganadorOficialActual ? "🏆" : esFree ? "🎁" : resultado?.existe ? "✅" : "❌"}
               </div>
 
               <div>
                 <span className={`adminpro-winner-badge ${estadoKey}`}>
                   {ganadorOficialActual
                     ? "Ganador oficial"
+                    : esFree
+                    ? "FREE"
                     : resultado?.existe
                     ? "Vendido"
                     : "No vendido"}
@@ -183,10 +239,28 @@ export default function WinnerCard({
             </div>
 
             <div className="adminpro-winner-number-box">
-              <span>{ganadorOficialActual ? "Número ganador" : "Número consultado"}</span>
+              <span>
+                {ganadorOficialActual ? "Número ganador" : "Número consultado"}
+              </span>
               <strong>{numeroFormateado}</strong>
             </div>
           </div>
+
+          {esFree && (
+            <div
+              style={{
+                margin: "0 0 14px",
+                padding: "12px 14px",
+                borderRadius: "14px",
+                background: "rgba(34,197,94,.10)",
+                border: "1px solid rgba(34,197,94,.25)",
+                color: "#bbf7d0",
+                fontWeight: 700,
+              }}
+            >
+              🎁 Este número proviene de una participación FREE
+            </div>
+          )}
 
           <div className="adminpro-winner-info-grid">
             <div className="adminpro-winner-info-box">
@@ -195,6 +269,8 @@ export default function WinnerCard({
                 <strong>
                   {ganadorOficialActual
                     ? "Ganador oficial"
+                    : esFree
+                    ? "FREE asignado"
                     : resultado?.existe
                     ? "Vendido"
                     : "No vendido"}
@@ -206,6 +282,54 @@ export default function WinnerCard({
                   <span>Compra ID</span>
                   <strong>{resultado.compra_id}</strong>
                 </div>
+              )}
+
+              {esFree && (
+                <>
+                  <div className="adminpro-winner-info-item">
+                    <span>Free Drop</span>
+                    <strong>
+                      {freeDropNombre
+                        ? `${freeDropNombre}${freeDropNumero ? ` (#${freeDropNumero})` : ""}`
+                        : "Sin free drop"}
+                    </strong>
+                  </div>
+
+                  <div className="adminpro-winner-info-item">
+                    <span>Código FREE</span>
+                    <strong style={{ wordBreak: "break-word" }}>
+                      {codigoFree || "Sin código"}
+                    </strong>
+                  </div>
+
+                  <div className="adminpro-winner-info-item">
+                    <span>Participación FREE</span>
+                    <strong>
+                      {resultado?.participacion?.id || "Sin participación"}
+                    </strong>
+                  </div>
+
+                  {resultado?.participacion?.estado_residencia && (
+                    <div className="adminpro-winner-info-item">
+                      <span>Estado residencia</span>
+                      <strong>{resultado.participacion.estado_residencia}</strong>
+                    </div>
+                  )}
+
+                  <div className="adminpro-winner-info-item">
+                    <span>Aceptó reglas</span>
+                    <strong>
+                      {resultado?.participacion?.acepta_reglas ? "Sí" : "No"}
+                    </strong>
+                  </div>
+
+                  <div className="adminpro-winner-info-item">
+                    <span>Cumple requisitos</span>
+                    <strong>
+                      {resultado?.participacion?.cumple_requisitos ? "Sí" : "No"}
+                    </strong>
+                  </div>
+                </>
               )}
 
               {resultado?.sorteo?.fecha_sorteo && (
@@ -246,49 +370,59 @@ export default function WinnerCard({
                   <div className="adminpro-winner-user-card">
                     <div className="adminpro-winner-avatar">
                       {String(
-                        resultado.usuario?.nombre || resultado.usuario?.email || "?"
+                        nombreParticipante || emailParticipante || "?"
                       )
                         .charAt(0)
                         .toUpperCase()}
                     </div>
 
                     <div className="adminpro-winner-user-main">
-                      <strong>{renderValorUsuario(resultado.usuario?.nombre)}</strong>
-                      <p>{renderValorUsuario(resultado.usuario?.email)}</p>
-                      <p>{renderValorUsuario(resultado.usuario?.telefono)}</p>
+                      <strong>{renderValorUsuario(nombreParticipante)}</strong>
+                      <p>{renderValorUsuario(emailParticipante)}</p>
+                      <p>{renderValorUsuario(telefonoParticipante)}</p>
                     </div>
                   </div>
 
                   <div className="adminpro-winner-copy-row">
-                    {resultado.usuario?.nombre && (
+                    {nombreParticipante && (
                       <button
                         type="button"
                         className="adminpro-winner-copy-btn"
-                        onClick={() => copiarDato(resultado.usuario.nombre, "Nombre")}
+                        onClick={() => copiarDato(nombreParticipante, "Nombre")}
                       >
                         📋 Nombre
                       </button>
                     )}
 
-                    {resultado.usuario?.email && (
+                    {emailParticipante && (
                       <button
                         type="button"
                         className="adminpro-winner-copy-btn"
-                        onClick={() => copiarDato(resultado.usuario.email, "Email")}
+                        onClick={() => copiarDato(emailParticipante, "Email")}
                       >
                         📧 Email
                       </button>
                     )}
 
-                    {resultado.usuario?.telefono && (
+                    {telefonoParticipante && (
                       <button
                         type="button"
                         className="adminpro-winner-copy-btn"
                         onClick={() =>
-                          copiarDato(resultado.usuario.telefono, "Teléfono")
+                          copiarDato(telefonoParticipante, "Teléfono")
                         }
                       >
                         📞 Teléfono
+                      </button>
+                    )}
+
+                    {esFree && codigoFree && (
+                      <button
+                        type="button"
+                        className="adminpro-winner-copy-btn"
+                        onClick={() => copiarDato(codigoFree, "Código FREE")}
+                      >
+                        🏷️ Código FREE
                       </button>
                     )}
                   </div>
@@ -299,6 +433,8 @@ export default function WinnerCard({
                   <p>
                     {ganadorOficialActual
                       ? "El ganador ya fue guardado, pero no se cargaron los datos del cliente en esta vista."
+                      : esFree
+                      ? "La participación FREE existe, pero no se pudieron cargar todos los datos del participante."
                       : "La compra existe, pero no se pudieron cargar los datos del cliente."}
                   </p>
                 </div>
@@ -307,6 +443,17 @@ export default function WinnerCard({
           </div>
 
           <div className="adminpro-winner-actions">
+            {esFree && codigoFree && (
+              <button
+                type="button"
+                className="adminpro-soft-btn blue adminpro-winner-main-btn"
+                onClick={() => copiarDato(codigoFree, "Código FREE")}
+              >
+                <span className="btn-icon">🏷️</span>
+                Copiar Código FREE
+              </button>
+            )}
+
             {puedeGuardarGanador && (
               <button
                 className="adminpro-primary-btn adminpro-winner-main-btn"

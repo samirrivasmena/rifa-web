@@ -826,24 +826,27 @@ export default function PrincipalPageClient() {
                   })}
                 </div>
 
-                {isMobileFinalizados ? (
-<div
-  className="principal-pagination-dots carousel-dots"
-  aria-label="Paginación finalizados"
->
-  {Array.from({ length: totalPaginasFinalizados }).map((_, index) => (
-    <button
-      key={index}
-      type="button"
-      className={`principal-pagination-dot carousel-dot ${
-        paginaFinalizados === index + 1 ? "active" : ""
-      }`}
-      onClick={() => setPaginaFinalizados(index + 1)}
-      aria-label={`Ir a la página ${index + 1}`}
-    />
-  ))}
-</div>
-                ) : (
+{isMobileFinalizados ? (
+  <div
+    className="principal-pagination-dots carousel-dots"
+    aria-label="Navegación de eventos finalizados"
+  >
+    {eventosFinalizados.map((evento, index) => (
+      <button
+        key={evento.id || index}
+        type="button"
+        className={`principal-pagination-dot carousel-dot ${
+          activeFinalizadoIndex === index ? "active" : ""
+        }`}
+        onClick={() => irAFinalizado(index)}
+        aria-label={`Ir al evento ${index + 1}`}
+        aria-current={
+          activeFinalizadoIndex === index ? "true" : undefined
+        }
+      />
+    ))}
+  </div>
+) : (
                   totalPaginasFinalizados > 1 && (
                     <div
                       className="principal-pagination-dots"

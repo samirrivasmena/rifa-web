@@ -3,6 +3,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { FILTROS_COMPRAS_INICIALES } from "../../lib/admin/adminConstants";
 
+const normalizarTexto = (valor) =>
+  String(valor ?? "").trim().toLowerCase();
+
+const obtenerMontoCompra = (compra = {}) =>
+  Number(compra.monto_total ?? compra.total ?? 0);
+
+const obtenerEstadoCompra = (compra = {}) =>
+  normalizarTexto(compra.estado_pago);
+
+const obtenerMetodoPago = (compra = {}) =>
+  String(compra.metodo_pago || "").trim();
+
 export function useAdminCompras(comprasFiltradasPorRifa) {
   const [filtrosCompras, setFiltrosCompras] = useState({
     ...FILTROS_COMPRAS_INICIALES,
@@ -13,14 +25,17 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
   const [itemsPorPagina, setItemsPorPagina] = useState(12);
 
   const comprasVisibles = useMemo(() => {
-    return comprasFiltradasPorRifa.filter((c) => c.estado_pago !== "rechazado");
+    return comprasFiltradasPorRifa.filter((c) => {
+      const estado = obtenerEstadoCompra(c);
+      return !["rechazado", "rechazada"].includes(estado);
+    });
   }, [comprasFiltradasPorRifa]);
 
   const metodosPagoDisponibles = useMemo(() => {
     const unicos = Array.from(
       new Set(
         comprasFiltradasPorRifa
-          .map((c) => String(c.metodo_pago || "").trim())
+          .map((c) => obtenerMetodoPago(c))
           .filter(Boolean)
       )
     );
@@ -30,15 +45,15 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
 
   const comprasFiltradasAvanzadas = useMemo(() => {
     return comprasVisibles.filter((compra) => {
-      const termino = filtrosCompras.busqueda.trim().toLowerCase();
+      const termino = normalizarTexto(filtrosCompras.busqueda);
 
-      const id = String(compra.id || "").toLowerCase();
-      const nombre = String(compra.usuarios?.nombre || "").toLowerCase();
-      const email = String(compra.usuarios?.email || "").toLowerCase();
-      const telefono = String(compra.usuarios?.telefono || "").toLowerCase();
-      const referencia = String(compra.referencia || "").toLowerCase();
-      const metodo = String(compra.metodo_pago || "").toLowerCase();
-      const estado = String(compra.estado_pago || "").toLowerCase();
+      const id = normalizarTexto(compra.id);
+      const nombre = normalizarTexto(compra.usuarios?.nombre);
+      const email = normalizarTexto(compra.usuarios?.email);
+      const telefono = normalizarTexto(compra.usuarios?.telefono);
+      const referencia = normalizarTexto(compra.referencia);
+      const metodo = normalizarTexto(compra.metodo_pago);
+      const estado = obtenerEstadoCompra(compra);
 
       const coincideBusqueda =
         !termino ||
@@ -51,10 +66,12 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
         estado.includes(termino);
 
       const coincideEstado =
-        !filtrosCompras.estado || compra.estado_pago === filtrosCompras.estado;
+        !filtrosCompras.estado ||
+        normalizarTexto(compra.estado_pago) === normalizarTexto(filtrosCompras.estado);
 
       const coincideMetodo =
-        !filtrosCompras.metodoPago || compra.metodo_pago === filtrosCompras.metodoPago;
+        !filtrosCompras.metodoPago ||
+        normalizarTexto(compra.metodo_pago) === normalizarTexto(filtrosCompras.metodoPago);
 
       const fechaCompra = new Date(compra.fecha_compra || compra.created_at || 0);
 
@@ -76,7 +93,7 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
         !filtrosCompras.maxTickets ||
         cantidadTickets <= Number(filtrosCompras.maxTickets);
 
-      const total = Number(compra.total ?? compra.monto_total ?? 0);
+      const total = obtenerMontoCompra(compra);
 
       const coincideMinMonto =
         !filtrosCompras.minMonto || total >= Number(filtrosCompras.minMonto);
@@ -92,7 +109,9 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
 
       const coincideComprobante =
         !filtrosCompras.conComprobante ||
-        (filtrosCompras.conComprobante === "si" ? tieneComprobante : !tieneComprobante);
+        (filtrosCompras.conComprobante === "si"
+          ? tieneComprobante
+          : !tieneComprobante);
 
       return (
         coincideBusqueda &&
@@ -116,8 +135,8 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
       const fechaA = new Date(a.fecha_compra || a.created_at || 0).getTime();
       const fechaB = new Date(b.fecha_compra || b.created_at || 0).getTime();
 
-      const montoA = Number(a.monto_total ?? a.total ?? 0);
-      const montoB = Number(b.monto_total ?? b.total ?? 0);
+      const montoA = obtenerMontoCompra(a);
+      const montoB = obtenerMontoCompra(b);
 
       const ticketsA = Number(a.cantidad_tickets || 0);
       const ticketsB = Number(b.cantidad_tickets || 0);
@@ -156,7 +175,10 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
   }, [comprasFiltradasAvanzadas, ordenCompras]);
 
   const totalPaginasCompras = useMemo(() => {
-    return Math.max(Math.ceil(comprasFiltradasYOrdenadas.length / itemsPorPagina), 1);
+    return Math.max(
+      Math.ceil(comprasFiltradasYOrdenadas.length / itemsPorPagina),
+      1
+    );
   }, [comprasFiltradasYOrdenadas.length, itemsPorPagina]);
 
   const comprasPaginadas = useMemo(() => {
@@ -171,7 +193,10 @@ export function useAdminCompras(comprasFiltradasPorRifa) {
     }
 
     const desde = (paginaCompras - 1) * itemsPorPagina + 1;
-    const hasta = Math.min(paginaCompras * itemsPorPagina, comprasFiltradasYOrdenadas.length);
+    const hasta = Math.min(
+      paginaCompras * itemsPorPagina,
+      comprasFiltradasYOrdenadas.length
+    );
 
     return {
       desde,
