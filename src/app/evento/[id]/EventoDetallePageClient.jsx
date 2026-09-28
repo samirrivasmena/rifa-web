@@ -1015,37 +1015,70 @@ ${urlCompartir}`;
   // correctamente los emojis en producción.
   // =========================================================
 
-  const codificarMensajeWhatsApp = (mensaje) => {
-    let encoded = encodeURIComponent(mensaje);
+const codificarMensajeWhatsApp = (mensaje) => {
+  // =========================================================
+  // 1. CODIFICAR TODO EL TEXTO NORMAL
+  // =========================================================
 
-    const reemplazos = {
-      __EMOJI_FIRE__: "%F0%9F%94%A5",
-      __EMOJI_GIFT__: "%F0%9F%8E%81",
-      __EMOJI_TROPHY__: "%F0%9F%8F%86",
-      __EMOJI_TICKET__: "%F0%9F%8E%9F%EF%B8%8F",
-      __EMOJI_BOLT__: "%E2%9A%A1",
-      __EMOJI_CAMERA__: "%F0%9F%93%B8",
-      __EMOJI_HOURGLASS__: "%E2%8F%B3",
-      __EMOJI_CHECK__: "%E2%9C%85",
-      __EMOJI_DOWN__: "%F0%9F%91%87",
-      __EMOJI_PAUSE__: "%E2%8F%B8%EF%B8%8F",
-      __EMOJI_EYES__: "%F0%9F%91%80",
-      __EMOJI_CALENDAR__: "%F0%9F%93%85",
-      __EMOJI_NO__: "%F0%9F%9A%AB",
-      __EMOJI_LOCK__: "%F0%9F%94%92",
-    };
+  let encoded = encodeURIComponent(mensaje);
 
-    Object.entries(reemplazos).forEach(
-      ([marcador, emojiCodificado]) => {
-        encoded = encoded.replaceAll(
-          encodeURIComponent(marcador),
-          emojiCodificado
-        );
-      }
-    );
+  // =========================================================
+  // 2. REEMPLAZAR LOS MARCADORES POR EMOJIS REALES
+  //
+  // IMPORTANTE:
+  // Los emojis se crean con code points para evitar problemas
+  // de codificación del archivo fuente.
+  // =========================================================
 
-    return encoded;
+  const emojis = {
+    __EMOJI_FIRE__: String.fromCodePoint(0x1f525),
+
+    __EMOJI_GIFT__: String.fromCodePoint(0x1f381),
+
+    __EMOJI_TROPHY__: String.fromCodePoint(0x1f3c6),
+
+    __EMOJI_TICKET__:
+      String.fromCodePoint(0x1f39f) +
+      String.fromCodePoint(0xfe0f),
+
+    __EMOJI_BOLT__: String.fromCodePoint(0x26a1),
+
+    __EMOJI_CAMERA__: String.fromCodePoint(0x1f4f8),
+
+    __EMOJI_HOURGLASS__: String.fromCodePoint(0x23f3),
+
+    __EMOJI_CHECK__: String.fromCodePoint(0x2705),
+
+    __EMOJI_DOWN__: String.fromCodePoint(0x1f447),
+
+    __EMOJI_PAUSE__:
+      String.fromCodePoint(0x23f8) +
+      String.fromCodePoint(0xfe0f),
+
+    __EMOJI_EYES__: String.fromCodePoint(0x1f440),
+
+    __EMOJI_CALENDAR__: String.fromCodePoint(0x1f4c5),
+
+    __EMOJI_NO__: String.fromCodePoint(0x1f6ab),
+
+    __EMOJI_LOCK__: String.fromCodePoint(0x1f512),
   };
+
+  // =========================================================
+  // 3. SUSTITUIR CADA MARCADOR
+  // =========================================================
+
+  Object.entries(emojis).forEach(
+    ([marcador, emoji]) => {
+      encoded = encoded.replaceAll(
+        encodeURIComponent(marcador),
+        encodeURIComponent(emoji)
+      );
+    }
+  );
+
+  return encoded;
+};
 
 // =========================================================
 // DETECTAR TELÉFONO / TABLET
