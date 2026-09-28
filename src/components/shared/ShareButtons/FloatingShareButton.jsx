@@ -48,6 +48,7 @@ function openPopup(url) {
 
 export default function FloatingShareButton({
   url,
+  whatsappUrl = "",
   title = "Evento",
   text = "",
 }) {
@@ -58,11 +59,48 @@ export default function FloatingShareButton({
     setMounted(true);
   }, []);
 
-  const safeUrl = useMemo(() => getAbsoluteUrl(url), [url]);
+  // =========================================================
+  // URL NORMAL
+  //
+  // Se conserva para:
+  // - compartir nativo
+  // - Facebook
+  // - X
+  // - Telegram
+  // - Instagram
+  // - copiar enlace
+  // =========================================================
+
+  const safeUrl = useMemo(
+    () => getAbsoluteUrl(url),
+    [url]
+  );
+
+  // =========================================================
+  // URL ESPECIAL DE WHATSAPP
+  //
+  // Si recibimos whatsappUrl, WhatsApp usa esa URL.
+  //
+  // Si NO recibimos whatsappUrl, utiliza safeUrl exactamente
+  // como lo hacía este componente anteriormente.
+  // =========================================================
+
+  const safeWhatsAppUrl = useMemo(() => {
+    if (!whatsappUrl) {
+      return safeUrl;
+    }
+
+    return getAbsoluteUrl(whatsappUrl);
+  }, [whatsappUrl, safeUrl]);
+
   const shareText = useMemo(
     () => text || `Mira este evento: ${title}`,
     [text, title]
   );
+
+  // =========================================================
+  // COMPARTIR NATIVO
+  // =========================================================
 
   const handleNativeShare = async () => {
     try {
@@ -76,6 +114,7 @@ export default function FloatingShareButton({
           text: shareText,
           url: safeUrl,
         });
+
         return true;
       }
     } catch (error) {
@@ -87,16 +126,45 @@ export default function FloatingShareButton({
     return false;
   };
 
+  // =========================================================
+  // ABRIR COMPARTIR
+  // =========================================================
+
   const handleOpenShareModal = async () => {
     const ok = await handleNativeShare();
-    if (!ok) setOpen(true);
+
+    if (!ok) {
+      setOpen(true);
+    }
   };
 
+  // =========================================================
+  // WHATSAPP
+  //
+  // IMPORTANTE:
+  // Conservamos EXACTAMENTE la estrategia que ya comprobamos
+  // que muestra correctamente los emojis:
+  //
+  // encodeURIComponent(`${shareText}\n${URL}`)
+  //
+  // La única diferencia es que ahora puede utilizar una URL
+  // especial mediante whatsappUrl.
+  // =========================================================
+
   const handleWhatsApp = () => {
+    const mensajeWhatsApp =
+      `${shareText}\n${safeWhatsAppUrl}`;
+
     openPopup(
-      `https://wa.me/?text=${encodeURIComponent(`${shareText}\n${safeUrl}`)}`
+      `https://wa.me/?text=${encodeURIComponent(
+        mensajeWhatsApp
+      )}`
     );
   };
+
+  // =========================================================
+  // FACEBOOK
+  // =========================================================
 
   const handleFacebook = () => {
     openPopup(
@@ -106,6 +174,10 @@ export default function FloatingShareButton({
     );
   };
 
+  // =========================================================
+  // X
+  // =========================================================
+
   const handleX = () => {
     openPopup(
       `https://x.com/intent/tweet?text=${encodeURIComponent(
@@ -113,6 +185,10 @@ export default function FloatingShareButton({
       )}&url=${encodeURIComponent(safeUrl)}`
     );
   };
+
+  // =========================================================
+  // TELEGRAM
+  // =========================================================
 
   const handleTelegram = () => {
     openPopup(
@@ -122,8 +198,14 @@ export default function FloatingShareButton({
     );
   };
 
+  // =========================================================
+  // INSTAGRAM
+  // =========================================================
+
   const handleInstagram = async () => {
-    const copied = await copyText(`${shareText}\n${safeUrl}`);
+    const copied = await copyText(
+      `${shareText}\n${safeUrl}`
+    );
 
     if (copied) {
       await Swal.fire({
@@ -131,6 +213,7 @@ export default function FloatingShareButton({
         title: "Enlace copiado",
         text: "Instagram no permite compartir enlaces directos desde la web. Ya copié el enlace para que lo pegues.",
       });
+
       openPopup("https://www.instagram.com/");
     } else {
       await Swal.fire({
@@ -140,6 +223,10 @@ export default function FloatingShareButton({
       });
     }
   };
+
+  // =========================================================
+  // COPIAR LINK
+  // =========================================================
 
   const handleCopyLink = async () => {
     const copied = await copyText(safeUrl);
@@ -161,7 +248,15 @@ export default function FloatingShareButton({
     }
   };
 
+  // =========================================================
+  // ESPERAR MONTAJE
+  // =========================================================
+
   if (!mounted) return null;
+
+  // =========================================================
+  // UI
+  // =========================================================
 
   return createPortal(
     <>
@@ -170,29 +265,31 @@ export default function FloatingShareButton({
         className="share-fab"
         onClick={handleOpenShareModal}
         aria-label="Compartir evento"
-style={{
-  position: "fixed",
-  left: "50%",
-  bottom: "12px",
-  transform: "translateX(-50%)",
-  zIndex: 99999,
-  width: "fit-content",
-  minWidth: "0",
-  padding: "5px 8px",
-  borderRadius: "999px",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  gap: "4px",
-  fontSize: "10px",
-  lineHeight: "1",
-  whiteSpace: "nowrap",
-  pointerEvents: "auto",
-  boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
-}}
+        style={{
+          position: "fixed",
+          left: "50%",
+          bottom: "12px",
+          transform: "translateX(-50%)",
+          zIndex: 99999,
+          width: "fit-content",
+          minWidth: "0",
+          padding: "5px 8px",
+          borderRadius: "999px",
+          display: "inline-flex",
+          alignItems: "center",
+          justifyContent: "center",
+          gap: "4px",
+          fontSize: "10px",
+          lineHeight: "1",
+          whiteSpace: "nowrap",
+          pointerEvents: "auto",
+          boxShadow: "0 4px 10px rgba(0,0,0,0.12)",
+        }}
       >
         <span className="share-fab-icon">📲</span>
-        <span className="share-fab-text">Compartir</span>
+        <span className="share-fab-text">
+          Compartir
+        </span>
       </button>
 
       {open && (
@@ -223,13 +320,16 @@ style={{
               background: "#fff",
               borderRadius: "18px",
               padding: "18px",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.25)",
+              boxShadow:
+                "0 20px 60px rgba(0,0,0,0.25)",
             }}
           >
             <div className="share-modal-header">
               <div>
                 <h3>Compartir evento</h3>
-                <p>Elige una red o copia el enlace</p>
+                <p>
+                  Elige una red o copia el enlace
+                </p>
               </div>
 
               <button
@@ -259,7 +359,11 @@ style={{
                 📘 Facebook
               </button>
 
-              <button type="button" className="share-btn x" onClick={handleX}>
+              <button
+                type="button"
+                className="share-btn x"
+                onClick={handleX}
+              >
                 𝕏 X
               </button>
 

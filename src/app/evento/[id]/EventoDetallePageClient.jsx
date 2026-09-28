@@ -805,10 +805,6 @@ const compartirFreeDrop = async () => {
       ? window.location.href
       : "");
 
-  // =========================================================
-  // DATOS
-  // =========================================================
-
   const nombreEvento =
     String(evento?.nombre || "Evento").trim();
 
@@ -833,55 +829,11 @@ const compartirFreeDrop = async () => {
   );
 
   // =========================================================
-  // URL PARA COMPARTIR
-  //
-  // En PC agregamos una versión diaria para ayudar a que
-  // WhatsApp vuelva a solicitar la vista previa Open Graph.
+  // MENSAJE
   // =========================================================
 
-  let urlCompartir = urlBase;
-
-  if (typeof window !== "undefined") {
-    try {
-      const urlObj = new URL(
-        urlBase,
-        window.location.origin
-      );
-
-      const ahora = new Date();
-
-      const versionDiaria =
-        `${ahora.getFullYear()}` +
-        `${String(ahora.getMonth() + 1).padStart(2, "0")}` +
-        `${String(ahora.getDate()).padStart(2, "0")}`;
-
-      urlObj.searchParams.set(
-        "share",
-        versionDiaria
-      );
-
-      urlCompartir = urlObj.toString();
-    } catch (error) {
-      console.warn(
-        "No se pudo generar la versión del enlace para WhatsApp:",
-        error
-      );
-    }
-  }
-
-  // =========================================================
-  // CONSTRUIR MENSAJE
-  //
-  // IMPORTANTE:
-  // Usamos emojis literales, igual que FloatingShareButton.
-  // =========================================================
-
-  const construirMensaje = (urlFinal) => {
+  const construirTexto = () => {
     switch (freeDropEstado) {
-      // =====================================================
-      // ACTIVO
-      // =====================================================
-
       case "activo":
         return `🔥 *${nombreEvento}*
 
@@ -897,12 +849,7 @@ const compartirFreeDrop = async () => {
 
 ✅ *PARTICIPA DESDE LA PÁGINA OFICIAL*
 
-👇 Entra aquí:
-${urlFinal}`;
-
-      // =====================================================
-      // PAUSADO
-      // =====================================================
+👇 Entra aquí:`;
 
       case "pausado":
         return `🔥 *${nombreEvento}*
@@ -915,12 +862,7 @@ ${urlFinal}`;
 
 👀 Entra a la página oficial para consultar cuándo vuelve a estar disponible.
 
-👇 Ver evento:
-${urlFinal}`;
-
-      // =====================================================
-      // PROGRAMADO
-      // =====================================================
+👇 Ver evento:`;
 
       case "programado": {
         const fechaProgramada =
@@ -945,13 +887,8 @@ ${urlFinal}`;
 
 👀 Entra a la página oficial para consultar el estado y los requisitos.
 
-👇 Ver evento:
-${urlFinal}`;
+👇 Ver evento:`;
       }
-
-      // =====================================================
-      // AGOTADO
-      // =====================================================
 
       case "agotado":
         return `🔥 *${nombreEvento}*
@@ -964,12 +901,7 @@ ${urlFinal}`;
 
 👀 Entra a la página oficial para consultar próximos FREE DROPS.
 
-👇 Ver evento:
-${urlFinal}`;
-
-      // =====================================================
-      // CERRADO
-      // =====================================================
+👇 Ver evento:`;
 
       case "cerrado":
         return `🔥 *${nombreEvento}*
@@ -982,12 +914,7 @@ ${urlFinal}`;
 
 👀 Entra a la página oficial para consultar futuras oportunidades.
 
-👇 Ver evento:
-${urlFinal}`;
-
-      // =====================================================
-      // DESACTIVADO / SIN ACTIVO
-      // =====================================================
+👇 Ver evento:`;
 
       case "desactivado":
       case "sin_activo":
@@ -1000,13 +927,12 @@ ${urlFinal}`;
 
 👀 Entra a la página oficial y mantente pendiente de los próximos FREE DROPS.
 
-👇 Ver evento:
-${urlFinal}`;
+👇 Ver evento:`;
     }
   };
 
   // =========================================================
-  // MÓVIL
+  // DETECTAR MÓVIL
   // =========================================================
 
   const esDispositivoMovil =
@@ -1018,24 +944,22 @@ ${urlFinal}`;
       )
     );
 
+  // =========================================================
+  // TELÉFONOS
+  //
+  // Conservamos el comportamiento que ya estaba funcionando.
+  // =========================================================
+
   if (
     esDispositivoMovil &&
     typeof navigator !== "undefined" &&
     typeof navigator.share === "function"
   ) {
     try {
-      /*
-       * Igual que FloatingShareButton:
-       * texto y URL se mandan por separado.
-       */
-      const textoMovil =
-        construirMensaje("")
-          .trim();
-
       await navigator.share({
         title: nombreEvento,
-        text: textoMovil,
-        url: urlCompartir,
+        text: construirTexto(),
+        url: urlBase,
       });
 
       return;
@@ -1052,24 +976,60 @@ ${urlFinal}`;
   }
 
   // =========================================================
-  // PC / LAPTOP / WHATSAPP WEB
+  // LAPTOP / PC
   //
-  // MISMA ESTRATEGIA QUE FloatingShareButton:
-  //
-  // encodeURIComponent(texto completo)
-  //
-  // Sin marcadores.
-  // Sin String.fromCodePoint().
-  // Sin reemplazos manuales.
+  // Generamos URL especial SOLO para WhatsApp.
+  // Esto evita la vista previa vieja que WhatsApp tenía
+  // guardada en caché.
   // =========================================================
 
   if (typeof window !== "undefined") {
-    const textoWhatsApp =
-      construirMensaje(urlCompartir);
+    let urlWhatsApp = urlBase;
+
+    try {
+      const urlObj = new URL(
+        urlBase,
+        window.location.origin
+      );
+
+      const ahora = new Date();
+
+      const versionDiaria =
+        `${ahora.getFullYear()}` +
+        `${String(ahora.getMonth() + 1).padStart(2, "0")}` +
+        `${String(ahora.getDate()).padStart(2, "0")}`;
+
+      urlObj.searchParams.set(
+        "share",
+        versionDiaria
+      );
+
+      urlWhatsApp = urlObj.toString();
+    } catch (error) {
+      console.warn(
+        "No se pudo generar la URL de WhatsApp:",
+        error
+      );
+    }
+
+    // =======================================================
+    // MISMO FORMATO QUE FloatingShareButton
+    //
+    // 1. Texto normal con emojis.
+    // 2. Salto de línea.
+    // 3. URL.
+    // 4. encodeURIComponent UNA SOLA VEZ.
+    // =======================================================
+
+    const shareText =
+      construirTexto();
+
+    const mensajeWhatsApp =
+      `${shareText}\n${urlWhatsApp}`;
 
     const whatsappUrl =
       `https://wa.me/?text=${encodeURIComponent(
-        textoWhatsApp
+        mensajeWhatsApp
       )}`;
 
     window.open(
