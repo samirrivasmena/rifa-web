@@ -1047,17 +1047,39 @@ ${urlCompartir}`;
     return encoded;
   };
 
-  // =========================================================
-  // MÓVIL / COMPARTIR NATIVO
-  //
-  // En móvil conservamos el enlace normal.
-  // No agregamos ninguna versión de caché aquí.
-  // =========================================================
+// =========================================================
+// DETECTAR TELÉFONO / TABLET
+//
+// IMPORTANTE:
+// Algunos navegadores de laptop, especialmente Chrome,
+// también soportan navigator.share.
+//
+// Por eso NO podemos usar navigator.share por sí solo
+// para decidir que estamos en un teléfono.
+// =========================================================
 
-  if (
-    typeof navigator !== "undefined" &&
-    typeof navigator.share === "function"
-  ) {
+const esDispositivoMovil =
+  typeof navigator !== "undefined" &&
+  (
+    navigator.userAgentData?.mobile === true ||
+    /Android|iPhone|iPad|iPod|Mobile/i.test(
+      navigator.userAgent || ""
+    )
+  );
+
+// =========================================================
+// MÓVIL / COMPARTIR NATIVO
+//
+// Solo teléfonos/tablets entran aquí.
+// En móvil conservamos exactamente el comportamiento
+// que ya está funcionando correctamente.
+// =========================================================
+
+if (
+  esDispositivoMovil &&
+  typeof navigator !== "undefined" &&
+  typeof navigator.share === "function"
+) {
     try {
       const textoMovil =
         construirMensaje(urlBase);
