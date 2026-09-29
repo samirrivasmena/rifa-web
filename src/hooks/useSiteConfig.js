@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-const INTERVALO_ACTUALIZACION = 3000;
 const STORAGE_KEY = "site-config-updated";
 
 export function useSiteConfig() {
@@ -23,17 +22,14 @@ export function useSiteConfig() {
         setErrorConfig(null);
       }
 
-      const res = await fetch(
-        `/api/configuracion-publica?_=${Date.now()}`,
-        {
-          method: "GET",
-          cache: "no-store",
-          headers: {
-            "Cache-Control": "no-cache, no-store, max-age=0",
-            Pragma: "no-cache",
-          },
-        }
-      );
+      const res = await fetch("/api/configuracion-publica", {
+        method: "GET",
+        cache: "no-store",
+        headers: {
+          "Cache-Control": "no-cache, no-store, max-age=0",
+          Pragma: "no-cache",
+        },
+      });
 
       const data = await res.json();
 
@@ -78,29 +74,20 @@ export function useSiteConfig() {
     // Primera carga
     cargarConfig();
 
-    // Actualización automática cada 3 segundos
-    const intervalo = setInterval(() => {
-      cargarConfig({ silent: true });
-    }, INTERVALO_ACTUALIZACION);
-
-    // Si el usuario vuelve a la pestaña
+    // Si el usuario vuelve a la pestaña,
+    // comprobamos si hubo cambios mientras estaba fuera.
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
         cargarConfig({ silent: true });
       }
     };
 
-    // Si la ventana vuelve a tener foco
-    const handleFocus = () => {
-      cargarConfig({ silent: true });
-    };
-
-    // Si desde Admin se dispara una actualización manual
+    // Si desde Admin se dispara una actualización manual.
     const handleSiteConfigUpdated = () => {
       cargarConfig({ silent: true });
     };
 
-    // Si otra pestaña cambia la configuración usando localStorage
+    // Si otra pestaña cambia la configuración usando localStorage.
     const handleStorage = (event) => {
       if (event.key === STORAGE_KEY) {
         cargarConfig({ silent: true });
@@ -111,16 +98,25 @@ export function useSiteConfig() {
       "visibilitychange",
       handleVisibilityChange
     );
-    window.addEventListener("focus", handleFocus);
+
     window.addEventListener(
       "site-config-updated",
       handleSiteConfigUpdated
     );
-    window.addEventListener("storage", handleStorage);
 
-    // BroadcastChannel si está disponible
-    if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-      channelRef.current = new BroadcastChannel("site-config-channel");
+    window.addEventListener(
+      "storage",
+      handleStorage
+    );
+
+    // BroadcastChannel para sincronizar cambios entre pestañas.
+    if (
+      typeof window !== "undefined" &&
+      "BroadcastChannel" in window
+    ) {
+      channelRef.current = new BroadcastChannel(
+        "site-config-channel"
+      );
 
       channelRef.current.onmessage = (event) => {
         if (event?.data?.type === "site-config-updated") {
@@ -131,18 +127,21 @@ export function useSiteConfig() {
 
     return () => {
       mountedRef.current = false;
-      clearInterval(intervalo);
 
       document.removeEventListener(
         "visibilitychange",
         handleVisibilityChange
       );
-      window.removeEventListener("focus", handleFocus);
+
       window.removeEventListener(
         "site-config-updated",
         handleSiteConfigUpdated
       );
-      window.removeEventListener("storage", handleStorage);
+
+      window.removeEventListener(
+        "storage",
+        handleStorage
+      );
 
       if (channelRef.current) {
         channelRef.current.close();
