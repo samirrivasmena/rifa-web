@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
 
 // ============================================================
 // SUPABASE SERVER
@@ -694,79 +693,39 @@ export async function POST(req) {
       dropActivo.nombre ||
       `FREE DROP #${dropActivo.numero_drop}`;
 
-    const numeroParticipacion =
-      Number(resultado.numero_ticket);
+const tieneNumeroParticipacion =
+  resultado.numero_ticket !== null &&
+  resultado.numero_ticket !== undefined &&
+  resultado.numero_ticket !== "";
 
-    const numeroFormateado =
-      `#${String(
-        numeroParticipacion
-      ).padStart(
+const numeroParticipacion =
+  tieneNumeroParticipacion
+    ? Number(resultado.numero_ticket)
+    : null;
+
+const numeroFormateado =
+  numeroParticipacion !== null &&
+  Number.isFinite(numeroParticipacion)
+    ? `#${String(numeroParticipacion).padStart(
         padLength,
         "0"
-      )}`;
+      )}`
+    : null;
 
-    // ========================================================
-    // 10. EMAIL
-    //
-    // IMPORTANTE:
-    // La transacción YA terminó correctamente.
-    //
-    // Si falla el email, NO liberamos el ticket y NO borramos
-    // la participación.
-    // ========================================================
+// ========================================================
+// 10. EMAIL
+//
+// NUEVO FLUJO:
+//
+// Al registrarse NO se envía correo de ticket.
+// La participación queda PENDIENTE y sin número.
+//
+// El correo definitivo se envía únicamente después
+// de que Admin APRUEBA la participación y el backend
+// asigna el número oficial.
+// ========================================================
 
-    const baseUrl =
-      getSiteBaseUrl(req);
-
-    const verificarUrl =
-      baseUrl
-        ? `${baseUrl}/principal`
-        : "/principal";
-
-    const eventoUrl =
-      baseUrl
-        ? `${baseUrl}/evento/${dropActivo.rifa_id}`
-        : `/evento/${dropActivo.rifa_id}`;
-
-    let emailEnviado = false;
-
-    try {
-      await sendFreeDropConfirmationEmail({
-        to: email,
-
-        nombre:
-          `${nombre} ${apellido}`.trim(),
-
-        eventoNombre,
-
-        freeDropNombre,
-
-        numeroParticipacion,
-
-        codigoFree:
-          resultado.codigo_unico ||
-          codigoUnico,
-
-        estado:
-          estadoVisual,
-
-        fechaIso:
-          new Date().toISOString(),
-
-        verificarUrl,
-        eventoUrl,
-        padLength,
-      });
-
-      emailEnviado = true;
-    } catch (emailError) {
-      console.error(
-        "No se pudo enviar el correo FREE:",
-        emailError
-      );
-
-      emailEnviado = false;
-    }
+const emailEnviado = false;
 
     // ========================================================
     // 11. RESPUESTA COMPATIBLE CON TU FRONTEND ACTUAL

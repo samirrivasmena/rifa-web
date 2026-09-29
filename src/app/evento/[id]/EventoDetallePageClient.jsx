@@ -776,7 +776,7 @@ export default function EventoDetallePageClient() {
     : participacionGuardadaPendiente
     ? "PARTICIPACIÓN PENDIENTE"
     : participacionGuardadaValida
-    ? "TU PARTICIPACIÓN GRATIS YA FUE VALIDA"
+    ? "TU PARTICIPACIÓN GRATIS FUE APROBADA✅"
     : "CONSULTAR PARTICIPACIÓN";
 
   const mostrarFreeDrop = true;
@@ -2684,16 +2684,22 @@ const registrarParticipacionGratis = async (e) => {
                 <strong>FREE DROP:</strong> {freeDropConfirmacion.freeDrop}
               </p>
 
-              <p>
-                <strong>NÚMERO DE PARTICIPACIÓN:</strong>{" "}
-                <span style={{ fontSize: "22px", fontWeight: 800 }}>
-                  #
-                  {String(freeDropConfirmacion.numeroParticipacion || "").padStart(
-                    padLength,
-                    "0"
-                  )}
-                </span>
-              </p>
+<p>
+  <strong>NÚMERO DE PARTICIPACIÓN:</strong>{" "}
+  {freeDropConfirmacion.numeroParticipacion != null ? (
+    <span style={{ fontSize: "22px", fontWeight: 800 }}>
+      #
+      {String(freeDropConfirmacion.numeroParticipacion).padStart(
+        padLength,
+        "0"
+      )}
+    </span>
+  ) : (
+    <span style={{ fontWeight: 800 }}>
+      PENDIENTE DE ASIGNACIÓN
+    </span>
+  )}
+</p>
 
               <p>
                 <strong>CÓDIGO DE VERIFICACIÓN:</strong>{" "}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "../../../lib/requireAdmin";
+import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
 
 function getSupabaseServerClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -178,6 +179,13 @@ function getRpcErrorResponse(error) {
         "El ticket ya no corresponde correctamente con esta participación FREE",
     };
   }
+  if (contenido.includes("FREE_NO_TICKETS_AVAILABLE")) {
+  return {
+    status: 409,
+    message:
+      "No quedan números disponibles para aprobar esta participación.",
+  };
+}
 
   if (contenido.includes("FREE_NOT_PENDING")) {
     return {
@@ -926,23 +934,378 @@ export async function PATCH(req) {
     |--------------------------------------------------------------------------
     */
 
-    let message =
-      "Participación actualizada correctamente";
+let message =
+  "Participación actualizada correctamente";
 
-    if (action === "aprobar") {
-      message =
-        "Participación aprobada correctamente";
+let emailEnviado = null;
+let emailError = null;
+
+/*
+|--------------------------------------------------------------------------
+| APROBAR
+|--------------------------------------------------------------------------
+|
+| El RPC ya terminó correctamente antes de llegar aquí.
+|
+| Ahora:
+| 1. cargamos la participación ya aprobada
+| 2. obtenemos el ticket REAL que acaba de asignarse
+| 3. cargamos FREE DROP + rifa
+| 4. enviamos el correo de confirmación
+|
+| IMPORTANTE:
+| Si el correo falla, NO deshacemos la aprobación.
+| La participación y el número asignado siguen siendo válidos.
+|
+*/
+
+if (action === "aprobar") {
+  message =
+    "Participación aprobada correctamente";
+
+  try {
+    /*
+    |--------------------------------------------------------------------------
+    | Participación aprobada
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: participacionAprobada,
+      error: participacionError,
+    } = await supabase
+      .from("free_drop_participations")
+      .select(`
+        id,
+        rifa_id,
+        free_drop_id,
+        ticket_id,
+        nombre,
+        apellido,
+        email,
+        telefono,
+        codigo_unico,
+        estado,
+        created_at,
+        updated_at
+      `)
+      .eq("id", participationIdNumber)
+      .eq("rifa_id", rifaId)
+      .maybeSingle();
+
+    if (participacionError) {
+      throw new Error(
+        participacionError.message ||
+          "No se pudo cargar la participación aprobada"
+      );
     }
 
-    if (action === "rechazar") {
-      message =
-        "Participación rechazada correctamente";
+    if (!participacionAprobada) {
+      throw new Error(
+        "No se encontró la participación después de aprobarla"
+      );
     }
 
-    if (action === "anular") {
-      message =
-        "Participación anulada correctamente";
+    if (!participacionAprobada.ticket_id) {
+      throw new Error(
+        "La participación fue aprobada pero no tiene un ticket asignado"
+      );
     }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ticket REAL asignado por el RPC
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: ticketAsignado,
+      error: ticketError,
+    } = await supabase
+      .from("tickets")
+      .select(`
+        id,
+        numero_ticket,
+        estado,
+        tipo
+      `)
+      .eq("id", participacionAprobada.ticket_id)
+      .maybeSingle();
+
+    if (ticketError) {
+      throw new Error(
+        ticketError.message ||
+          "No se pudo cargar el ticket asignado"
+      );
+    }
+
+    if (!ticketAsignado) {
+      throw new Error(
+        "No se encontró el ticket asignado a la participación"
+      );
+    }
+
+    if (
+      ticketAsignado.numero_ticket === null ||
+      ticketAsignado.numero_ticket === undefined
+    ) {
+      throw new Error(
+        "El ticket asignado no tiene número"
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | FREE DROP
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: dropAprobado,
+      error: dropError,
+    } = await supabase
+      .from("free_drops")
+      .select(`
+        id,
+        rifa_id,
+        nombre,
+        numero_drop
+      `)
+      .eq("id", participacionAprobada.free_drop_id)
+      .maybeSingle();
+
+    if (dropError) {
+      throw new Error(
+        dropError.message ||
+          "No se pudo cargar el FREE DROP"
+      );
+    }
+
+    if (!dropAprobado) {
+      throw new Error(
+        "No se encontró el FREE DROP de la participación"
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Rifa / Evento
+    |--------------------------------------------------------------------------
+    */
+
+    const {
+      data: rifaAprobada,
+      error: rifaError,
+    } = await supabase
+      .from("rifas")
+      .select(`
+        id,
+        nombre,
+        formato
+      `)
+      .eq("id", rifaId)
+      .maybeSingle();
+
+    if (rifaError) {
+      throw new Error(
+        rifaError.message ||
+          "No se pudo cargar la rifa"
+      );
+    }
+
+    if (!rifaAprobada) {
+      throw new Error(
+        "No se encontró la rifa de la participación"
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Datos para el correo
+    |--------------------------------------------------------------------------
+    */
+
+    const nombreCompleto = [
+      limpiarTexto(participacionAprobada.nombre),
+      limpiarTexto(participacionAprobada.apellido),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    const freeDropNombre =
+      limpiarTexto(dropAprobado.nombre) ||
+      `FREE DROP #${dropAprobado.numero_drop || ""}`;
+
+    const eventoNombre =
+      limpiarTexto(rifaAprobada.nombre) ||
+      "Evento";
+
+    const padLength =
+      rifaAprobada.formato === "3digitos"
+        ? 3
+        : 4;
+
+    /*
+    |--------------------------------------------------------------------------
+    | URLs
+    |--------------------------------------------------------------------------
+    */
+
+    const envBase =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.SITE_URL ||
+      process.env.VERCEL_URL ||
+      "";
+
+    let baseUrl =
+      limpiarTexto(envBase);
+
+    if (!baseUrl) {
+      baseUrl =
+        limpiarTexto(
+          req.headers.get("origin")
+        );
+    }
+
+    if (
+      baseUrl &&
+      !/^https?:\/\//i.test(baseUrl)
+    ) {
+      baseUrl =
+        `https://${baseUrl}`;
+    }
+
+    try {
+      baseUrl =
+        baseUrl
+          ? new URL(baseUrl).origin
+          : "";
+    } catch {
+      baseUrl = "";
+    }
+
+    const verificarUrl =
+      baseUrl
+        ? `${baseUrl}/principal`
+        : "/principal";
+
+    const eventoUrl =
+      baseUrl
+        ? `${baseUrl}/evento/${rifaId}`
+        : `/evento/${rifaId}`;
+
+    /*
+    |--------------------------------------------------------------------------
+    | Enviar correo
+    |--------------------------------------------------------------------------
+    */
+
+    await sendFreeDropConfirmationEmail({
+      to: participacionAprobada.email,
+
+      nombre:
+        nombreCompleto ||
+        participacionAprobada.nombre ||
+        "cliente",
+
+      eventoNombre,
+
+      freeDropNombre,
+
+      numeroParticipacion:
+        ticketAsignado.numero_ticket,
+
+      codigoFree:
+        participacionAprobada.codigo_unico,
+
+      estado: "VÁLIDA",
+
+      fechaIso:
+        participacionAprobada.updated_at ||
+        participacionAprobada.created_at ||
+        new Date().toISOString(),
+
+      verificarUrl,
+
+      eventoUrl,
+
+      padLength,
+    });
+
+    emailEnviado = true;
+
+    console.log(
+      "Correo FREE de aprobación enviado:",
+      {
+        participationId:
+          participationIdNumber,
+
+        email:
+          participacionAprobada.email,
+
+        codigoFree:
+          participacionAprobada.codigo_unico,
+
+        numeroTicket:
+          ticketAsignado.numero_ticket,
+      }
+    );
+  } catch (errorCorreo) {
+    /*
+    |--------------------------------------------------------------------------
+    | MUY IMPORTANTE
+    |--------------------------------------------------------------------------
+    |
+    | Llegar aquí NO significa que la aprobación falló.
+    |
+    | El RPC ya confirmó la participación y asignó el ticket.
+    | Solamente falló el correo o la carga de datos para el correo.
+    |
+    */
+
+    emailEnviado = false;
+
+    emailError =
+      errorCorreo?.message ||
+      "No se pudo enviar el correo de aprobación";
+
+    console.error(
+      "La participación FREE fue aprobada, pero el correo no pudo enviarse:",
+      {
+        participationId:
+          participationIdNumber,
+
+        rifaId,
+
+        error:
+          errorCorreo,
+      }
+    );
+  }
+}
+
+/*
+|--------------------------------------------------------------------------
+| RECHAZAR
+|--------------------------------------------------------------------------
+*/
+
+if (action === "rechazar") {
+  message =
+    "Participación rechazada correctamente";
+}
+
+/*
+|--------------------------------------------------------------------------
+| ANULAR
+|--------------------------------------------------------------------------
+*/
+
+if (action === "anular") {
+  message =
+    "Participación anulada correctamente";
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -963,11 +1326,22 @@ export async function PATCH(req) {
     |
     */
 
-    return NextResponse.json({
-      ok: true,
-      message,
-      resultado,
-    });
+return NextResponse.json({
+  ok: true,
+  message,
+  resultado,
+
+  email_enviado:
+    action === "aprobar"
+      ? emailEnviado
+      : null,
+
+  email_error:
+    action === "aprobar" &&
+    emailEnviado === false
+      ? emailError
+      : null,
+});
   } catch (error) {
     console.error(
       "Error en PATCH admin free drop participations:",
