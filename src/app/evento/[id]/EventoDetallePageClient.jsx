@@ -438,8 +438,8 @@ export default function EventoDetallePageClient() {
             const actualizado = {
               ...parsed,
               estado: estadoServidor || parsed?.estado,
-              numeroParticipacion:
-                participacion?.numero_participacion ?? parsed?.numeroParticipacion,
+numeroParticipacion:
+  participacion?.numero_participacion ?? null,
               codigoFree: participacion?.codigo || codigoGuardado,
               fecha: participacion?.fecha_iso || parsed?.fecha,
               freeDrop: participacion?.free_drop || parsed?.freeDrop,

@@ -88,25 +88,32 @@ export async function POST(req) {
       return responderError("Código FREE no encontrado", 404);
     }
 
-    const [eventoRes, dropRes, ticketRes] = await Promise.all([
-      supabase
-        .from("rifas")
-        .select("id, nombre, formato")
-        .eq("id", participacion.rifa_id)
-        .maybeSingle(),
+const ticketPromise = participacion.ticket_id
+  ? supabase
+      .from("tickets")
+      .select("id, numero_ticket")
+      .eq("id", participacion.ticket_id)
+      .maybeSingle()
+  : Promise.resolve({
+      data: null,
+      error: null,
+    });
 
-      supabase
-        .from("free_drops")
-        .select("id, nombre, numero_drop")
-        .eq("id", participacion.free_drop_id)
-        .maybeSingle(),
+const [eventoRes, dropRes, ticketRes] = await Promise.all([
+  supabase
+    .from("rifas")
+    .select("id, nombre, formato")
+    .eq("id", participacion.rifa_id)
+    .maybeSingle(),
 
-      supabase
-        .from("tickets")
-        .select("id, numero_ticket")
-        .eq("id", participacion.ticket_id)
-        .maybeSingle(),
-    ]);
+  supabase
+    .from("free_drops")
+    .select("id, nombre, numero_drop")
+    .eq("id", participacion.free_drop_id)
+    .maybeSingle(),
+
+  ticketPromise,
+]);
 
     if (eventoRes.error) {
       console.error("Error cargando evento:", eventoRes.error);
