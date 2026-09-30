@@ -9747,3 +9747,1398 @@ input[type="number"]::-webkit-outer-spin-button {
     grid-template-columns: 1fr;
   }
 }
+/* =========================================================
+   DASHBOARD INTERACTIVO — DETALLES / BUSCADOR / TICKETS
+   PEGAR AL FINAL DEL CSS DEL ADMIN
+========================================================= */
+
+.adminpro-kpi-card {
+  width: 100%;
+  min-width: 0;
+  text-align: left;
+  font-family: inherit;
+}
+
+.adminpro-kpi-card.clickable {
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+}
+
+.adminpro-kpi-card.clickable:active {
+  transform: translateY(0) scale(0.985);
+}
+
+.adminpro-kpi-card:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.3);
+  outline-offset: 3px;
+}
+
+.adminpro-kpi-content {
+  min-width: 0;
+  flex: 1;
+}
+
+.adminpro-kpi-content p,
+.adminpro-kpi-content h3 {
+  overflow-wrap: anywhere;
+}
+
+/* PANEL PRINCIPAL */
+
+.adminpro-dashboard-detail {
+  overflow: hidden;
+}
+
+.adminpro-dashboard-detail-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.adminpro-dashboard-detail-title {
+  min-width: 0;
+  flex: 1;
+}
+
+.adminpro-dashboard-detail-eyebrow {
+  display: block;
+  margin-bottom: 7px;
+  color: #818cf8;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.1em;
+}
+
+.adminpro-dashboard-detail-title h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(22px, 3vw, 30px);
+  line-height: 1.15;
+}
+
+.adminpro-dashboard-detail-title p {
+  margin: 8px 0 0;
+  color: #9ca3af;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.adminpro-dashboard-close {
+  flex-shrink: 0;
+}
+
+/* RESUMEN DE TICKETS */
+
+.adminpro-ticket-summary {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.adminpro-ticket-summary > div {
+  min-width: 0;
+  padding: 16px;
+  border-radius: 18px;
+  background: #1d1d24;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adminpro-ticket-summary span {
+  display: block;
+  margin-bottom: 7px;
+  color: #9ca3af;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adminpro-ticket-summary strong {
+  display: block;
+  color: #fff;
+  font-size: 23px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+/* BUSCADOR + FILTROS */
+
+.adminpro-ticket-tools {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.adminpro-number-search {
+  width: min(300px, 100%);
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px;
+  border-radius: 15px;
+  background: #0d0d11;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.adminpro-number-search:focus-within {
+  border-color: rgba(99, 102, 241, 0.7);
+  box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+}
+
+.adminpro-number-search-icon {
+  flex-shrink: 0;
+  font-size: 15px;
+}
+
+.adminpro-number-search input {
+  width: 100%;
+  min-width: 0;
+  height: 46px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: #fff;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.adminpro-number-search input::placeholder {
+  color: #6b7280;
+}
+
+.adminpro-number-search button {
+  width: 30px;
+  height: 30px;
+  flex: 0 0 30px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #d1d5db;
+  cursor: pointer;
+  font-size: 20px;
+  line-height: 1;
+}
+
+.adminpro-number-search button:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.adminpro-ticket-filter-tabs {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px;
+  border-radius: 15px;
+  background: #0d0d11;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adminpro-ticket-filter-tabs button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 11px;
+  background: transparent;
+  color: #9ca3af;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  transition: 0.18s ease;
+}
+
+.adminpro-ticket-filter-tabs button:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.adminpro-ticket-filter-tabs button.active {
+  background: #26262f;
+  color: #fff;
+  box-shadow: 0 7px 16px rgba(0, 0, 0, 0.22);
+}
+
+.adminpro-ticket-filter-tabs button span {
+  min-width: 22px;
+  height: 22px;
+  display: inline-grid;
+  place-items: center;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  font-size: 10px;
+}
+
+/* RESULTADO DEL BUSCADOR */
+
+.adminpro-ticket-search-result {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+  padding: 15px 17px;
+  border-radius: 17px;
+}
+
+.adminpro-ticket-search-result.available {
+  background: rgba(16, 185, 129, 0.09);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+}
+
+.adminpro-ticket-search-result.occupied {
+  background: rgba(59, 130, 246, 0.09);
+  border: 1px solid rgba(59, 130, 246, 0.22);
+}
+
+.adminpro-ticket-search-result.invalid {
+  background: rgba(245, 158, 11, 0.09);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+}
+
+.adminpro-ticket-search-result-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.07);
+  font-size: 18px;
+}
+
+.adminpro-ticket-search-result > div:last-child {
+  min-width: 0;
+}
+
+.adminpro-ticket-search-result strong {
+  display: block;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+}
+
+.adminpro-ticket-search-result p {
+  margin: 4px 0 0;
+  color: #a1a1aa;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+/* GRID DE DETALLES */
+
+.adminpro-ticket-detail-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns:
+    repeat(auto-fit, minmax(310px, 1fr));
+  gap: 16px;
+}
+
+.adminpro-ticket-detail-card {
+  min-width: 0;
+  overflow: hidden;
+  border-radius: 22px;
+  background: #17171d;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  box-shadow: 0 16px 34px rgba(0, 0, 0, 0.24);
+}
+
+.adminpro-ticket-detail-card.is-free {
+  border-color: rgba(34, 197, 94, 0.2);
+}
+
+.adminpro-ticket-detail-card.is-paid {
+  border-color: rgba(59, 130, 246, 0.18);
+}
+
+.adminpro-ticket-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 18px;
+  background: rgba(255, 255, 255, 0.025);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adminpro-ticket-number-wrap {
+  min-width: 0;
+}
+
+.adminpro-ticket-number-label {
+  display: block;
+  margin-bottom: 4px;
+  color: #71717a;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.adminpro-ticket-number-big {
+  display: block;
+  color: #fff;
+  font-size: 29px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.03em;
+}
+
+.adminpro-ticket-type-badge {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.adminpro-ticket-type-badge.free {
+  color: #bbf7d0;
+  background: rgba(34, 197, 94, 0.12);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+}
+
+.adminpro-ticket-type-badge.paid {
+  color: #bfdbfe;
+  background: rgba(59, 130, 246, 0.12);
+  border: 1px solid rgba(59, 130, 246, 0.2);
+}
+
+.adminpro-ticket-detail-body {
+  padding: 8px 18px 18px;
+}
+
+.adminpro-ticket-data-row {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: minmax(90px, 0.7fr) minmax(0, 1.3fr);
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.adminpro-ticket-data-row span {
+  color: #71717a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.adminpro-ticket-data-row strong {
+  min-width: 0;
+  color: #e5e7eb;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 800;
+  text-align: right;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.adminpro-ticket-technical {
+  margin-top: 14px;
+  padding: 13px;
+  border-radius: 14px;
+  background: #0d0d11;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.adminpro-ticket-technical > div + div {
+  margin-top: 10px;
+}
+
+.adminpro-ticket-technical span {
+  display: block;
+  margin-bottom: 4px;
+  color: #52525b;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.adminpro-ticket-technical strong {
+  display: block;
+  color: #a1a1aa;
+  font-size: 11px;
+  line-height: 1.4;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+/* MONTO APROBADO */
+
+.adminpro-money-summary {
+  width: 100%;
+  margin-bottom: 20px;
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(16, 185, 129, 0.12),
+      rgba(59, 130, 246, 0.05)
+    );
+  border: 1px solid rgba(16, 185, 129, 0.18);
+}
+
+.adminpro-money-summary span {
+  display: block;
+  margin-bottom: 8px;
+  color: #a7f3d0;
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.adminpro-money-summary strong {
+  display: block;
+  color: #fff;
+  font-size: clamp(30px, 5vw, 44px);
+  line-height: 1;
+  font-weight: 950;
+}
+
+.adminpro-money-summary small {
+  display: block;
+  margin-top: 9px;
+  color: #9ca3af;
+  font-size: 13px;
+}
+
+/* VACÍO */
+
+.adminpro-dashboard-empty {
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 28px;
+  text-align: center;
+  border-radius: 20px;
+  background: #111116;
+  border: 1px dashed rgba(255, 255, 255, 0.09);
+}
+
+.adminpro-dashboard-empty > span {
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+
+.adminpro-dashboard-empty strong {
+  color: #fff;
+  font-size: 15px;
+  font-weight: 900;
+}
+
+.adminpro-dashboard-empty p {
+  max-width: 420px;
+  margin: 6px 0 0;
+  color: #71717a;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 980px) {
+  .adminpro-ticket-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .adminpro-ticket-detail-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   TELÉFONOS
+========================================================= */
+
+@media (max-width: 700px) {
+  /*
+   * Sobrescribe la regla anterior del CSS que convertía
+   * los KPI en una sola columna.
+   * En teléfono dejamos 2 tarjetas por fila.
+   */
+  .adminpro-kpi-grid {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  .adminpro-kpi-card {
+    min-height: 108px;
+    padding: 14px 12px !important;
+    gap: 10px;
+    border-radius: 18px;
+    align-items: flex-start;
+  }
+
+  .adminpro-kpi-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+    font-size: 15px;
+  }
+
+  .adminpro-kpi-content p {
+    padding-right: 13px;
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  .adminpro-kpi-content h3 {
+    font-size: 19px;
+    line-height: 1.1;
+  }
+
+  .adminpro-kpi-click-hint {
+    top: 10px;
+    right: 10px;
+    font-size: 11px;
+  }
+
+  .adminpro-dashboard-detail {
+    padding: 16px !important;
+  }
+
+  .adminpro-dashboard-detail-header {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .adminpro-dashboard-close {
+    width: 100%;
+  }
+
+  .adminpro-ticket-summary {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .adminpro-ticket-summary > div {
+    padding: 13px;
+    border-radius: 15px;
+  }
+
+  .adminpro-ticket-summary strong {
+    font-size: 20px;
+  }
+
+  .adminpro-ticket-tools {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .adminpro-number-search {
+    width: 100%;
+  }
+
+  .adminpro-ticket-filter-tabs {
+    width: 100%;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .adminpro-ticket-filter-tabs::-webkit-scrollbar {
+    display: none;
+  }
+
+  .adminpro-ticket-filter-tabs button {
+    flex: 1 0 auto;
+    min-width: 0;
+  }
+
+  .adminpro-ticket-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .adminpro-ticket-detail-head {
+    padding: 15px;
+  }
+
+  .adminpro-ticket-detail-body {
+    padding: 6px 15px 15px;
+  }
+
+  .adminpro-ticket-number-big {
+    font-size: 26px;
+  }
+
+  .adminpro-ticket-search-result {
+    align-items: flex-start;
+    padding: 13px;
+  }
+
+  .adminpro-money-summary {
+    padding: 18px;
+  }
+}
+
+/* =========================================================
+   TELÉFONOS MUY PEQUEÑOS
+========================================================= */
+
+@media (max-width: 380px) {
+  .adminpro-kpi-grid {
+    gap: 8px !important;
+  }
+
+  .adminpro-kpi-card {
+    min-height: 102px;
+    padding: 12px 10px !important;
+    gap: 8px;
+  }
+
+  .adminpro-kpi-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .adminpro-kpi-content h3 {
+    font-size: 17px;
+  }
+
+  .adminpro-ticket-data-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .adminpro-ticket-data-row strong {
+    text-align: left;
+  }
+
+  .adminpro-ticket-filter-tabs button {
+    padding: 0 10px;
+    font-size: 11px;
+  }
+}
+/* =========================================================
+   FINANCE DASHBOARD PRO
+   MONTO APROBADO
+========================================================= */
+
+.adminpro-finance-dashboard {
+  width: 100%;
+  display: grid;
+  gap: 18px;
+}
+
+/* HERO */
+
+.adminpro-finance-hero {
+  position: relative;
+  overflow: hidden;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 26px;
+  border-radius: 24px;
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(16, 185, 129, 0.16),
+      transparent 42%
+    ),
+    linear-gradient(
+      135deg,
+      #101c1b 0%,
+      #121820 55%,
+      #151722 100%
+    );
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  box-shadow:
+    0 20px 45px rgba(0, 0, 0, 0.22),
+    inset 0 1px 0 rgba(255, 255, 255, 0.025);
+}
+
+.adminpro-finance-hero::after {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  top: -130px;
+  right: -70px;
+  border-radius: 50%;
+  background: rgba(99, 102, 241, 0.08);
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+.adminpro-finance-hero-main {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+.adminpro-finance-hero-icon {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(16, 185, 129, 0.13);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  font-size: 24px;
+}
+
+.adminpro-finance-label {
+  display: block;
+  margin-bottom: 7px;
+  color: #6ee7b7;
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.adminpro-finance-total {
+  display: block;
+  color: #fff;
+  font-size: clamp(38px, 5vw, 56px);
+  line-height: 0.95;
+  font-weight: 950;
+  letter-spacing: -0.045em;
+}
+
+.adminpro-finance-hero-main p {
+  margin: 9px 0 0;
+  color: #84919f;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.adminpro-finance-status {
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  color: #a7f3d0;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.adminpro-finance-status-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #34d399;
+  box-shadow: 0 0 10px rgba(52, 211, 153, 0.65);
+}
+
+/* KPI FINANCIEROS */
+
+.adminpro-finance-kpis {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.adminpro-finance-kpi {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 17px;
+  border-radius: 19px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.025),
+      rgba(255, 255, 255, 0.012)
+    ),
+    #15151b;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.adminpro-finance-kpi-icon {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.adminpro-finance-kpi-icon.green {
+  color: #6ee7b7;
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.adminpro-finance-kpi-icon.purple {
+  color: #c4b5fd;
+  background: rgba(139, 92, 246, 0.13);
+}
+
+.adminpro-finance-kpi-icon.blue {
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.13);
+}
+
+.adminpro-finance-kpi-icon.yellow {
+  color: #fde68a;
+  background: rgba(245, 158, 11, 0.13);
+}
+
+.adminpro-finance-kpi > div:last-child {
+  min-width: 0;
+}
+
+.adminpro-finance-kpi span {
+  display: block;
+  margin-bottom: 4px;
+  color: #7f8793;
+  font-size: 10px;
+  line-height: 1.25;
+  font-weight: 800;
+}
+
+.adminpro-finance-kpi strong {
+  display: block;
+  color: #f9fafb;
+  font-size: 21px;
+  line-height: 1.1;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.adminpro-finance-kpi small {
+  display: block;
+  margin-top: 4px;
+  color: #525866;
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+/* PANELES */
+
+.adminpro-finance-panel {
+  width: 100%;
+  min-width: 0;
+  padding: 22px;
+  border-radius: 22px;
+  background:
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.018),
+      transparent
+    ),
+    #141419;
+  border: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.adminpro-finance-panel-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.adminpro-finance-panel-title {
+  margin-bottom: 22px;
+}
+
+.adminpro-finance-section-label {
+  display: block;
+  margin-bottom: 6px;
+  color: #777cff;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.adminpro-finance-panel h3 {
+  margin: 0;
+  color: #f9fafb;
+  font-size: 18px;
+  line-height: 1.2;
+  font-weight: 900;
+}
+
+.adminpro-finance-panel p {
+  margin: 6px 0 0;
+  color: #6b7280;
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.adminpro-finance-percentage {
+  flex-shrink: 0;
+  color: #fff;
+  font-size: 27px;
+  line-height: 1;
+  font-weight: 950;
+  letter-spacing: -0.035em;
+}
+
+/* PROGRESO GENERAL */
+
+.adminpro-finance-main-progress {
+  position: relative;
+  width: 100%;
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #09090d;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.adminpro-finance-main-progress-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  min-width: 0;
+  border-radius: inherit;
+  background:
+    linear-gradient(
+      90deg,
+      #6366f1,
+      #8b5cf6,
+      #a78bfa
+    );
+  box-shadow:
+    0 0 20px rgba(139, 92, 246, 0.32);
+  transition: width 0.5s ease;
+}
+
+.adminpro-finance-progress-footer {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 13px;
+  color: #646b76;
+  font-size: 11px;
+}
+
+.adminpro-finance-progress-footer strong {
+  color: #d1d5db;
+  font-weight: 900;
+}
+
+/* BARRAS */
+
+.adminpro-finance-bars {
+  display: grid;
+  gap: 22px;
+}
+
+.adminpro-finance-bar-item {
+  min-width: 0;
+}
+
+.adminpro-finance-bar-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 10px;
+}
+
+.adminpro-finance-bar-head > div:first-child {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.adminpro-finance-bar-icon {
+  font-size: 14px;
+}
+
+.adminpro-finance-bar-head strong {
+  color: #dfe3e8;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.adminpro-finance-bar-value {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.adminpro-finance-bar-value strong {
+  color: #fff;
+  font-size: 13px;
+}
+
+.adminpro-finance-bar-value span {
+  min-width: 48px;
+  text-align: right;
+  color: #777e89;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.adminpro-finance-track {
+  position: relative;
+  width: 100%;
+  height: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #09090d;
+}
+
+.adminpro-finance-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.5s ease;
+}
+
+.adminpro-finance-fill.paid {
+  background:
+    linear-gradient(
+      90deg,
+      #2563eb,
+      #60a5fa
+    );
+}
+
+.adminpro-finance-fill.free {
+  background:
+    linear-gradient(
+      90deg,
+      #059669,
+      #34d399
+    );
+}
+
+.adminpro-finance-fill.approved {
+  background:
+    linear-gradient(
+      90deg,
+      #059669,
+      #34d399
+    );
+}
+
+.adminpro-finance-fill.pending {
+  background:
+    linear-gradient(
+      90deg,
+      #d97706,
+      #fbbf24
+    );
+}
+
+.adminpro-finance-fill.rejected {
+  background:
+    linear-gradient(
+      90deg,
+      #dc2626,
+      #f87171
+    );
+}
+
+.adminpro-finance-bar-caption {
+  margin-top: 7px;
+  color: #515762;
+  font-size: 10px;
+}
+
+/* MÉTRICAS */
+
+.adminpro-finance-metrics {
+  display: grid;
+  grid-template-columns:
+    repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.adminpro-finance-metrics > div {
+  min-width: 0;
+  padding: 15px;
+  border-radius: 15px;
+  background: #0e0e13;
+  border: 1px solid rgba(255, 255, 255, 0.045);
+}
+
+.adminpro-finance-metrics span {
+  display: block;
+  margin-bottom: 7px;
+  color: #626975;
+  font-size: 10px;
+  font-weight: 750;
+}
+
+.adminpro-finance-metrics strong {
+  display: block;
+  color: #f3f4f6;
+  font-size: 17px;
+  line-height: 1.1;
+  font-weight: 900;
+}
+
+/* RESUMEN */
+
+.adminpro-finance-insight {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 21px;
+  border-radius: 22px;
+  background:
+    radial-gradient(
+      circle at 0% 0%,
+      rgba(99, 102, 241, 0.1),
+      transparent 42%
+    ),
+    #121219;
+  border: 1px solid rgba(99, 102, 241, 0.14);
+}
+
+.adminpro-finance-insight-icon {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+  font-size: 18px;
+}
+
+.adminpro-finance-insight > div:last-child {
+  min-width: 0;
+}
+
+.adminpro-finance-insight span {
+  display: block;
+  margin-bottom: 5px;
+  color: #818cf8;
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: 0.11em;
+}
+
+.adminpro-finance-insight h3 {
+  margin: 0 0 7px;
+  color: #f9fafb;
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.adminpro-finance-insight p {
+  margin: 0;
+  max-width: 900px;
+  color: #777f8c;
+  font-size: 12px;
+  line-height: 1.65;
+}
+
+.adminpro-finance-insight p strong {
+  color: #d9dde3;
+  font-weight: 850;
+}
+
+/* =========================================================
+   TABLET
+========================================================= */
+
+@media (max-width: 980px) {
+  .adminpro-finance-kpis {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+
+  .adminpro-finance-metrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* =========================================================
+   TELÉFONO
+========================================================= */
+
+@media (max-width: 700px) {
+  .adminpro-finance-dashboard {
+    gap: 12px;
+  }
+
+  .adminpro-finance-hero {
+    align-items: flex-start;
+    flex-direction: column;
+    padding: 18px;
+    border-radius: 19px;
+  }
+
+  .adminpro-finance-hero-main {
+    width: 100%;
+    align-items: flex-start;
+  }
+
+  .adminpro-finance-hero-icon {
+    width: 46px;
+    height: 46px;
+    flex-basis: 46px;
+    border-radius: 14px;
+    font-size: 19px;
+  }
+
+  .adminpro-finance-total {
+    font-size: 38px;
+  }
+
+  .adminpro-finance-status {
+    align-self: flex-start;
+  }
+
+  .adminpro-finance-kpis {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .adminpro-finance-kpi {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 9px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .adminpro-finance-kpi-icon {
+    width: 34px;
+    height: 34px;
+    flex-basis: 34px;
+    border-radius: 11px;
+  }
+
+  .adminpro-finance-kpi strong {
+    font-size: 18px;
+  }
+
+  .adminpro-finance-panel {
+    padding: 17px;
+    border-radius: 18px;
+  }
+
+  .adminpro-finance-panel-head {
+    gap: 12px;
+  }
+
+  .adminpro-finance-percentage {
+    font-size: 23px;
+  }
+
+  .adminpro-finance-progress-footer {
+    display: grid;
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .adminpro-finance-progress-footer span:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .adminpro-finance-metrics {
+    grid-template-columns:
+      repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .adminpro-finance-metrics > div {
+    padding: 13px;
+  }
+
+  .adminpro-finance-insight {
+    padding: 17px;
+    border-radius: 18px;
+  }
+}
+
+/* =========================================================
+   TELÉFONOS PEQUEÑOS
+========================================================= */
+
+@media (max-width: 390px) {
+  .adminpro-finance-hero-main {
+    gap: 12px;
+  }
+
+  .adminpro-finance-total {
+    font-size: 33px;
+  }
+
+  .adminpro-finance-kpi {
+    padding: 12px;
+  }
+
+  .adminpro-finance-kpi strong {
+    font-size: 16px;
+  }
+
+  .adminpro-finance-bar-head {
+    gap: 8px;
+  }
+
+  .adminpro-finance-bar-value {
+    gap: 5px;
+  }
+
+  .adminpro-finance-insight {
+    gap: 11px;
+  }
+
+  .adminpro-finance-insight-icon {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+  }
+}
