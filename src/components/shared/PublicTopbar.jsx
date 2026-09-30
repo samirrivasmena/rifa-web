@@ -34,7 +34,7 @@ export default function PublicTopbar({
   const pathname = usePathname();
   const { config } = useSiteConfig();
 
-  const logoUrl = config?.logo_url || "/logo.png";
+  const logoUrl = config?.logo_url || "";
   const nombreMarca = config?.nombre_marca || "Rifas LSD";
 
   const menuLabels = {

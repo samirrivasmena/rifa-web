@@ -23,7 +23,7 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 export default function PrincipalPageClient() {
   const { config, loadingConfig } = useSiteConfig();
 
-  const logoUrl = config?.logo_url || "/logo.png";
+  const logoUrl = config?.logo_url || "";
   const nombreMarca = config?.nombre_marca || "RIFAS LSD";
   const whatsappNumber = config?.whatsapp || "17738277463";
   const instagramUrl = config?.instagram || "";
@@ -45,7 +45,7 @@ export default function PrincipalPageClient() {
   const tituloEventos =
     config?.principal_titulo_eventos || "EVENTOS DISPONIBLES";
   const textoEventos =
-    config?.principal_texto_eventos || "Participa en nuestros sorteos activos.";
+    config?.principal_texto_eventos || "Participa en nuestras rifas activas.";
 
   const tituloResultados =
     config?.principal_titulo_resultados || "RESULTADOS OFICIALES";

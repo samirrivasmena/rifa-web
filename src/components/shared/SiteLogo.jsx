@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 
 const SIZE_MAP = {
@@ -21,9 +21,42 @@ export default function SiteLogo({
   fallbackText = "",
 }) {
   const { config } = useSiteConfig();
+
   const [broken, setBroken] = useState(false);
 
-  const logoSrc = src || config?.logo_url || "/logo.png";
+  /*
+  |--------------------------------------------------------------------------
+  | LOGO
+  |--------------------------------------------------------------------------
+  |
+  | IMPORTANTE:
+  |
+  | Antes usábamos:
+  |
+  | config?.logo_url || "/logo.png"
+  |
+  | Eso provocaba que apareciera primero el logo viejo mientras
+  | cargaba la configuración global.
+  |
+  | Ahora, si no se pasó un src manual, esperamos a que exista
+  | config.logo_url antes de mostrar la imagen.
+  |
+  */
+
+  const logoSrc =
+    src ||
+    config?.logo_url ||
+    "";
+
+  /*
+  |--------------------------------------------------------------------------
+  | Si cambia el logo, quitamos cualquier estado de error anterior
+  |--------------------------------------------------------------------------
+  */
+
+  useEffect(() => {
+    setBroken(false);
+  }, [logoSrc]);
 
   const brandInitial =
     fallbackText ||
@@ -42,28 +75,60 @@ export default function SiteLogo({
 
   const imageAlt =
     alt ||
-    `Logo ${config?.nombre_marca || "RIFAS LSD"}`;
+    `Logo ${
+      config?.nombre_marca ||
+      "RIFAS LSD"
+    }`;
 
-  const content = broken ? (
-    <span className="site-logo-fallback">{brandInitial}</span>
-  ) : (
-    <img
-      src={logoSrc}
-      alt={imageAlt}
-      className="site-logo-img"
-      onError={() => setBroken(true)}
-      loading="eager"
-      decoding="async"
-    />
-  );
+  /*
+  |--------------------------------------------------------------------------
+  | CONTENIDO
+  |--------------------------------------------------------------------------
+  |
+  | - Si tenemos logo válido: mostramos el logo.
+  | - Si el logo falla: mostramos la inicial.
+  | - Mientras config todavía está cargando: dejamos el espacio vacío.
+  |
+  | Así nunca aparece /logo.png viejo antes del logo actual.
+  |
+  */
+
+  let content = null;
+
+  if (broken) {
+    content = (
+      <span className="site-logo-fallback">
+        {brandInitial}
+      </span>
+    );
+  } else if (logoSrc) {
+    content = (
+      <img
+        src={logoSrc}
+        alt={imageAlt}
+        className="site-logo-img"
+        onError={() => setBroken(true)}
+        loading="eager"
+        decoding="async"
+      />
+    );
+  }
 
   if (href) {
     return (
-      <Link href={href} className={wrapperClassName} aria-label={imageAlt}>
+      <Link
+        href={href}
+        className={wrapperClassName}
+        aria-label={imageAlt}
+      >
         {content}
       </Link>
     );
   }
 
-  return <div className={wrapperClassName}>{content}</div>;
+  return (
+    <div className={wrapperClassName}>
+      {content}
+    </div>
+  );
 }
