@@ -45,7 +45,7 @@ export default function PrincipalPageClient() {
   const tituloEventos =
     config?.principal_titulo_eventos || "EVENTOS DISPONIBLES";
   const textoEventos =
-    config?.principal_texto_eventos || "Participa en nuestras rifas activas.";
+    config?.principal_texto_eventos || "Participa en nuestros sorteos activos.";
 
   const tituloResultados =
     config?.principal_titulo_resultados || "RESULTADOS OFICIALES";

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
 
 
 // ============================================================
@@ -715,17 +716,118 @@ const numeroFormateado =
 // ========================================================
 // 10. EMAIL
 //
-// NUEVO FLUJO:
+// FLUJO:
 //
-// Al registrarse NO se envía correo de ticket.
-// La participación queda PENDIENTE y sin número.
+// - Si queda PENDIENTE:
+//   todavía NO se envía correo con número.
 //
-// El correo definitivo se envía únicamente después
-// de que Admin APRUEBA la participación y el backend
-// asigna el número oficial.
+// - Si fue aprobada automáticamente:
+//   ya tiene número oficial y enviamos exactamente
+//   el correo de confirmación FREE.
 // ========================================================
 
-const emailEnviado = false;
+let emailEnviado = false;
+let emailError = null;
+
+const fueAprobadaAutomaticamente =
+  !requiresReview &&
+  String(
+    resultado.participation_estado || ""
+  ).toLowerCase() === "valida" &&
+  resultado.ticket_id &&
+  numeroParticipacion !== null &&
+  Number.isFinite(numeroParticipacion);
+
+if (fueAprobadaAutomaticamente) {
+  try {
+    const baseUrl = getSiteBaseUrl(req);
+
+    const verificarUrl = baseUrl
+      ? `${baseUrl}/principal`
+      : "/principal";
+
+    const eventoUrl = baseUrl
+      ? `${baseUrl}/evento/${dropActivo.rifa_id}`
+      : `/evento/${dropActivo.rifa_id}`;
+
+    const nombreCompleto = [
+      nombre,
+      apellido,
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    await sendFreeDropConfirmationEmail({
+      to: email,
+
+      nombre:
+        nombreCompleto ||
+        nombre ||
+        "cliente",
+
+      eventoNombre,
+
+      freeDropNombre,
+
+      numeroParticipacion,
+
+      codigoFree:
+        resultado.codigo_unico ||
+        codigoUnico,
+
+      estado: "VÁLIDA",
+
+      fechaIso:
+        new Date().toISOString(),
+
+      verificarUrl,
+
+      eventoUrl,
+
+      padLength,
+    });
+
+    emailEnviado = true;
+
+    console.log(
+      "Correo FREE de aprobación automática enviado:",
+      {
+        participationId:
+          resultado.participation_id,
+
+        email,
+
+        codigoFree:
+          resultado.codigo_unico ||
+          codigoUnico,
+
+        numeroTicket:
+          numeroParticipacion,
+      }
+    );
+  } catch (errorCorreo) {
+    emailEnviado = false;
+
+    emailError =
+      errorCorreo?.message ||
+      "No se pudo enviar el correo de aprobación automática";
+
+    console.error(
+      "La participación FREE fue aprobada automáticamente, pero el correo no pudo enviarse:",
+      {
+        participationId:
+          resultado.participation_id,
+
+        rifaId:
+          dropActivo.rifa_id,
+
+        error:
+          errorCorreo,
+      }
+    );
+  }
+}
 
     // ========================================================
     // 11. RESPUESTA COMPATIBLE CON TU FRONTEND ACTUAL
@@ -753,6 +855,9 @@ const emailEnviado = false;
 
       email_enviado:
         emailEnviado,
+
+      email_error:
+        emailError,
 
       participacion: {
         id:

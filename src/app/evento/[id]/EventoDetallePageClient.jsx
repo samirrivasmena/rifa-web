@@ -1405,17 +1405,21 @@ const registrarParticipacionGratis = async (e) => {
     // ERROR DEL BACKEND
     // ========================================================
 
-    if (!res.ok) {
-      await Swal.fire({
-        icon: "error",
-        title: "No se pudo registrar",
-        text:
-          data.error ||
-          "Ocurrió un error al registrar la participación.",
-      });
+if (!res.ok) {
+  // Cerramos primero el formulario para que el SweetAlert
+  // quede completamente visible y no detrás del modal.
+  setShowFreeDropModal(false);
 
-      return;
-    }
+  await Swal.fire({
+    icon: "error",
+    title: "No se pudo registrar",
+    text:
+      data.error ||
+      "Ocurrió un error al registrar la participación.",
+  });
+
+  return;
+}
 
     // ========================================================
     // PARTICIPACIÓN EXITOSA
@@ -2479,7 +2483,7 @@ const registrarParticipacionGratis = async (e) => {
 
           <label className="free-drop-form-field">
             <span>
-              Estado / provincia *
+              Estado / Pais *
             </span>
 
             <input
@@ -2487,7 +2491,7 @@ const registrarParticipacionGratis = async (e) => {
               name="estado"
               value={freeDropForm.estado}
               onChange={handleFreeDropChange}
-              placeholder="Tu estado / provincia"
+              placeholder="Tu estado / Tu Pais"
               autoComplete="address-level1"
               required
             />
@@ -2638,141 +2642,335 @@ const registrarParticipacionGratis = async (e) => {
     </div>
   </div>
 )}
+{/*
+  La confirmación FREE utiliza el número asignado como señal principal:
+  si existe número oficial, mostramos la experiencia de participación VÁLIDA.
+*/}
 
-      {showFreeDropConfirmacion && freeDropConfirmacion && (
-        <div
-          className="free-drop-modal-backdrop"
-          onClick={cerrarConfirmacionFreeDrop}
-        >
-          <div
-            className="free-drop-modal free-drop-confirmation-modal"
-            onClick={(e) => e.stopPropagation()}
+{showFreeDropConfirmacion && freeDropConfirmacion && (
+  <div
+    className="free-drop-modal-backdrop"
+    onClick={cerrarConfirmacionFreeDrop}
+  >
+    <div
+      className={`free-drop-modal free-drop-confirmation-modal ${
+        freeDropConfirmacion.numeroParticipacion != null
+          ? "is-approved"
+          : "is-pending"
+      }`}
+      onClick={(e) => e.stopPropagation()}
+    >
+      {freeDropConfirmacion.numeroParticipacion != null ? (
+        <>
+          {/* ============================================
+              PARTICIPACIÓN APROBADA
+          ============================================ */}
+
+          <button
+            type="button"
+            className="free-drop-modal-close free-drop-confirmation-close"
+            onClick={cerrarConfirmacionFreeDrop}
+            aria-label="Cerrar confirmación"
           >
-            <div className="free-drop-modal-head">
-              <div>
-                <p className="evento-kicker">🎉 ¡PARTICIPACIÓN CONFIRMADA!</p>
-                <h2>{evento?.nombre || "Evento"}</h2>
-              </div>
+            ✕
+          </button>
 
-              <button
-                type="button"
-                className="free-drop-modal-close"
-                onClick={cerrarConfirmacionFreeDrop}
-                aria-label="Cerrar confirmación"
-              >
-                ✕
-              </button>
+          <div className="free-drop-approved-hero">
+            <div className="free-drop-approved-icon" aria-hidden="true">
+              ✓
             </div>
 
-            <p className="free-drop-modal-description">
-              Tu participación gratis ha sido registrada correctamente.
+            <p className="free-drop-approved-kicker">
+              🎉 PARTICIPACIÓN APROBADA
             </p>
 
-            <div
-              className="free-drop-modal-box"
-              style={{
-                textAlign: "center",
-                lineHeight: 1.8,
-                padding: "18px",
-              }}
-            >
-              <p>
-                <strong>Evento:</strong> {freeDropConfirmacion.evento}
-              </p>
+            <h2>¡YA ESTÁS PARTICIPANDO!</h2>
 
-              <p>
-                <strong>FREE DROP:</strong> {freeDropConfirmacion.freeDrop}
-              </p>
+            <p className="free-drop-approved-description">
+              Tu participación FREE fue aprobada correctamente.
+              Guarda tu número y código de verificación.
+            </p>
+          </div>
 
-<p>
-  <strong>NÚMERO DE PARTICIPACIÓN:</strong>{" "}
-  {freeDropConfirmacion.numeroParticipacion != null ? (
-    <span style={{ fontSize: "22px", fontWeight: 800 }}>
-      #
-      {String(freeDropConfirmacion.numeroParticipacion).padStart(
-        padLength,
-        "0"
-      )}
-    </span>
-  ) : (
-    <span style={{ fontWeight: 800 }}>
-      PENDIENTE DE ASIGNACIÓN
-    </span>
-  )}
-</p>
+          <div className="free-drop-ticket-card">
+            <div className="free-drop-ticket-top">
+              <span>🎟️ TU NÚMERO OFICIAL</span>
 
-              <p>
-                <strong>CÓDIGO DE VERIFICACIÓN:</strong>{" "}
-                <span style={{ fontWeight: 800, letterSpacing: "1px" }}>
-                  {freeDropConfirmacion.codigoFree}
-                </span>
-              </p>
-
-              <p>
-                <strong>ESTADO:</strong>{" "}
-                <span style={{ fontWeight: 800 }}>{freeDropConfirmacion.estado}</span>
-              </p>
-
-              <p style={{ marginTop: "12px" }}>
-                <strong>1 participación gratis por persona, por evento.</strong>
-              </p>
-
-              <p style={{ marginTop: "8px" }}>
-                <strong>Fecha:</strong> {formatearFechaSegura(freeDropConfirmacion.fecha)}
-              </p>
+              <span className="free-drop-approved-status">
+                ✓ VÁLIDA
+              </span>
             </div>
 
-            <div className="free-drop-form-actions">
-              <button
-                type="button"
-                className="free-drop-btn-secondary"
-                onClick={async () => {
-                  try {
-                    await navigator.clipboard.writeText(
-                      freeDropConfirmacion.codigoFree
-                    );
-                    await Swal.fire({
-                      icon: "success",
-                      title: "Copiado",
-                      text: "El código FREE fue copiado al portapapeles",
-                      timer: 1200,
-                      showConfirmButton: false,
-                    });
-                  } catch {
-                    await Swal.fire({
-                      icon: "error",
-                      title: "Error",
-                      text: "No se pudo copiar el código",
-                    });
-                  }
-                }}
-              >
-                Copiar código
-              </button>
-
-              <button
-                type="button"
-                className="free-drop-btn-primary"
-                onClick={() =>
-                  abrirVerificadorFree(freeDropConfirmacion.codigoFree)
-                }
-              >
-                🔎 Verificar participación
-              </button>
+            <div className="free-drop-ticket-number">
+              #
+              {String(
+                freeDropConfirmacion.numeroParticipacion
+              ).padStart(padLength, "0")}
             </div>
 
-            <div className="free-drop-form-actions">
-              <button
-                type="button"
-                className="principal-white-btn"
-                onClick={cerrarConfirmacionFreeDrop}
-              >
-                ↩ Volver al evento
-              </button>
+            <p className="free-drop-ticket-event">
+              {freeDropConfirmacion.evento}
+            </p>
+
+            <div className="free-drop-ticket-divider" />
+
+            <div className="free-drop-ticket-details">
+              <div>
+                <span>FREE DROP</span>
+                <strong>
+                  {freeDropConfirmacion.freeDrop}
+                </strong>
+              </div>
+
+              <div>
+                <span>ESTADO</span>
+                <strong className="free-drop-ticket-valid">
+                  APROBADA ✓
+                </strong>
+              </div>
             </div>
           </div>
-        </div>
+
+          <div className="free-drop-code-card">
+            <span className="free-drop-code-label">
+              CÓDIGO DE VERIFICACIÓN
+            </span>
+
+            <strong className="free-drop-code-value">
+              {freeDropConfirmacion.codigoFree}
+            </strong>
+
+            <span className="free-drop-code-help">
+              Guarda este código para consultar tu participación.
+            </span>
+          </div>
+
+          <div className="free-drop-confirmation-info">
+            <div>
+              <span>🎁</span>
+
+              <p>
+                <strong>1 participación gratis</strong>
+                <small>por persona, por evento</small>
+              </p>
+            </div>
+
+            <div>
+              <span>📅</span>
+
+              <p>
+                <strong>Registrada</strong>
+                <small>
+                  {formatearFechaSegura(
+                    freeDropConfirmacion.fecha
+                  )}
+                </small>
+              </p>
+            </div>
+          </div>
+
+          <div className="free-drop-confirmation-actions">
+            <button
+              type="button"
+              className="free-drop-btn-secondary"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    freeDropConfirmacion.codigoFree
+                  );
+
+                  await Swal.fire({
+                    icon: "success",
+                    title: "Copiado",
+                    text: "El código FREE fue copiado al portapapeles",
+                    timer: 1200,
+                    showConfirmButton: false,
+                  });
+                } catch {
+                  await Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: "No se pudo copiar el código",
+                  });
+                }
+              }}
+            >
+              📋 Copiar código
+            </button>
+
+            <button
+              type="button"
+              className="free-drop-btn-primary"
+              onClick={() =>
+                abrirVerificadorFree(
+                  freeDropConfirmacion.codigoFree
+                )
+              }
+            >
+              🔎 Verificar participación
+            </button>
+          </div>
+
+          <button
+            type="button"
+            className="principal-white-btn free-drop-back-event"
+            onClick={cerrarConfirmacionFreeDrop}
+          >
+            ↩ Volver al evento
+          </button>
+        </>
+      ) : (
+        <>
+          {/* ============================================
+              PARTICIPACIÓN PENDIENTE
+              Por ahora conservamos su diseño actual.
+          ============================================ */}
+
+          <div className="free-drop-modal-head">
+            <div>
+              <p className="evento-kicker">
+                ⏳ PARTICIPACIÓN RECIBIDA
+              </p>
+
+              <h2>
+                {evento?.nombre || "Evento"}
+              </h2>
+            </div>
+
+            <button
+              type="button"
+              className="free-drop-modal-close"
+              onClick={cerrarConfirmacionFreeDrop}
+              aria-label="Cerrar confirmación"
+            >
+              ✕
+            </button>
+          </div>
+
+          <p className="free-drop-modal-description">
+            Tu participación gratis fue registrada y está
+            pendiente de revisión.
+          </p>
+
+          <div
+            className="free-drop-modal-box"
+            style={{
+              textAlign: "center",
+              lineHeight: 1.8,
+              padding: "18px",
+            }}
+          >
+            <p>
+              <strong>Evento:</strong>{" "}
+              {freeDropConfirmacion.evento}
+            </p>
+
+            <p>
+              <strong>FREE DROP:</strong>{" "}
+              {freeDropConfirmacion.freeDrop}
+            </p>
+
+            <p>
+              <strong>
+                NÚMERO DE PARTICIPACIÓN:
+              </strong>{" "}
+              <span style={{ fontWeight: 800 }}>
+                PENDIENTE DE ASIGNACIÓN
+              </span>
+            </p>
+
+            <p>
+              <strong>
+                CÓDIGO DE VERIFICACIÓN:
+              </strong>{" "}
+              <span
+                style={{
+                  fontWeight: 800,
+                  letterSpacing: "1px",
+                }}
+              >
+                {freeDropConfirmacion.codigoFree}
+              </span>
+            </p>
+
+            <p>
+              <strong>ESTADO:</strong>{" "}
+              <span style={{ fontWeight: 800 }}>
+                {freeDropConfirmacion.estado}
+              </span>
+            </p>
+
+            <p style={{ marginTop: "12px" }}>
+              <strong>
+                1 participación gratis por persona,
+                por evento.
+              </strong>
+            </p>
+
+            <p style={{ marginTop: "8px" }}>
+              <strong>Fecha:</strong>{" "}
+              {formatearFechaSegura(
+                freeDropConfirmacion.fecha
+              )}
+            </p>
+          </div>
+
+          <div className="free-drop-form-actions">
+            <button
+              type="button"
+              className="free-drop-btn-secondary"
+              onClick={async () => {
+                try {
+                  await navigator.clipboard.writeText(
+                    freeDropConfirmacion.codigoFree
+                  );
+
+                  await Swal.fire({
+                    icon: "success",
+                    title: "Copiado",
+                    text: "El código FREE fue copiado al portapapeles",
+                    timer: 1200,
+                    showConfirmButton: false,
+                  });
+                } catch {
+                  await Swal.fire({
+                    icon: "error",
+                    title: "Error",
+                    text: "No se pudo copiar el código",
+                  });
+                }
+              }}
+            >
+              Copiar código
+            </button>
+
+            <button
+              type="button"
+              className="free-drop-btn-primary"
+              onClick={() =>
+                abrirVerificadorFree(
+                  freeDropConfirmacion.codigoFree
+                )
+              }
+            >
+              🔎 Verificar participación
+            </button>
+          </div>
+
+          <div className="free-drop-form-actions">
+            <button
+              type="button"
+              className="principal-white-btn"
+              onClick={cerrarConfirmacionFreeDrop}
+            >
+              ↩ Volver al evento
+            </button>
+          </div>
+        </>
       )}
+    </div>
+  </div>
+)}
 
       <VerifyTicketsModal
         open={showVerifyModal}

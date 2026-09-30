@@ -103,6 +103,13 @@
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
+/* =========================================================
+   SWEETALERT SIEMPRE ENCIMA DE LOS MODALES
+========================================================= */
+
+:global(.swal2-container) {
+  z-index: 20000 !important;
+}
 
 :global(.free-drop-modal) {
   position: relative;
@@ -610,38 +617,959 @@
 }
 
 /* =========================================================
-   CONFIRMACIÓN FREE DROP
+   CONFIRMACIÓN FREE DROP - APROBADA
 ========================================================= */
 
-:global(.free-drop-confirmation-modal) {
-  width: min(100%, 760px);
+:global(.free-drop-confirmation-modal.is-approved) {
+  position: relative;
+
+  width: min(100%, 620px);
+
+  padding: 30px;
+
+  overflow-x: hidden;
+
+  border: 1px solid rgba(226, 232, 240, 0.95);
+  border-radius: 28px;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(34, 197, 94, 0.1) 0%,
+      rgba(34, 197, 94, 0) 34%
+    ),
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fbfcfe 100%
+    );
+
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.38),
+    0 10px 30px rgba(15, 23, 42, 0.1);
 }
 
-:global(.free-drop-confirmation-modal .free-drop-modal-box) {
+/* =========================================================
+   CONFIRMACIÓN FREE DROP - PENDIENTE
+========================================================= */
+
+:global(.free-drop-confirmation-modal.is-pending) {
+  position: relative;
+
+  width: min(100%, 620px);
+
+  padding: 30px;
+
+  overflow-x: hidden;
+
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 28px;
+
+  background:
+    radial-gradient(
+      circle at 50% 0%,
+      rgba(245, 158, 11, 0.12) 0%,
+      rgba(245, 158, 11, 0) 35%
+    ),
+    linear-gradient(
+      180deg,
+      #ffffff 0%,
+      #fffdf8 100%
+    );
+
+  box-shadow:
+    0 30px 90px rgba(0, 0, 0, 0.38),
+    0 10px 30px rgba(15, 23, 42, 0.1);
+}
+
+
+/* CABECERA */
+
+:global(.free-drop-confirmation-modal.is-pending .evento-kicker) {
+  display: inline-flex;
+  align-items: center;
+
+  margin-bottom: 8px;
+
+  padding: 7px 11px;
+
+  border: 1px solid rgba(245, 158, 11, 0.25);
+  border-radius: 999px;
+
+  background: rgba(245, 158, 11, 0.1);
+
+  color: #b45309;
+
+  font-size: 11px;
+  font-weight: 900;
+
+  letter-spacing: 0.8px;
+}
+
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-description) {
+  margin-bottom: 18px;
+
+  padding: 13px 15px;
+
+  border-left: 4px solid #f59e0b;
+  border-radius: 0 13px 13px 0;
+
+  background: rgba(245, 158, 11, 0.07);
+
+  color: #78350f;
+
+  font-weight: 650;
+}
+
+
+/* CAJA PRINCIPAL */
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box) {
+  position: relative;
+
+  overflow: hidden;
+
+  border: 1px solid rgba(245, 158, 11, 0.2);
+
   background:
     linear-gradient(
       180deg,
       #ffffff 0%,
-      #f8fafc 100%
+      #fffbeb 100%
+    );
+
+  box-shadow:
+    0 12px 30px rgba(15, 23, 42, 0.06);
+}
+
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box::before) {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 5px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #d97706 0%,
+      #f59e0b 50%,
+      #d97706 100%
     );
 }
 
-:global(.free-drop-confirmation-modal strong) {
+
+/* EVENTO Y FREE DROP */
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p) {
+  overflow-wrap: anywhere;
+}
+
+
+/* TEXTO PENDIENTE DE ASIGNACIÓN */
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(3)) {
+  margin: 16px 0;
+
+  padding: 15px 12px;
+
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  border-radius: 15px;
+
+  background: rgba(245, 158, 11, 0.08);
+
+  color: #92400e;
+}
+
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(3) span) {
+  display: block;
+
+  margin-top: 5px;
+
+  color: #d97706;
+
+  font-size: 19px;
+  font-weight: 950 !important;
+
+  line-height: 1.2;
+}
+
+
+/* CÓDIGO FREE */
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(4)) {
+  margin: 15px 0;
+
+  padding: 15px 12px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 15px;
+
+  background: #ffffff;
+}
+
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(4) span) {
+  display: block;
+
+  margin-top: 4px;
+
   color: #111827;
+
+  font-size: 23px;
+  font-weight: 950 !important;
+
+  letter-spacing: 1.5px !important;
+
+  overflow-wrap: anywhere;
 }
 
-:global(.free-drop-confirmation-modal p) {
-  margin: 8px 0;
-}
 
-:global(.free-drop-confirmation-modal .evento-kicker) {
-  margin-bottom: 4px;
-}
+/* ESTADO PENDIENTE */
 
-:global(.free-drop-confirmation-modal .free-drop-form-actions) {
+:global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(5) span) {
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+
+  margin-left: 5px;
+
+  padding: 5px 10px;
+
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: 999px;
+
+  background: rgba(245, 158, 11, 0.11);
+
+  color: #b45309;
+
+  font-size: 11px;
+  font-weight: 900 !important;
+
+  letter-spacing: 0.6px;
 }
 
+
+/* BOTONES */
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-form-actions) {
+  margin-top: 12px;
+}
+
+
+:global(.free-drop-confirmation-modal.is-pending .free-drop-btn-primary) {
+  background:
+    linear-gradient(
+      135deg,
+      #dc2626 0%,
+      #b91c1c 52%,
+      #991b1b 100%
+    );
+}
+
+
+/* =========================================================
+   PENDIENTE - MÓVIL
+========================================================= */
+
+@media (max-width: 768px) {
+  :global(.free-drop-confirmation-modal.is-pending) {
+    width: 100%;
+    max-width: 100%;
+
+    padding: 22px 18px;
+  }
+}
+
+
+@media (max-width: 480px) {
+  :global(.free-drop-confirmation-modal.is-pending) {
+    padding: 17px 14px;
+
+    border-radius: 21px;
+  }
+
+  :global(.free-drop-confirmation-modal.is-pending .free-drop-modal-head) {
+    padding-right: 2px;
+  }
+
+  :global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(3) span) {
+    font-size: 16px;
+  }
+
+  :global(.free-drop-confirmation-modal.is-pending .free-drop-modal-box p:nth-of-type(4) span) {
+    font-size: 20px;
+
+    letter-spacing: 1px !important;
+  }
+}
+
+
+/* =========================================================
+   BOTÓN CERRAR
+========================================================= */
+
+:global(.free-drop-confirmation-close) {
+  position: absolute;
+
+  top: 20px;
+  right: 20px;
+
+  z-index: 5;
+}
+
+
+/* =========================================================
+   HERO APROBADO
+========================================================= */
+
+:global(.free-drop-approved-hero) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 6px 48px 0;
+
+  text-align: center;
+}
+
+
+:global(.free-drop-approved-icon) {
+  width: 74px;
+  height: 74px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  margin-bottom: 16px;
+
+  border: 7px solid rgba(34, 197, 94, 0.13);
+  border-radius: 50%;
+
+  background:
+    linear-gradient(
+      135deg,
+      #22c55e 0%,
+      #16a34a 100%
+    );
+
+  color: #ffffff;
+
+  font-size: 38px;
+  font-weight: 900;
+  line-height: 1;
+
+  box-shadow:
+    0 12px 28px rgba(34, 197, 94, 0.25);
+
+  animation:
+    freeDropApprovedPop 0.55s
+    cubic-bezier(0.2, 0.9, 0.3, 1.25);
+}
+
+
+:global(.free-drop-approved-kicker) {
+  margin: 0 0 7px;
+
+  color: #16a34a;
+
+  font-size: 12px;
+  font-weight: 900;
+  line-height: 1.3;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+
+:global(.free-drop-approved-hero h2) {
+  margin: 0;
+
+  color: #111827;
+
+  font-size: clamp(1.65rem, 4vw, 2.25rem);
+  font-weight: 950;
+  line-height: 1.08;
+
+  letter-spacing: -0.6px;
+}
+
+
+:global(.free-drop-approved-description) {
+  max-width: 470px;
+
+  margin: 12px auto 22px;
+
+  color: #64748b;
+
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.6;
+}
+
+
+/* =========================================================
+   BOLETO / NÚMERO OFICIAL
+========================================================= */
+
+:global(.free-drop-ticket-card) {
+  position: relative;
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  padding: 20px 22px 22px;
+
+  overflow: hidden;
+
+  border:
+    1px solid rgba(220, 38, 38, 0.16);
+
+  border-radius: 22px;
+
+  background:
+    radial-gradient(
+      circle at 100% 0%,
+      rgba(220, 38, 38, 0.12) 0%,
+      rgba(220, 38, 38, 0) 34%
+    ),
+    linear-gradient(
+      145deg,
+      #ffffff 0%,
+      #fffafa 100%
+    );
+
+  box-shadow:
+    0 12px 32px rgba(15, 23, 42, 0.07);
+}
+
+
+:global(.free-drop-ticket-card::before) {
+  content: "";
+
+  position: absolute;
+
+  top: 0;
+  left: 0;
+
+  width: 100%;
+  height: 5px;
+
+  background:
+    linear-gradient(
+      90deg,
+      #991b1b 0%,
+      #dc2626 50%,
+      #991b1b 100%
+    );
+}
+
+
+:global(.free-drop-ticket-top) {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  color: #475569;
+
+  font-size: 11px;
+  font-weight: 900;
+
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+}
+
+
+:global(.free-drop-approved-status) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 6px 10px;
+
+  border:
+    1px solid rgba(34, 197, 94, 0.25);
+
+  border-radius: 999px;
+
+  background:
+    rgba(34, 197, 94, 0.1);
+
+  color: #15803d;
+
+  font-size: 11px;
+  font-weight: 900;
+
+  white-space: nowrap;
+}
+
+
+/* NÚMERO GRANDE */
+
+:global(.free-drop-ticket-number) {
+  width: 100%;
+
+  margin: 13px 0 4px;
+
+  color: #dc2626;
+
+  font-size: clamp(3.6rem, 11vw, 5.8rem);
+  font-weight: 950;
+  line-height: 0.95;
+
+  letter-spacing: -3px;
+  text-align: center;
+
+  overflow-wrap: anywhere;
+
+  text-shadow:
+    0 5px 18px rgba(220, 38, 38, 0.13);
+
+  animation:
+    freeDropNumberIn 0.65s
+    cubic-bezier(0.2, 0.9, 0.3, 1.15);
+}
+
+
+:global(.free-drop-ticket-event) {
+  margin: 8px 0 0;
+
+  color: #111827;
+
+  font-size: 15px;
+  font-weight: 900;
+
+  text-align: center;
+
+  overflow-wrap: anywhere;
+}
+
+
+:global(.free-drop-ticket-divider) {
+  width: 100%;
+  height: 1px;
+
+  margin: 18px 0;
+
+  background:
+    repeating-linear-gradient(
+      90deg,
+      #cbd5e1 0,
+      #cbd5e1 7px,
+      transparent 7px,
+      transparent 13px
+    );
+}
+
+
+:global(.free-drop-ticket-details) {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 14px;
+}
+
+
+:global(.free-drop-ticket-details > div) {
+  min-width: 0;
+
+  padding: 12px 14px;
+
+  border-radius: 14px;
+
+  background: #f8fafc;
+}
+
+
+:global(.free-drop-ticket-details span) {
+  display: block;
+
+  margin-bottom: 4px;
+
+  color: #94a3b8;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+}
+
+
+:global(.free-drop-ticket-details strong) {
+  display: block;
+
+  color: #111827;
+
+  font-size: 13px;
+  font-weight: 900;
+
+  overflow-wrap: anywhere;
+}
+
+
+:global(.free-drop-ticket-details .free-drop-ticket-valid) {
+  color: #16a34a;
+}
+
+
+/* =========================================================
+   CÓDIGO FREE
+========================================================= */
+
+:global(.free-drop-code-card) {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+
+  width: 100%;
+
+  box-sizing: border-box;
+
+  gap: 5px;
+
+  margin-top: 16px;
+  padding: 17px 18px;
+
+  border: 1px solid #e2e8f0;
+  border-radius: 18px;
+
+  background: #f8fafc;
+
+  text-align: center;
+}
+
+
+:global(.free-drop-code-label) {
+  color: #64748b;
+
+  font-size: 10px;
+  font-weight: 900;
+
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+
+:global(.free-drop-code-value) {
+  color: #111827;
+
+  font-size: clamp(1.3rem, 5vw, 1.75rem);
+  font-weight: 950;
+
+  letter-spacing: 1.5px;
+
+  overflow-wrap: anywhere;
+}
+
+
+:global(.free-drop-code-help) {
+  color: #94a3b8;
+
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+
+/* =========================================================
+   INFORMACIÓN INFERIOR
+========================================================= */
+
+:global(.free-drop-confirmation-info) {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+
+  width: 100%;
+
+  margin-top: 14px;
+}
+
+
+:global(.free-drop-confirmation-info > div) {
+  display: flex;
+  align-items: center;
+
+  min-width: 0;
+
+  gap: 10px;
+
+  padding: 12px 14px;
+
+  box-sizing: border-box;
+
+  border: 1px solid #e5e7eb;
+  border-radius: 15px;
+
+  background: #ffffff;
+}
+
+
+:global(.free-drop-confirmation-info > div > span) {
+  flex: 0 0 auto;
+
+  font-size: 20px;
+}
+
+
+:global(.free-drop-confirmation-info p) {
+  display: flex;
+  flex-direction: column;
+
+  min-width: 0;
+
+  margin: 0;
+}
+
+
+:global(.free-drop-confirmation-info strong) {
+  color: #111827;
+
+  font-size: 12px;
+  font-weight: 900;
+}
+
+
+:global(.free-drop-confirmation-info small) {
+  margin-top: 2px;
+
+  color: #64748b;
+
+  font-size: 11px;
+  font-weight: 600;
+
+  overflow-wrap: anywhere;
+}
+
+
+/* =========================================================
+   ACCIONES
+========================================================= */
+
+:global(.free-drop-confirmation-actions) {
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, minmax(0, 1fr));
+
+  gap: 12px;
+
+  width: 100%;
+
+  margin-top: 18px;
+}
+
+
+:global(.free-drop-confirmation-actions button) {
+  width: 100%;
+  min-width: 0;
+}
+
+
+:global(.free-drop-back-event) {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  width: fit-content;
+
+  max-width: 100%;
+
+  margin: 13px auto 0;
+}
+
+
+/* =========================================================
+   ANIMACIONES
+========================================================= */
+
+@keyframes freeDropApprovedPop {
+  0% {
+    opacity: 0;
+    transform: scale(0.65);
+  }
+
+  70% {
+    opacity: 1;
+    transform: scale(1.08);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+
+@keyframes freeDropNumberIn {
+  0% {
+    opacity: 0;
+    transform: translateY(10px) scale(0.88);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* =========================================================
+   APROBADA - TABLET / MÓVIL
+========================================================= */
+
+@media (max-width: 768px) {
+  :global(.free-drop-confirmation-modal.is-approved) {
+    width: 100%;
+    max-width: 100%;
+
+    padding: 22px 18px;
+  }
+
+  :global(.free-drop-approved-hero) {
+    padding-left: 38px;
+    padding-right: 38px;
+  }
+
+  :global(.free-drop-approved-icon) {
+    width: 66px;
+    height: 66px;
+
+    border-width: 6px;
+
+    font-size: 33px;
+  }
+
+  :global(.free-drop-ticket-number) {
+    letter-spacing: -2px;
+  }
+
+  :global(.free-drop-confirmation-actions) {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+@media (max-width: 480px) {
+  :global(.free-drop-confirmation-modal.is-approved) {
+    padding: 19px 14px 18px;
+
+    border-radius: 21px;
+  }
+
+  :global(.free-drop-confirmation-close) {
+    top: 14px;
+    right: 14px;
+  }
+
+  :global(.free-drop-approved-hero) {
+    padding:
+      3px 42px 0;
+  }
+
+  :global(.free-drop-approved-icon) {
+    width: 58px;
+    height: 58px;
+
+    margin-bottom: 12px;
+
+    border-width: 5px;
+
+    font-size: 29px;
+  }
+
+  :global(.free-drop-approved-kicker) {
+    font-size: 10px;
+  }
+
+  :global(.free-drop-approved-hero h2) {
+    font-size: 1.45rem;
+  }
+
+  :global(.free-drop-approved-description) {
+    margin-bottom: 17px;
+
+    font-size: 13px;
+  }
+
+  :global(.free-drop-ticket-card) {
+    padding:
+      18px 14px 16px;
+
+    border-radius: 18px;
+  }
+
+  :global(.free-drop-ticket-top) {
+    align-items: flex-start;
+
+    font-size: 9px;
+  }
+
+  :global(.free-drop-approved-status) {
+    padding: 5px 8px;
+
+    font-size: 9px;
+  }
+
+  :global(.free-drop-ticket-number) {
+    margin-top: 15px;
+
+    font-size: clamp(3.3rem, 19vw, 4.8rem);
+
+    letter-spacing: -2px;
+  }
+
+  :global(.free-drop-ticket-details) {
+    grid-template-columns: 1fr;
+
+    gap: 8px;
+  }
+
+  :global(.free-drop-code-card) {
+    padding: 15px 12px;
+  }
+
+  :global(.free-drop-code-value) {
+    font-size: 1.3rem;
+
+    letter-spacing: 1px;
+  }
+
+  :global(.free-drop-confirmation-info) {
+    grid-template-columns: 1fr;
+
+    gap: 8px;
+  }
+
+  :global(.free-drop-confirmation-actions) {
+    gap: 9px;
+  }
+
+  :global(.free-drop-back-event) {
+    width: 100%;
+  }
+}
 /* =========================================================
    RESPONSIVE DEL MODAL FREE DROP
 ========================================================= */

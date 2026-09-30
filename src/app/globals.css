@@ -5090,13 +5090,18 @@ a.home-top-link,
 }
 .progress-white-red {
   width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+
   background: #ffffff;
   border: 1px solid #ececec;
   border-radius: 14px;
   padding: 10px 12px;
+
   display: flex;
   flex-direction: column;
   gap: 8px;
+
   box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
 }
 
@@ -7997,7 +8002,7 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
   padding: 0 !important;
 
   /* MISMA ALTURA QUE ? Y TOTAL */
-  transform: translateY(101px) !important;
+  transform: translateY(10px) !important;
 
   pointer-events: auto !important;
 }
