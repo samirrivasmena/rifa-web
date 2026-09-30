@@ -4,6 +4,15 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+function respuestaSinIcono() {
+  return new NextResponse(null, {
+    status: 204,
+    headers: {
+      "Cache-Control": "no-store, no-cache, must-revalidate",
+    },
+  });
+}
+
 export async function GET() {
   try {
     const { data, error } = await supabaseAdmin
@@ -15,24 +24,11 @@ export async function GET() {
 
     if (error) {
       console.error("Error obteniendo logo para icono:", error);
-
-      return NextResponse.redirect(
-        new URL(
-          "/favicon.ico",
-          process.env.NEXT_PUBLIC_SITE_URL ||
-            "https://rifaslsd.vercel.app"
-        )
-      );
+      return respuestaSinIcono();
     }
 
     if (!data?.logo_url) {
-      return NextResponse.redirect(
-        new URL(
-          "/favicon.ico",
-          process.env.NEXT_PUBLIC_SITE_URL ||
-            "https://rifaslsd.vercel.app"
-        )
-      );
+      return respuestaSinIcono();
     }
 
     const imagen = await fetch(data.logo_url, {
@@ -44,7 +40,6 @@ export async function GET() {
     }
 
     const buffer = await imagen.arrayBuffer();
-
     const contentType =
       imagen.headers.get("content-type") || "image/png";
 
@@ -57,13 +52,6 @@ export async function GET() {
     });
   } catch (error) {
     console.error("Error generando icono dinámico:", error);
-
-    return NextResponse.redirect(
-      new URL(
-        "/favicon.ico",
-        process.env.NEXT_PUBLIC_SITE_URL ||
-          "https://rifaslsd.vercel.app"
-      )
-    );
+    return respuestaSinIcono();
   }
 }
