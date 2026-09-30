@@ -74,7 +74,7 @@ export default function Admin() {
   const [loadingEliminacion, setLoadingEliminacion] = useState(null);
 
   const { config: siteConfig } = useSiteConfig();
-  const logoUrl = siteConfig?.logo_url || "/logo.png";
+  const logoUrl = siteConfig?.logo_url || "";
 
   const [modalManualOpen, setModalManualOpen] = useState(false);
   const [compraManualSeleccionada, setCompraManualSeleccionada] = useState(null);

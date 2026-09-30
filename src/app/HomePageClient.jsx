@@ -1176,11 +1176,13 @@ export default function HomePageClient() {
                           disabled={rifaCompleta}
                         >
                           <div className="payment-pill-logo-wrap">
-                            <img
-                              src={metodoVisual.logo || "/logo.png"}
-                              alt={method}
-                              className="payment-pill-logo-img"
-                            />
+{metodoVisual.logo ? (
+  <img
+    src={metodoVisual.logo}
+    alt={method}
+    className="payment-pill-logo-img"
+  />
+) : null}
                           </div>
 
                           <span className="payment-pill-text">{method}</span>

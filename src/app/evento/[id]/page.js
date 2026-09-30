@@ -3,10 +3,11 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /* =========================================================
    CONFIGURACIÓN GENERAL
-   Cuando cambies de dominio, solo cambia esta línea.
 ========================================================= */
 
-const SITE_URL = "https://rifaslsd.vercel.app";
+const SITE_URL =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://rifaslsd.vercel.app";
+
 const SITE_NAME = "Sorteos LSD";
 
 /* =========================================================
@@ -18,11 +19,8 @@ function limpiarTexto(valor) {
 }
 
 function construirDescripcion(data) {
-  const nombreEvento =
-    limpiarTexto(data?.nombre) || "Evento";
-
-  const descripcion =
-    limpiarTexto(data?.descripcion);
+  const nombreEvento = limpiarTexto(data?.nombre) || "Evento";
+  const descripcion = limpiarTexto(data?.descripcion);
 
   if (descripcion) {
     return descripcion;
@@ -31,23 +29,61 @@ function construirDescripcion(data) {
   return `Consulta todos los detalles de ${nombreEvento} en ${SITE_NAME}.`;
 }
 
-function construirImagen(data) {
-  const portada =
-    limpiarTexto(data?.portada_url);
+/* =========================================================
+   OBTENER LOGO ACTUAL DEL SITIO
+========================================================= */
+
+async function obtenerLogoActual() {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("configuracion_sitio")
+      .select("logo_url")
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      console.error(
+        "Error obteniendo logo actual para metadata del evento:",
+        error
+      );
+
+      return `${SITE_URL}/icon`;
+    }
+
+    return limpiarTexto(data?.logo_url) || `${SITE_URL}/icon`;
+  } catch (error) {
+    console.error(
+      "Error inesperado obteniendo logo actual para metadata del evento:",
+      error
+    );
+
+    return `${SITE_URL}/icon`;
+  }
+}
+
+/* =========================================================
+   CONSTRUIR IMAGEN PARA COMPARTIR
+========================================================= */
+
+async function construirImagen(data) {
+  const portada = limpiarTexto(data?.portada_url);
 
   /*
    * Si el evento tiene portada, usamos esa imagen.
-   * Esa será la imagen que WhatsApp, Facebook,
-   * Telegram, etc. intentarán mostrar.
+   * Esa seguirá siendo la imagen principal que
+   * WhatsApp, Facebook, Telegram, X, etc.
+   * intentarán mostrar.
    */
   if (portada) {
     return portada;
   }
 
   /*
-   * Imagen de respaldo si el evento no tiene portada.
+   * Si el evento no tiene portada,
+   * usamos el logo actual configurado desde Admin.
    */
-  return `${SITE_URL}/logo.png`;
+  return await obtenerLogoActual();
 }
 
 /* =========================================================
@@ -67,8 +103,7 @@ export async function generateMetadata({ params }) {
 
       title: `Evento | ${SITE_NAME}`,
 
-      description:
-        `Consulta la información del evento en ${SITE_NAME}.`,
+      description: `Consulta la información del evento en ${SITE_NAME}.`,
     };
   }
 
@@ -106,8 +141,7 @@ export async function generateMetadata({ params }) {
 
         title: `Evento | ${SITE_NAME}`,
 
-        description:
-          `Consulta la información del evento en ${SITE_NAME}.`,
+        description: `Consulta la información del evento en ${SITE_NAME}.`,
       };
     }
 
@@ -119,8 +153,7 @@ export async function generateMetadata({ params }) {
       return {
         metadataBase: new URL(SITE_URL),
 
-        title:
-          `Evento no encontrado | ${SITE_NAME}`,
+        title: `Evento no encontrado | ${SITE_NAME}`,
 
         description:
           "Este evento no existe o no está disponible públicamente.",
@@ -156,7 +189,7 @@ export async function generateMetadata({ params }) {
       construirDescripcion(data);
 
     const imagen =
-      construirImagen(data);
+      await construirImagen(data);
 
     const urlEvento =
       `${SITE_URL}/evento/${encodeURIComponent(id)}`;
@@ -249,8 +282,7 @@ export async function generateMetadata({ params }) {
 
       title: `Evento | ${SITE_NAME}`,
 
-      description:
-        `Consulta la información del evento en ${SITE_NAME}.`,
+      description: `Consulta la información del evento en ${SITE_NAME}.`,
     };
   }
 }
