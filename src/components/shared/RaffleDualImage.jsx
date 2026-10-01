@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 
 export default function RaffleDualImage({
   principalSrc,
@@ -8,15 +9,24 @@ export default function RaffleDualImage({
   alt = "Rifa",
   className = "",
 }) {
+  const { config } = useSiteConfig();
+
   const containerRef = useRef(null);
   const intervalRef = useRef(null);
 
   const [isVisible, setIsVisible] = useState(false);
   const [showSecondImage, setShowSecondImage] = useState(false);
 
-  const principalFinal = String(principalSrc || "").trim() || "/logo.png";
+  const logoUrl = String(config?.logo_url || "").trim();
+
+  const principalFinal =
+    String(principalSrc || "").trim() || logoUrl;
+
   const secundariaFinal = String(secondarySrc || "").trim();
-  const tieneSecundaria = Boolean(secundariaFinal) && secundariaFinal !== principalFinal;
+
+  const tieneSecundaria =
+    Boolean(secundariaFinal) &&
+    secundariaFinal !== principalFinal;
 
   useEffect(() => {
     const node = containerRef.current;
@@ -73,8 +83,15 @@ export default function RaffleDualImage({
     };
   }, [isVisible, tieneSecundaria, secundariaFinal, principalFinal]);
 
+  if (!principalFinal) {
+    return null;
+  }
+
   return (
-    <div ref={containerRef} className={`raffle-dual-image-wrap ${className}`}>
+    <div
+      ref={containerRef}
+      className={`raffle-dual-image-wrap ${className}`}
+    >
       <img
         src={principalFinal}
         alt={alt}
@@ -90,7 +107,9 @@ export default function RaffleDualImage({
         <img
           src={secundariaFinal}
           alt={`${alt} secundaria`}
-          className={`raffle-dual-image-layer ${showSecondImage ? "show" : "hide"}`}
+          className={`raffle-dual-image-layer ${
+            showSecondImage ? "show" : "hide"
+          }`}
           loading="lazy"
           decoding="async"
           draggable={false}

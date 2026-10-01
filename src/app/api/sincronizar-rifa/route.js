@@ -150,10 +150,12 @@ async function asegurarTicketsBase(rifa, totalNumeros) {
           compra_id: null,
         }));
 
-      const { error: insertError } = await supabaseAdmin
-        .from("tickets")
-        .insert(batch);
-
+const { error: insertError } = await supabaseAdmin
+  .from("tickets")
+  .upsert(batch, {
+    onConflict: "rifa_id,numero_ticket",
+    ignoreDuplicates: true,
+  });
       if (insertError) {
         return {
           ok: false,

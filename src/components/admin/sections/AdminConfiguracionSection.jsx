@@ -597,7 +597,7 @@ export default function AdminConfiguracionSection() {
         seo_descripcion:
           limpiarTextoMarketing(config.seo_descripcion) ||
           "Compra tus tickets, verifica tus números y consulta eventos disponibles.",
-        seo_imagen: config.seo_imagen || "/og-image.png",
+        seo_imagen: config.seo_imagen || null,
 
         popup_activo: Boolean(config.popup_activo),
         popup_titulo: limpiarTextoBasico(config.popup_titulo) || null,
@@ -726,7 +726,7 @@ export default function AdminConfiguracionSection() {
 
   const previewData = useMemo(() => {
     return {
-      logo: logoPreviewUrl || config?.logo_url || "/logo.png",
+      logo: logoPreviewUrl || config?.logo_url || "",
 
       nombreMarca: limpiarTextoBasico(config?.nombre_marca) || "RIFAS LSD",
 

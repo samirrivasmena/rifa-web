@@ -14,7 +14,31 @@ function formatTicketNumber(n, padLength = 4) {
 }
 
 function safeUrl(url = "") {
-  return String(url || "").trim();
+  const value = String(url || "").trim();
+
+  if (!value) {
+    return "";
+  }
+
+  try {
+    const parsed = new URL(value);
+
+    if (!["http:", "https:"].includes(parsed.protocol)) {
+      return "";
+    }
+
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
+function formatMoney(value) {
+  const number = Number(value || 0);
+
+  return Number.isFinite(number)
+    ? number.toFixed(2)
+    : "0.00";
 }
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -30,8 +54,10 @@ export async function sendCompraAprobadaEmail({
   tickets = 0,
   numerosTickets = [],
   totalPagar = 0,
-  contactoWhatsApp = "https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa",
-  contactoInstagram = "https://www.instagram.com/samir__rivas/",
+  contactoWhatsApp =
+    "https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa",
+  contactoInstagram =
+    "https://www.instagram.com/samir__rivas/",
   eventoUrl = "",
   verificarUrl = "",
   padLength = 4,
@@ -41,11 +67,15 @@ export async function sendCompraAprobadaEmail({
   }
 
   if (!process.env.RESEND_API_KEY) {
-    throw new Error("Falta RESEND_API_KEY en las variables de entorno");
+    throw new Error(
+      "Falta RESEND_API_KEY en las variables de entorno"
+    );
   }
 
   if (!process.env.EMAIL_FROM) {
-    throw new Error("Falta EMAIL_FROM en las variables de entorno");
+    throw new Error(
+      "Falta EMAIL_FROM en las variables de entorno"
+    );
   }
 
   const nombreSafe = escapeHtml(nombre);
@@ -54,205 +84,970 @@ export async function sendCompraAprobadaEmail({
   const fechaEventoSafe = escapeHtml(fechaEvento);
   const horaEventoSafe = escapeHtml(horaEvento);
 
-  const numeroTicketsHtml =
-    Array.isArray(numerosTickets) && numerosTickets.length > 0
-      ? numerosTickets
-          .map(
-            (n) => `
-              <span style="
-                display:inline-block;
-                padding:10px 14px;
-                margin:4px;
-                border-radius:12px;
-                background:#f8fafc;
-                border:1px solid #e5e7eb;
-                color:#111827;
-                font-weight:700;
-                font-size:14px;
-                min-width:58px;
-                text-align:center;
-              ">${formatTicketNumber(n, padLength)}</span>
-            `
-          )
-          .join("")
-      : `<p style="margin:0;color:#6b7280;">No hay tickets para mostrar</p>`;
+  const portadaSafe = safeUrl(portadaUrl);
+  const eventoSafe = safeUrl(eventoUrl);
+  const verificarSafe = safeUrl(verificarUrl);
+  const whatsappSafe = safeUrl(contactoWhatsApp);
+  const instagramSafe = safeUrl(contactoInstagram);
 
-  const portadaHtml = safeUrl(portadaUrl)
-    ? `
-      <div style="margin:0 0 18px;">
-        <img
-          src="${safeUrl(portadaUrl)}"
-          alt="${rifaNombreSafe}"
+  /* =========================================================
+     TICKETS
+  ========================================================= */
+
+  const numeroTicketsHtml =
+    Array.isArray(numerosTickets) &&
+    numerosTickets.length > 0
+      ? numerosTickets
+          .map((n) => {
+            const numero = escapeHtml(
+              formatTicketNumber(n, padLength)
+            );
+
+            return `
+              <td
+                align="center"
+                style="
+                  padding:5px;
+                "
+              >
+                <div
+                  style="
+                    min-width:62px;
+                    padding:11px 12px;
+                    border-radius:10px;
+                    background:#ffffff;
+                    border:1px solid #e5e7eb;
+                    color:#111827;
+                    font-size:15px;
+                    font-weight:900;
+                    letter-spacing:.5px;
+                    text-align:center;
+                    box-shadow:0 2px 6px rgba(0,0,0,.05);
+                  "
+                >
+                  #${numero}
+                </div>
+              </td>
+            `;
+          })
+          .join("")
+      : "";
+
+  const ticketsTableHtml =
+    numeroTicketsHtml
+      ? `
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="
+            border-collapse:collapse;
+          "
+        >
+          <tr>
+            <td>
+              <table
+                role="presentation"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  border-collapse:collapse;
+                "
+              >
+                <tr>
+                  ${numeroTicketsHtml}
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      `
+      : `
+        <div
+          style="
+            padding:14px;
+            border-radius:10px;
+            background:#ffffff;
+            border:1px solid #e5e7eb;
+            color:#6b7280;
+            font-size:13px;
+          "
+        >
+          No hay tickets para mostrar.
+        </div>
+      `;
+
+  /* =========================================================
+     FOTO PRINCIPAL DEL SORTEO
+  ========================================================= */
+
+const portadaHtml = portadaSafe
+  ? `
+    <tr>
+      <td
+        align="center"
+        style="
+          padding:18px 22px 0;
+          background:#ffffff;
+        "
+      >
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
           style="
             width:100%;
-            max-width:100%;
-            display:block;
-            border-radius:20px;
-            object-fit:cover;
-            border:1px solid #e5e7eb;
+            border-collapse:separate;
+            border-spacing:0;
           "
-        />
-      </div>
-    `
-    : "";
+        >
+          <tr>
+            <td
+              align="center"
+              style="
+                padding:0;
+                border-radius:16px;
+                overflow:hidden;
+                background:#f3f4f6;
+              "
+            >
+              <img
+                src="${portadaSafe}"
+                width="636"
+                alt="${rifaNombreSafe}"
+                border="0"
+                style="
+                  display:block;
+                  width:100%;
+                  max-width:636px;
+                  height:auto;
+                  margin:0 auto;
+                  border:0;
+                  outline:none;
+                  text-decoration:none;
+                  border-radius:16px;
+                "
+              />
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `
+  : "";
+
+  /* =========================================================
+     FECHA Y HORA
+  ========================================================= */
 
   const infoEventoHtml =
     fechaEvento || horaEvento
       ? `
-        <div style="display:flex;flex-wrap:wrap;gap:10px;margin:16px 0 0;">
-          ${
-            fechaEvento
-              ? `
-            <div style="flex:1;min-width:180px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-              <div style="font-size:12px;color:#6b7280;font-weight:700;">FECHA</div>
-              <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">${fechaEventoSafe}</div>
-            </div>`
-              : ""
-          }
-          ${
-            horaEvento
-              ? `
-            <div style="flex:1;min-width:180px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-              <div style="font-size:12px;color:#6b7280;font-weight:700;">HORA</div>
-              <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">${horaEventoSafe}</div>
-            </div>`
-              : ""
-          }
-        </div>
-      `
-      : "";
-
-  const buttonsHtml = `
-    <div style="display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:8px;text-align:center;">
-      ${
-        safeUrl(eventoUrl)
-          ? `
-        <a href="${safeUrl(eventoUrl)}"
-           style="
-             display:inline-block;
-             background:linear-gradient(180deg,#ff4d4d 0%,#d90429 55%,#8b0000 100%);
-             color:#fff;
-             text-decoration:none;
-             font-weight:800;
-             padding:14px 22px;
-             border-radius:999px;
-             box-shadow:0 12px 24px rgba(217,4,41,.25);
-           ">
-          VER EVENTO
-        </a>`
-          : ""
-      }
-
-      ${
-        safeUrl(verificarUrl)
-          ? `
-        <a href="${safeUrl(verificarUrl)}"
-           style="
-             display:inline-block;
-             background:#111827;
-             color:#fff;
-             text-decoration:none;
-             font-weight:800;
-             padding:14px 22px;
-             border-radius:999px;
-             box-shadow:0 12px 24px rgba(17,24,39,.15);
-           ">
-          VERIFICAR TICKETS
-        </a>`
-          : ""
-      }
-    </div>
-  `;
-
-  const html = `
-    <div style="margin:0;padding:0;background:#f3f4f6;font-family:Arial,Helvetica,sans-serif;">
-      <div style="max-width:720px;margin:0 auto;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 18px 40px rgba(0,0,0,.12);">
-        <div style="background:linear-gradient(180deg,#ff4d4d 0%,#d90429 55%,#8b0000 100%);padding:30px 24px;text-align:center;color:#fff;">
-          <div style="font-size:30px;font-weight:900;letter-spacing:1px;">RIFAS LSD</div>
-          <div style="font-size:14px;opacity:.95;margin-top:6px;">Tu compra fue aprobada correctamente</div>
-        </div>
-
-        <div style="padding:28px 24px;color:#111827;">
-          <h2 style="margin:0 0 12px;font-size:26px;line-height:1.2;color:#111827;">
-            Hola, ${nombreSafe} 👋
-          </h2>
-
-          <p style="margin:0 0 18px;font-size:16px;line-height:1.7;color:#374151;">
-            Tu compra de <strong>${rifaNombreSafe}</strong> fue <strong>aprobada</strong>.
-            Aquí tienes el resumen de tu participación.
-          </p>
-
-          ${portadaHtml}
-
-          <div style="background:#fff5f5;border:1px solid #fecaca;border-radius:18px;padding:18px;margin-bottom:22px;">
-            <div style="font-size:14px;font-weight:800;color:#b91c1c;margin-bottom:8px;letter-spacing:.02em;">
-              RESUMEN DE TU COMPRA
-            </div>
-
-            <div style="display:flex;flex-wrap:wrap;gap:12px;">
-              <div style="flex:1;min-width:180px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-                <div style="font-size:12px;color:#6b7280;font-weight:700;">RIFA</div>
-                <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">${rifaNombreSafe}</div>
-              </div>
-
-              <div style="flex:1;min-width:180px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-                <div style="font-size:12px;color:#6b7280;font-weight:700;">TICKETS</div>
-                <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">${Number(tickets || 0)}</div>
-              </div>
-
-              <div style="flex:1;min-width:180px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-                <div style="font-size:12px;color:#6b7280;font-weight:700;">MONTO</div>
-                <div style="font-size:16px;font-weight:800;color:#111827;margin-top:4px;">USD $${Number(totalPagar || 0).toFixed(2)}</div>
-              </div>
-            </div>
-
-            ${infoEventoHtml}
-
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="
+            margin-top:12px;
+            border-collapse:collapse;
+          "
+        >
+          <tr>
             ${
-              rifaDescripcionSafe
+              fechaEvento
                 ? `
-              <div style="margin-top:16px;background:#fff;border-radius:14px;padding:14px;border:1px solid #fde2e2;">
-                <div style="font-size:12px;color:#6b7280;font-weight:700;">DESCRIPCIÓN</div>
-                <div style="font-size:15px;line-height:1.6;color:#374151;margin-top:6px;">${rifaDescripcionSafe}</div>
-              </div>
-            `
+                  <td
+                    width="${
+                      horaEvento
+                        ? "50%"
+                        : "100%"
+                    }"
+                    valign="top"
+                    style="
+                      padding-right:${
+                        horaEvento
+                          ? "6px"
+                          : "0"
+                      };
+                    "
+                  >
+                    <div
+                      style="
+                        background:#ffffff;
+                        border:1px solid #fecaca;
+                        border-radius:12px;
+                        padding:13px;
+                      "
+                    >
+                      <div
+                        style="
+                          font-size:10px;
+                          color:#9ca3af;
+                          font-weight:800;
+                          letter-spacing:.7px;
+                        "
+                      >
+                        📅 FECHA
+                      </div>
+
+                      <div
+                        style="
+                          margin-top:5px;
+                          font-size:14px;
+                          font-weight:900;
+                          color:#111827;
+                        "
+                      >
+                        ${fechaEventoSafe}
+                      </div>
+                    </div>
+                  </td>
+                `
                 : ""
             }
 
-            <div style="font-size:13px;font-weight:800;color:#b91c1c;margin:18px 0 10px;">
-              TUS TICKETS ASIGNADOS
-            </div>
+            ${
+              horaEvento
+                ? `
+                  <td
+                    width="${
+                      fechaEvento
+                        ? "50%"
+                        : "100%"
+                    }"
+                    valign="top"
+                    style="
+                      padding-left:${
+                        fechaEvento
+                          ? "6px"
+                          : "0"
+                      };
+                    "
+                  >
+                    <div
+                      style="
+                        background:#ffffff;
+                        border:1px solid #fecaca;
+                        border-radius:12px;
+                        padding:13px;
+                      "
+                    >
+                      <div
+                        style="
+                          font-size:10px;
+                          color:#9ca3af;
+                          font-weight:800;
+                          letter-spacing:.7px;
+                        "
+                      >
+                        🕐 HORA
+                      </div>
 
-            <div style="line-height:2;">
-              ${numeroTicketsHtml}
-            </div>
-          </div>
+                      <div
+                        style="
+                          margin-top:5px;
+                          font-size:14px;
+                          font-weight:900;
+                          color:#111827;
+                        "
+                      >
+                        ${horaEventoSafe}
+                      </div>
+                    </div>
+                  </td>
+                `
+                : ""
+            }
+          </tr>
+        </table>
+      `
+      : "";
 
-          <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:18px;padding:18px;margin-bottom:22px;">
-            <div style="font-size:14px;font-weight:800;color:#111827;margin-bottom:10px;">CONTACTO</div>
-            <p style="margin:0 0 8px;font-size:15px;color:#374151;">
-              WhatsApp: <a href="${safeUrl(contactoWhatsApp)}" style="color:#d90429;text-decoration:none;font-weight:700;">Escríbenos aquí</a>
-            </p>
-            <p style="margin:0;font-size:15px;color:#374151;">
-              Instagram: <a href="${safeUrl(contactoInstagram)}" style="color:#d90429;text-decoration:none;font-weight:700;">@samir__rivas</a>
-            </p>
-          </div>
+  /* =========================================================
+     BOTONES
+  ========================================================= */
 
-          ${buttonsHtml}
+  const buttonsHtml =
+    eventoSafe || verificarSafe
+      ? `
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="
+            margin-top:22px;
+          "
+        >
+          <tr>
+            <td align="center">
 
-          <p style="margin:24px 0 0;font-size:13px;line-height:1.6;color:#6b7280;text-align:center;">
-            Gracias por confiar en <strong>Rifas LSD</strong>.<br />
-            Este correo fue enviado automáticamente al aprobar tu compra.
-          </p>
-        </div>
-      </div>
-    </div>
+              ${
+                eventoSafe
+                  ? `
+                    <a
+                      href="${eventoSafe}"
+                      style="
+                        display:inline-block;
+                        margin:4px;
+                        padding:13px 22px;
+                        border-radius:10px;
+                        background:#dc2626;
+                        color:#ffffff;
+                        text-decoration:none;
+                        font-size:12px;
+                        font-weight:900;
+                        letter-spacing:.4px;
+                      "
+                    >
+                      🎟️ VER EVENTO
+                    </a>
+                  `
+                  : ""
+              }
+
+              ${
+                verificarSafe
+                  ? `
+                    <a
+                      href="${verificarSafe}"
+                      style="
+                        display:inline-block;
+                        margin:4px;
+                        padding:13px 22px;
+                        border-radius:10px;
+                        background:#111827;
+                        color:#ffffff;
+                        text-decoration:none;
+                        font-size:12px;
+                        font-weight:900;
+                        letter-spacing:.4px;
+                      "
+                    >
+                      🔎 VERIFICAR TICKETS
+                    </a>
+                  `
+                  : ""
+              }
+
+            </td>
+          </tr>
+        </table>
+      `
+      : "";
+
+  /* =========================================================
+     HTML DEL EMAIL
+  ========================================================= */
+
+  const html = `
+    <!doctype html>
+
+    <html>
+      <head>
+        <meta charset="utf-8" />
+
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1"
+        />
+
+        <meta
+          name="color-scheme"
+          content="light"
+        />
+
+        <meta
+          name="supported-color-schemes"
+          content="light"
+        />
+
+        <title>
+          Compra aprobada
+        </title>
+      </head>
+
+      <body
+        style="
+          margin:0;
+          padding:0;
+          background:#f3f4f6;
+          font-family:Arial,Helvetica,sans-serif;
+          -webkit-text-size-adjust:100%;
+        "
+      >
+
+        <table
+          role="presentation"
+          width="100%"
+          cellspacing="0"
+          cellpadding="0"
+          border="0"
+          style="
+            width:100%;
+            background:#f3f4f6;
+            border-collapse:collapse;
+          "
+        >
+          <tr>
+            <td
+              align="center"
+              style="
+                padding:30px 12px;
+              "
+            >
+
+              <table
+                role="presentation"
+                width="100%"
+                cellspacing="0"
+                cellpadding="0"
+                border="0"
+                style="
+                  width:100%;
+                  max-width:680px;
+                  background:#ffffff;
+                  border-collapse:separate;
+                  border-spacing:0;
+                  border-radius:22px;
+                  overflow:hidden;
+                  box-shadow:0 10px 35px rgba(0,0,0,.10);
+                "
+              >
+
+                <!-- HEADER -->
+                <tr>
+                  <td
+                    align="center"
+                    style="
+                      padding:25px 20px;
+                      background:linear-gradient(
+                        135deg,
+                        #ef4444 0%,
+                        #dc2626 45%,
+                        #7f1d1d 100%
+                      );
+                    "
+                  >
+
+                    <div
+                      style="
+                        font-size:28px;
+                        line-height:1;
+                        font-weight:900;
+                        color:#ffffff;
+                        letter-spacing:1.5px;
+                      "
+                    >
+                      RIFAS LSD
+                    </div>
+
+                    <div
+                      style="
+                        margin-top:8px;
+                        color:#fecaca;
+                        font-size:12px;
+                        font-weight:700;
+                      "
+                    >
+                      EXPERIENCIAS • PREMIOS • GANADORES
+                    </div>
+
+                  </td>
+                </tr>
+
+                ${portadaHtml}
+
+                <!-- CONFIRMACIÓN -->
+                <tr>
+                  <td
+                    align="center"
+                    style="
+                      padding:25px 22px 10px;
+                      background:#ffffff;
+                    "
+                  >
+
+                    <div
+                      style="
+                        display:inline-block;
+                        padding:7px 13px;
+                        border-radius:999px;
+                        background:#dcfce7;
+                        border:1px solid #86efac;
+                        color:#166534;
+                        font-size:11px;
+                        font-weight:900;
+                        letter-spacing:.4px;
+                      "
+                    >
+                      ✓ COMPRA APROBADA
+                    </div>
+
+                    <h1
+                      style="
+                        margin:14px 0 5px;
+                        color:#111827;
+                        font-size:25px;
+                        line-height:1.2;
+                        font-weight:900;
+                      "
+                    >
+                      ¡Ya estás participando! 🎉
+                    </h1>
+
+                    <p
+                      style="
+                        margin:7px auto 0;
+                        max-width:500px;
+                        color:#6b7280;
+                        font-size:14px;
+                        line-height:1.6;
+                      "
+                    >
+                      Hola,
+                      <strong
+                        style="
+                          color:#111827;
+                        "
+                      >
+                        ${nombreSafe}
+                      </strong>.
+                      Tu compra fue aprobada correctamente.
+                    </p>
+
+                  </td>
+                </tr>
+
+                <!-- NOMBRE DE RIFA -->
+                <tr>
+                  <td
+                    style="
+                      padding:14px 22px 0;
+                    "
+                  >
+
+                    <div
+                      style="
+                        padding:17px;
+                        border-radius:14px;
+                        background:#111827;
+                        text-align:center;
+                      "
+                    >
+
+                      <div
+                        style="
+                          color:#9ca3af;
+                          font-size:10px;
+                          font-weight:900;
+                          letter-spacing:1px;
+                        "
+                      >
+                        ESTÁS PARTICIPANDO EN
+                      </div>
+
+                      <div
+                        style="
+                          margin-top:6px;
+                          color:#ffffff;
+                          font-size:20px;
+                          line-height:1.25;
+                          font-weight:900;
+                        "
+                      >
+                        ${rifaNombreSafe}
+                      </div>
+
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- RESUMEN -->
+                <tr>
+                  <td
+                    style="
+                      padding:14px 22px 0;
+                    "
+                  >
+
+                    <div
+                      style="
+                        padding:17px;
+                        border-radius:16px;
+                        background:#fff7f7;
+                        border:1px solid #fecaca;
+                      "
+                    >
+
+                      <div
+                        style="
+                          margin-bottom:12px;
+                          color:#b91c1c;
+                          font-size:11px;
+                          font-weight:900;
+                          letter-spacing:.7px;
+                        "
+                      >
+                        RESUMEN DE TU COMPRA
+                      </div>
+
+                      <table
+                        role="presentation"
+                        width="100%"
+                        cellspacing="0"
+                        cellpadding="0"
+                        border="0"
+                      >
+                        <tr>
+
+                          <td
+                            width="50%"
+                            valign="top"
+                            style="
+                              padding-right:6px;
+                            "
+                          >
+                            <div
+                              style="
+                                padding:13px;
+                                border-radius:12px;
+                                background:#ffffff;
+                                border:1px solid #fee2e2;
+                              "
+                            >
+                              <div
+                                style="
+                                  color:#9ca3af;
+                                  font-size:10px;
+                                  font-weight:800;
+                                "
+                              >
+                                🎟️ TICKETS
+                              </div>
+
+                              <div
+                                style="
+                                  margin-top:5px;
+                                  color:#111827;
+                                  font-size:20px;
+                                  font-weight:900;
+                                "
+                              >
+                                ${Number(tickets || 0)}
+                              </div>
+                            </div>
+                          </td>
+
+                          <td
+                            width="50%"
+                            valign="top"
+                            style="
+                              padding-left:6px;
+                            "
+                          >
+                            <div
+                              style="
+                                padding:13px;
+                                border-radius:12px;
+                                background:#ffffff;
+                                border:1px solid #fee2e2;
+                              "
+                            >
+                              <div
+                                style="
+                                  color:#9ca3af;
+                                  font-size:10px;
+                                  font-weight:800;
+                                "
+                              >
+                                💳 MONTO
+                              </div>
+
+                              <div
+                                style="
+                                  margin-top:5px;
+                                  color:#111827;
+                                  font-size:20px;
+                                  font-weight:900;
+                                "
+                              >
+                                $${formatMoney(totalPagar)}
+                              </div>
+                            </div>
+                          </td>
+
+                        </tr>
+                      </table>
+
+                      ${infoEventoHtml}
+
+                      ${
+                        rifaDescripcionSafe
+                          ? `
+                            <div
+                              style="
+                                margin-top:12px;
+                                padding:13px;
+                                border-radius:12px;
+                                background:#ffffff;
+                                border:1px solid #fee2e2;
+                              "
+                            >
+                              <div
+                                style="
+                                  color:#9ca3af;
+                                  font-size:10px;
+                                  font-weight:800;
+                                  letter-spacing:.5px;
+                                "
+                              >
+                                DESCRIPCIÓN
+                              </div>
+
+                              <div
+                                style="
+                                  margin-top:6px;
+                                  color:#4b5563;
+                                  font-size:13px;
+                                  line-height:1.6;
+                                "
+                              >
+                                ${rifaDescripcionSafe}
+                              </div>
+                            </div>
+                          `
+                          : ""
+                      }
+
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- TICKETS -->
+                <tr>
+                  <td
+                    style="
+                      padding:14px 22px 0;
+                    "
+                  >
+
+                    <div
+                      style="
+                        padding:17px;
+                        border-radius:16px;
+                        background:#f9fafb;
+                        border:1px solid #e5e7eb;
+                      "
+                    >
+
+                      <div
+                        style="
+                          color:#111827;
+                          font-size:15px;
+                          font-weight:900;
+                        "
+                      >
+                        🎟️ Tus números asignados
+                      </div>
+
+                      <div
+                        style="
+                          margin-top:4px;
+                          margin-bottom:11px;
+                          color:#6b7280;
+                          font-size:11px;
+                        "
+                      >
+                        Guarda este correo como comprobante de tus números.
+                      </div>
+
+                      ${ticketsTableHtml}
+
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- MENSAJE -->
+                <tr>
+                  <td
+                    style="
+                      padding:14px 22px 0;
+                    "
+                  >
+
+                    <div
+                      style="
+                        padding:14px 16px;
+                        border-radius:13px;
+                        background:#fffbeb;
+                        border:1px solid #fde68a;
+                        color:#92400e;
+                        font-size:12px;
+                        line-height:1.6;
+                      "
+                    >
+                      🏆 <strong>Importante:</strong>
+                      conserva tus números. Podrás verificar tus
+                      participaciones desde nuestra página cuando quieras.
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- CONTACTO -->
+                <tr>
+                  <td
+                    style="
+                      padding:14px 22px 0;
+                    "
+                  >
+
+                    <div
+                      style="
+                        padding:16px;
+                        border-radius:15px;
+                        background:#111827;
+                      "
+                    >
+
+                      <div
+                        style="
+                          color:#ffffff;
+                          font-size:13px;
+                          font-weight:900;
+                          margin-bottom:9px;
+                        "
+                      >
+                        ¿Necesitas ayuda?
+                      </div>
+
+                      ${
+                        whatsappSafe
+                          ? `
+                            <div
+                              style="
+                                margin-bottom:6px;
+                                color:#d1d5db;
+                                font-size:12px;
+                              "
+                            >
+                              WhatsApp:
+                              <a
+                                href="${whatsappSafe}"
+                                style="
+                                  color:#f87171;
+                                  text-decoration:none;
+                                  font-weight:800;
+                                "
+                              >
+                                Escríbenos aquí
+                              </a>
+                            </div>
+                          `
+                          : ""
+                      }
+
+                      ${
+                        instagramSafe
+                          ? `
+                            <div
+                              style="
+                                color:#d1d5db;
+                                font-size:12px;
+                              "
+                            >
+                              Instagram:
+                              <a
+                                href="${instagramSafe}"
+                                style="
+                                  color:#f87171;
+                                  text-decoration:none;
+                                  font-weight:800;
+                                "
+                              >
+                                @samir__rivas
+                              </a>
+                            </div>
+                          `
+                          : ""
+                      }
+
+                    </div>
+
+                  </td>
+                </tr>
+
+                <!-- BOTONES -->
+                <tr>
+                  <td
+                    style="
+                      padding:0 22px;
+                    "
+                  >
+                    ${buttonsHtml}
+                  </td>
+                </tr>
+
+                <!-- FOOTER -->
+                <tr>
+                  <td
+                    align="center"
+                    style="
+                      padding:25px 22px 28px;
+                    "
+                  >
+
+                    <div
+                      style="
+                        color:#111827;
+                        font-size:12px;
+                        font-weight:900;
+                      "
+                    >
+                      Gracias por confiar en RIFAS LSD ❤️
+                    </div>
+
+                    <div
+                      style="
+                        margin-top:6px;
+                        color:#9ca3af;
+                        font-size:10px;
+                        line-height:1.5;
+                      "
+                    >
+                      Este correo fue enviado automáticamente
+                      después de aprobar tu compra.
+                    </div>
+
+                  </td>
+                </tr>
+
+              </table>
+
+            </td>
+          </tr>
+        </table>
+
+      </body>
+    </html>
   `;
 
   const { data, error } = await resend.emails.send({
     from: process.env.EMAIL_FROM,
     to,
-    subject: `✅ Tu compra fue aprobada - ${rifaNombreSafe}`,
+    subject: `✅ Compra aprobada | ${rifaNombreSafe}`,
     html,
   });
 

@@ -1,6 +1,14 @@
 "use client";
 
+import { useSiteConfig } from "@/hooks/useSiteConfig";
+import SiteLogo from "@/components/shared/SiteLogo";
+
 export default function HomeTopDashboard({ onOpenVerifier }) {
+  const { config } = useSiteConfig();
+
+  const logoUrl = config?.logo_url || "";
+  const nombreMarca = config?.nombre_marca || "RIFAS LSD";
+
   return (
     <header className="home-top-dashboard">
       <div className="home-top-dashboard-inner">
@@ -11,7 +19,12 @@ export default function HomeTopDashboard({ onOpenVerifier }) {
           className="home-top-logo-link"
           title="Abrir página principal"
         >
-          <img src="/logo.png" alt="Logo" className="home-top-logo" />
+          <SiteLogo
+            src={logoUrl}
+            alt={`Logo ${nombreMarca}`}
+            fallbackText={nombreMarca}
+            className="home-top-logo"
+          />
         </a>
 
         <nav className="home-top-dashboard-nav">

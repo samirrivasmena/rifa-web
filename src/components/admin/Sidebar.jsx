@@ -245,7 +245,7 @@ export default function Sidebar({
   onNavigate,
   onLogout,
   adminEmail,
-  logoUrl = "/logo.png",
+  logoUrl = "",
 }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

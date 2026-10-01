@@ -81,13 +81,6 @@ export default function KpiGrid({
       estadoNormalizado(compra.estado_pago) === "rechazado"
   ).length;
 
-  /*
-   * AdminDashboardSection ya nos entrega en `tickets`
-   * únicamente los números considerados ocupados.
-   *
-   * Aun así normalizamos por numero_ticket para evitar
-   * contar accidentalmente el mismo número más de una vez.
-   */
   const ticketsUnicos = normalizarTicketsUnicos(tickets);
 
   const ticketsFree = ticketsUnicos.filter(
@@ -98,13 +91,6 @@ export default function KpiGrid({
     esTicketPagado
   ).length;
 
-  /*
-   * Conservamos la prop `ticketsVendidos` para no romper
-   * la integración existente.
-   *
-   * Actualmente esa prop representa el TOTAL OCUPADO
-   * de la rifa: pagados + FREE.
-   */
   const valorOcupadosProp = Number(
     ticketsOcupadosProp
   );
@@ -175,7 +161,6 @@ export default function KpiGrid({
       value: ticketsPagados,
       icon: "💳",
       className: "yellow",
-      disabled: true,
     },
     {
       key: "free",
@@ -183,17 +168,13 @@ export default function KpiGrid({
       value: ticketsFree,
       icon: "🎁",
       className: "blue",
-      disabled: true,
     },
     {
       key: "monto",
       label: "Monto Aprobado",
-      value: `$${Number(
-        montoAprobado || 0
-      ).toFixed(2)}`,
+      value: `$${Number(montoAprobado || 0).toFixed(2)}`,
       icon: "💵",
       className: "dark",
-      disabled: true,
     },
   ];
 
@@ -203,33 +184,25 @@ export default function KpiGrid({
         <button
           key={card.key}
           type="button"
-          className={`adminpro-kpi-card ${
-            card.className
-          } ${
-            card.disabled
-              ? "disabled"
-              : "clickable"
-          }`}
-          onClick={() => {
-            if (!card.disabled) {
-              onCardClick?.(card.key);
-            }
-          }}
+          className={`adminpro-kpi-card ${card.className} clickable`}
+          onClick={() => onCardClick?.(card.key)}
+          aria-label={`Ver ${card.label}`}
         >
           <div className="adminpro-kpi-icon">
             {card.icon}
           </div>
 
-          <div>
+          <div className="adminpro-kpi-content">
             <p>{card.label}</p>
             <h3>{card.value}</h3>
           </div>
 
-          {!card.disabled && (
-            <span className="adminpro-kpi-click-hint">
-              ↘
-            </span>
-          )}
+          <span
+            className="adminpro-kpi-click-hint"
+            aria-hidden="true"
+          >
+            ↘
+          </span>
         </button>
       ))}
     </div>

@@ -7,7 +7,7 @@ export default function PublicFooter({ texto, mostrarRedes }) {
 
   const nombreMarca =
     config?.footer_titulo || config?.nombre_marca || "RIFAS LSD";
-  const logoUrl = config?.footer_logo_url || config?.logo_url || "/logo.png";
+  const logoUrl = config?.footer_logo_url || config?.logo_url || "";
 
   const whatsapp = String(
     config?.footer_whatsapp || config?.whatsapp || "17738277463"
@@ -95,13 +95,15 @@ export default function PublicFooter({ texto, mostrarRedes }) {
               "Sorteos, eventos y experiencias creadas con seriedad, transparencia y compromiso."}
           </p>
 
-          <div className="public-footer-logo-wrap">
-            <img
-              src={logoUrl}
-              alt={nombreMarca}
-              className="public-footer-logo"
-            />
-          </div>
+<div className="public-footer-logo-wrap">
+  {logoUrl ? (
+    <img
+      src={logoUrl}
+      alt={nombreMarca}
+      className="public-footer-logo"
+    />
+  ) : null}
+</div>
         </div>
 
         <div className="public-footer-col">
