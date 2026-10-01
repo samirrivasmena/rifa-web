@@ -1,45 +1,89 @@
 import { supabaseAdmin } from "./supabaseAdmin";
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || "samirrivasmena@gmail.com";
-
 export async function requireAdmin(req) {
   try {
-    // NextRequest/Next Headers: siempre usa get('authorization')
-    const authHeader = req.headers.get("authorization") || req.headers.get("Authorization");
+    const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || "")
+      .trim()
+      .toLowerCase();
 
-    if (!authHeader) {
-      return { ok: false, status: 401, error: "No autorizado: falta token" };
-    }
+    // Si ADMIN_EMAIL no está configurado en el servidor,
+    // bloqueamos el acceso en vez de usar un correo de respaldo.
+    if (!ADMIN_EMAIL) {
+      console.error(
+        "SEGURIDAD: falta configurar ADMIN_EMAIL en las variables de entorno"
+      );
 
-    // Soporta "Bearer <token>" o "<token>" a secas
-    const token = authHeader.startsWith("Bearer ")
-      ? authHeader.slice(7)
-      : authHeader;
-
-    if (!token) {
-      return { ok: false, status: 401, error: "No autorizado: token inválido" };
-    }
-
-    // Verifica JWT y obtiene usuario
-    const { data: userData, error: userErr } = await supabaseAdmin.auth.getUser(token);
-
-    if (userErr || !userData?.user) {
       return {
         ok: false,
-        status: 401,
-        error: userErr?.message || "No autorizado: token inválido",
+        status: 500,
+        error: "Configuración de administrador incompleta",
       };
     }
 
-    const email = userData.user.email?.toLowerCase();
+    // Obtener Authorization: Bearer <token>
+    const authHeader = req.headers.get("authorization") || "";
 
-    if (!email || email !== ADMIN_EMAIL.toLowerCase()) {
-      return { ok: false, status: 403, error: "Acceso denegado" };
+    if (!authHeader.startsWith("Bearer ")) {
+      return {
+        ok: false,
+        status: 401,
+        error: "No autorizado",
+      };
     }
 
-    return { ok: true, user: userData.user };
+    const token = authHeader.slice(7).trim();
+
+    if (!token) {
+      return {
+        ok: false,
+        status: 401,
+        error: "No autorizado",
+      };
+    }
+
+    // Supabase verifica el token en el servidor y devuelve
+    // el usuario real asociado a esa sesión.
+    const {
+      data: { user },
+      error: userError,
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+      return {
+        ok: false,
+        status: 401,
+        error: "Sesión inválida o expirada",
+      };
+    }
+
+    const userEmail = String(user.email || "")
+      .trim()
+      .toLowerCase();
+
+    // Tener una cuenta válida de Supabase NO es suficiente.
+    // También debe coincidir con el administrador configurado.
+    if (!userEmail || userEmail !== ADMIN_EMAIL) {
+      return {
+        ok: false,
+        status: 403,
+        error: "Acceso denegado",
+      };
+    }
+
+    return {
+      ok: true,
+      user: {
+        id: user.id,
+        email: user.email,
+      },
+    };
   } catch (error) {
     console.error("requireAdmin error:", error);
-    return { ok: false, status: 500, error: error.message || "Error interno" };
+
+    return {
+      ok: false,
+      status: 500,
+      error: "Error interno de autenticación",
+    };
   }
 }
