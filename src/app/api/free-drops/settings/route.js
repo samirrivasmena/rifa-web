@@ -44,7 +44,6 @@ export async function GET(req) {
           "batch_size",
           "released_total",
           "one_ticket_per_person",
-          "manual_review",
           "require_follow",
           "require_like",
           "require_comment",
@@ -76,7 +75,6 @@ export async function GET(req) {
       released_total: 0,
 
       one_ticket_per_person: true,
-      manual_review: false,
 
       require_follow: false,
       require_like: false,

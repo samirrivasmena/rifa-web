@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { requireAdmin } from "@/lib/requireAdmin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
@@ -132,13 +134,30 @@ function respuestaSinCache(data, status = 200) {
   });
 }
 
+function respuestaNoAutorizada(auth) {
+  return respuestaSinCache(
+    {
+      ok: false,
+      error: auth.error || "No autorizado",
+    },
+    auth.status || 401
+  );
+}
+
 /* =========================================================
    GET
    Obtener configuración actual
+   SOLO ADMIN
 ========================================================= */
 
-export async function GET() {
+export async function GET(request) {
   try {
+    const auth = await requireAdmin(request);
+
+    if (!auth.ok) {
+      return respuestaNoAutorizada(auth);
+    }
+
     const { data, error } = await supabaseAdmin
       .from("configuracion_sitio")
       .select("*")
@@ -187,10 +206,29 @@ export async function GET() {
 /* =========================================================
    PUT
    Actualizar configuración actual
+   SOLO ADMIN
 ========================================================= */
 
 export async function PUT(request) {
   try {
+    /*
+    =========================================================
+    SEGURIDAD ADMIN
+    =========================================================
+    */
+
+    const auth = await requireAdmin(request);
+
+    if (!auth.ok) {
+      return respuestaNoAutorizada(auth);
+    }
+
+    /*
+    =========================================================
+    LEER BODY
+    =========================================================
+    */
+
     const body = await request.json();
 
     if (!body || typeof body !== "object" || Array.isArray(body)) {
@@ -203,7 +241,23 @@ export async function PUT(request) {
       );
     }
 
+    /*
+    =========================================================
+    PERMITIR ÚNICAMENTE CAMPOS CONOCIDOS
+    =========================================================
+    */
+
     const payload = limpiarPayload(body);
+
+    if (Object.keys(payload).length === 0) {
+      return respuestaSinCache(
+        {
+          ok: false,
+          error: "No se recibieron campos de configuración válidos.",
+        },
+        400
+      );
+    }
 
     /* -----------------------------------------------------
        Métodos de pago

@@ -158,7 +158,17 @@ export async function GET(req) {
       error: errorDrops,
     } = await supabase
       .from("free_drops")
-      .select("*")
+      .select(`
+  id,
+  rifa_id,
+  nombre,
+  numero_drop,
+  cupos_total,
+  cupos_usados,
+  estado,
+  fecha_inicio,
+  created_at
+`)
       .eq("rifa_id", rifaId)
       .neq("estado", "archivado")
       .order("numero_drop", {
