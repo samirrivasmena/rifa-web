@@ -52,7 +52,7 @@ export default function PrincipalPageClient() {
 
   const nombreMarca = config?.nombre_marca || "RIFAS LSD";
 
-  const whatsappNumber = config?.whatsapp || "17738277463";
+  const whatsappNumber = config?.whatsapp || "17088865291";
 
   const instagramUrl = config?.instagram || "";
 

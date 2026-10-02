@@ -1061,7 +1061,7 @@ RENDIRSE🛑.`}
                   <input
                     value={config.whatsapp || ""}
                     onChange={(e) => cambiarCampo("whatsapp", e.target.value)}
-                    placeholder="17738277463"
+                    placeholder="17088865291"
                   />
                 </Field>
 
@@ -1670,7 +1670,7 @@ RENDIRSE🛑.`}
         <input
           value={config.footer_whatsapp || ""}
           onChange={(e) => cambiarCampo("footer_whatsapp", e.target.value)}
-          placeholder="17738277463"
+          placeholder="17088865291"
         />
       </Field>
 

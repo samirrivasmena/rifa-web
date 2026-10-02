@@ -38,8 +38,8 @@ export async function sendFreeDropConfirmationEmail({
   fechaIso = "",
   verificarUrl = "",
   eventoUrl = "",
-  contactoWhatsApp = "https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20free%20drop",
-  contactoInstagram = "https://www.instagram.com/samir__rivas/",
+  contactoWhatsApp = "https://wa.me/17088865291?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20free%20drop",
+  contactoInstagram = "https://www.instagram.com/sorteoslsd/",
   padLength = 4,
 }) {
   if (!to) {

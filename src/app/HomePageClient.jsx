@@ -78,7 +78,7 @@ export default function HomePageClient() {
   }, [config]);
 
   const logoUrl = config?.logo_url || "";
-  const whatsappNumber = config?.whatsapp || "17738277463";
+  const whatsappNumber = config?.whatsapp || "17088865291";
 
   const searchParams = useSearchParams();
   const rifaDesdeQuery = searchParams.get("rifa");

@@ -10,7 +10,7 @@ export default function PublicFooter({ texto, mostrarRedes }) {
   const logoUrl = config?.footer_logo_url || config?.logo_url || "";
 
   const whatsapp = String(
-    config?.footer_whatsapp || config?.whatsapp || "17738277463"
+    config?.footer_whatsapp || config?.whatsapp || "17088865291"
   ).replace(/\D/g, "");
 
   const instagram = config?.footer_instagram || config?.instagram || "";
