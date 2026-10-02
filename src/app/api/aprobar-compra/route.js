@@ -1230,11 +1230,12 @@ export async function POST(req) {
             rifa.portada_url ||
             rifa.portada_scroll_url ||
             "",
-          fechaEvento:
-            rifa.fecha_sorteo ||
-            rifa.fecha ||
-            rifa.fecha_rifa ||
-            "",
+fechaEvento: new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Chicago",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(new Date()),
           horaEvento:
             rifa.hora_sorteo ||
             rifa.hora ||

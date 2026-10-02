@@ -31,10 +31,10 @@ async function obtenerConfiguracion() {
 export async function generateMetadata() {
   const config = await obtenerConfiguracion();
 
-  const nombreMarca = config?.nombre_marca || "Rifas LSD";
+  const nombreMarca = config?.nombre_marca || "SORTEOS LSD";
 
   const titulo =
-    config?.seo_titulo || "Rifas LSD | Compra tus tickets";
+    config?.seo_titulo || "SORTEOS LSD | Compra tus tickets";
 
   const descripcion =
     config?.seo_descripcion ||

@@ -55,9 +55,9 @@ export async function sendCompraAprobadaEmail({
   numerosTickets = [],
   totalPagar = 0,
   contactoWhatsApp =
-    "https://wa.me/17738277463?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa",
+    "https://wa.me/17088865291?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20sorteo",
   contactoInstagram =
-    "https://www.instagram.com/samir__rivas/",
+    "https://www.instagram.com/sorteoslsd/",
   eventoUrl = "",
   verificarUrl = "",
   padLength = 4,
@@ -81,8 +81,35 @@ export async function sendCompraAprobadaEmail({
   const nombreSafe = escapeHtml(nombre);
   const rifaNombreSafe = escapeHtml(rifaNombre);
   const rifaDescripcionSafe = escapeHtml(rifaDescripcion);
-  const fechaEventoSafe = escapeHtml(fechaEvento);
-  const horaEventoSafe = escapeHtml(horaEvento);
+const fechaEventoFormateada = (() => {
+  if (!fechaEvento) return "";
+
+  const match = String(fechaEvento).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+
+  if (!match) return String(fechaEvento);
+
+  const [, year, month, day] = match;
+
+  const meses = [
+    "enero",
+    "febrero",
+    "marzo",
+    "abril",
+    "mayo",
+    "junio",
+    "julio",
+    "agosto",
+    "septiembre",
+    "octubre",
+    "noviembre",
+    "diciembre",
+  ];
+
+  return `${Number(day)} de ${meses[Number(month) - 1]} de ${year}`;
+})();
+
+const fechaEventoSafe = escapeHtml(fechaEventoFormateada);
+const horaEventoSafe = escapeHtml(horaEvento);
 
   const portadaSafe = safeUrl(portadaUrl);
   const eventoSafe = safeUrl(eventoUrl);
@@ -94,91 +121,119 @@ export async function sendCompraAprobadaEmail({
      TICKETS
   ========================================================= */
 
-  const numeroTicketsHtml =
-    Array.isArray(numerosTickets) &&
-    numerosTickets.length > 0
-      ? numerosTickets
-          .map((n) => {
-            const numero = escapeHtml(
-              formatTicketNumber(n, padLength)
-            );
+const ticketsPorFila = 5;
 
-            return `
-              <td
-                align="center"
-                style="
-                  padding:5px;
-                "
-              >
-                <div
+const filasTicketsHtml =
+  Array.isArray(numerosTickets) && numerosTickets.length > 0
+    ? Array.from(
+        {
+          length: Math.ceil(numerosTickets.length / ticketsPorFila),
+        },
+        (_, filaIndex) => {
+          const inicio = filaIndex * ticketsPorFila;
+
+          const numerosFila = numerosTickets.slice(
+            inicio,
+            inicio + ticketsPorFila
+          );
+
+          const celdas = Array.from(
+            { length: ticketsPorFila },
+            (_, columnaIndex) => {
+              const n = numerosFila[columnaIndex];
+
+              if (n === undefined || n === null) {
+                return `
+                  <td
+                    width="20%"
+                    style="
+                      width:20%;
+                      padding:4px;
+                    "
+                  >
+                    &nbsp;
+                  </td>
+                `;
+              }
+
+              const numero = escapeHtml(
+                formatTicketNumber(n, padLength)
+              );
+
+              return `
+                <td
+                  width="20%"
+                  align="center"
+                  valign="middle"
                   style="
-                    min-width:62px;
-                    padding:11px 12px;
-                    border-radius:10px;
-                    background:#ffffff;
-                    border:1px solid #e5e7eb;
-                    color:#111827;
-                    font-size:15px;
-                    font-weight:900;
-                    letter-spacing:.5px;
-                    text-align:center;
-                    box-shadow:0 2px 6px rgba(0,0,0,.05);
+                    width:20%;
+                    padding:4px;
                   "
                 >
-                  #${numero}
-                </div>
-              </td>
-            `;
-          })
-          .join("")
-      : "";
+                  <div
+                    style="
+                      padding:10px 4px;
+                      border-radius:10px;
+                      background:#ffffff;
+                      border:1px solid #e5e7eb;
+                      color:#111827;
+                      font-size:14px;
+                      line-height:1.2;
+                      font-weight:900;
+                      letter-spacing:.3px;
+                      text-align:center;
+                      white-space:nowrap;
+                    "
+                  >
+                    #${numero}
+                  </div>
+                </td>
+              `;
+            }
+          ).join("");
 
-  const ticketsTableHtml =
-    numeroTicketsHtml
-      ? `
-        <table
-          role="presentation"
-          width="100%"
-          cellspacing="0"
-          cellpadding="0"
-          border="0"
-          style="
-            border-collapse:collapse;
-          "
-        >
-          <tr>
-            <td>
-              <table
-                role="presentation"
-                cellspacing="0"
-                cellpadding="0"
-                border="0"
-                style="
-                  border-collapse:collapse;
-                "
-              >
-                <tr>
-                  ${numeroTicketsHtml}
-                </tr>
-              </table>
-            </td>
-          </tr>
-        </table>
-      `
-      : `
-        <div
-          style="
-            padding:14px;
-            border-radius:10px;
-            background:#ffffff;
-            border:1px solid #e5e7eb;
-            color:#6b7280;
-            font-size:13px;
-          "
-        >
-          No hay tickets para mostrar.
-        </div>
-      `;
+          return `
+            <tr>
+              ${celdas}
+            </tr>
+          `;
+        }
+      ).join("")
+    : "";
+
+const ticketsTableHtml =
+  filasTicketsHtml
+    ? `
+      <table
+        role="presentation"
+        width="100%"
+        cellspacing="0"
+        cellpadding="0"
+        border="0"
+        style="
+          width:100%;
+          max-width:100%;
+          table-layout:fixed;
+          border-collapse:collapse;
+        "
+      >
+        ${filasTicketsHtml}
+      </table>
+    `
+    : `
+      <div
+        style="
+          padding:14px;
+          border-radius:10px;
+          background:#ffffff;
+          border:1px solid #e5e7eb;
+          color:#6b7280;
+          font-size:13px;
+        "
+      >
+        No hay tickets para mostrar.
+      </div>
+    `;
 
   /* =========================================================
      FOTO PRINCIPAL DEL SORTEO
@@ -547,7 +602,7 @@ const portadaHtml = portadaSafe
                         letter-spacing:1.5px;
                       "
                     >
-                      RIFAS LSD
+                      SORTEOS LSD
                     </div>
 
                     <div
@@ -977,7 +1032,7 @@ const portadaHtml = portadaSafe
                                   font-weight:800;
                                 "
                               >
-                                @samir__rivas
+                                @sorteoslsd
                               </a>
                             </div>
                           `
@@ -1016,7 +1071,7 @@ const portadaHtml = portadaSafe
                         font-weight:900;
                       "
                     >
-                      Gracias por confiar en RIFAS LSD ❤️
+                      Gracias por confiar en SORTEOS LSD ❤️
                     </div>
 
                     <div
@@ -1044,12 +1099,12 @@ const portadaHtml = portadaSafe
     </html>
   `;
 
-  const { data, error } = await resend.emails.send({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject: `✅ Compra aprobada | ${rifaNombreSafe}`,
-    html,
-  });
+const { data, error } = await resend.emails.send({
+  from: process.env.EMAIL_FROM,
+  to,
+  subject: `✅ Compra aprobada | ${rifaNombreSafe}`,
+  html,
+});
 
   if (error) {
     throw error;
