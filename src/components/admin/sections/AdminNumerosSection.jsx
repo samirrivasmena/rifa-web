@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { getAdminAuthHeaders } from "@/lib/getAdminAuthHeaders";
 import RaffleProgressPanel from "../RaffleProgressPanel";
 

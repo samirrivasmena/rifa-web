@@ -840,13 +840,13 @@ export default function RaffleProgressPanel({
                   </div>
 
                   <div>
-                    <span>Nombre</span>
-                    <strong>
-                      {ticketDetalle.ticket.freeNombre ||
-                        ticketDetalle.ticket.free_drop_participation?.nombre ||
-                        ticketDetalle.ticket.asignado_a_nombre ||
-                        "Sin nombre"}
-                    </strong>
+<span>Nombre</span>
+<strong>
+  {ticketDetalle.ticket.free_drop_participation?.nombre ||
+    ticketDetalle.ticket.freeNombre ||
+    ticketDetalle.ticket.asignado_a_nombre ||
+    "Sin nombre"}
+</strong>
                   </div>
 
                   <div>

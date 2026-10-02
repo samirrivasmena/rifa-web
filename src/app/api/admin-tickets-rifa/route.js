@@ -81,8 +81,9 @@ export async function GET(req) {
         fecha_asignacion,
         created_at
       `)
-      .eq("rifa_id", rifaId)
-      .order("numero_ticket", { ascending: true });
+.eq("rifa_id", rifaId)
+.neq("estado", "disponible")
+.order("numero_ticket", { ascending: true });
 
     if (errorTickets) {
       return errorResponse(
@@ -301,7 +302,7 @@ export async function GET(req) {
             ? "OCUPADO"
             : "DISPONIBLE",
           tipo_normalizado: esFree ? "free" : ticket.tipo || null,
-          compra,
+          compra: null,
           nombreCliente,
           emailCliente,
           telefonoCliente,
