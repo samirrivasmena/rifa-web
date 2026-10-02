@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Swal from "sweetalert2";
+import { getAdminAuthHeaders } from "../../../lib/getAdminAuthHeaders";
 
 const TABS = [
   { id: "general", label: "General", icon: "🏷️" },
@@ -331,11 +332,13 @@ export default function AdminConfiguracionSection() {
     try {
       setLoading(true);
 
-      const res = await fetch("/api/admin-configuracion", {
-        method: "GET",
-        cache: "no-store",
-      });
+const headers = await getAdminAuthHeaders();
 
+const res = await fetch("/api/admin-configuracion", {
+  method: "GET",
+  headers,
+  cache: "no-store",
+});
       const data = await leerJsonSeguro(res, "/api/admin-configuracion");
 
       if (!res.ok || !data.ok) {
@@ -481,11 +484,16 @@ export default function AdminConfiguracionSection() {
       const formData = new FormData();
       formData.append("file", file);
 
-      const res = await fetch("/api/admin-configuracion/logo", {
-        method: "POST",
-        body: formData,
-      });
+const authHeaders = await getAdminAuthHeaders();
 
+const { "Content-Type": _contentType, ...headers } =
+  authHeaders;
+
+const res = await fetch("/api/admin-configuracion/logo", {
+  method: "POST",
+  headers,
+  body: formData,
+});
       const data = await leerJsonSeguro(res, "/api/admin-configuracion/logo");
 
       if (!res.ok || !data?.ok) {
@@ -674,13 +682,13 @@ export default function AdminConfiguracionSection() {
         descripcion: limpiarTextoMarketing(config.descripcion) || null,
       };
 
-      const res = await fetch("/api/admin-configuracion", {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      });
+const headers = await getAdminAuthHeaders();
+
+const res = await fetch("/api/admin-configuracion", {
+  method: "PUT",
+  headers,
+  body: JSON.stringify(payload),
+});
 
       const data = await leerJsonSeguro(res, "/api/admin-configuracion");
 

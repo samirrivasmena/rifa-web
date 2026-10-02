@@ -133,7 +133,7 @@ export default function AdminNumerosSection({
       mounted = false;
       if (retryTimeout) clearTimeout(retryTimeout);
     };
-  }, [rifaSeleccionada?.id, intentos, comprasFiltradasPorRifa]);
+  }, [rifaSeleccionada?.id, intentos]);
 
   return (
     <div className="adminpro-page-stack">

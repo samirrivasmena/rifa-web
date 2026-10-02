@@ -1,164 +1,305 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from "react";
 
 const STORAGE_KEY = "site-config-updated";
+const CHANNEL_NAME = "site-config-channel";
 
-export function useSiteConfig() {
-  const [config, setConfig] = useState(null);
-  const [loadingConfig, setLoadingConfig] = useState(true);
-  const [errorConfig, setErrorConfig] = useState(null);
+// ============================================================
+// ESTADO COMPARTIDO ENTRE TODAS LAS INSTANCIAS DEL HOOK
+// ============================================================
 
-  const mountedRef = useRef(true);
-  const primeraCargaRef = useRef(true);
-  const requestRef = useRef(0);
-  const channelRef = useRef(null);
+let sharedConfig = null;
+let sharedLoading = true;
+let sharedError = null;
 
-  const cargarConfig = useCallback(async ({ silent = false } = {}) => {
-    const requestId = ++requestRef.current;
+let requestPromise = null;
+let listenersInstalled = false;
+let broadcastChannel = null;
 
+const subscribers = new Set();
+
+// ============================================================
+// NOTIFICAR A TODOS LOS COMPONENTES
+// ============================================================
+
+function notifySubscribers() {
+  subscribers.forEach((callback) => {
     try {
-      if (!silent) {
-        setErrorConfig(null);
-      }
-
-      const res = await fetch("/api/configuracion-publica", {
-        method: "GET",
-        cache: "no-store",
-        headers: {
-          "Cache-Control": "no-cache, no-store, max-age=0",
-          Pragma: "no-cache",
-        },
+      callback({
+        config: sharedConfig,
+        loadingConfig: sharedLoading,
+        errorConfig: sharedError,
       });
+    } catch (error) {
+      console.error(
+        "Error notificando configuración:",
+        error
+      );
+    }
+  });
+}
+
+// ============================================================
+// ACTUALIZAR CONFIGURACIÓN COMPARTIDA
+// ============================================================
+
+function setSharedConfig(value) {
+  sharedConfig = value;
+  notifySubscribers();
+}
+
+// ============================================================
+// CARGAR CONFIGURACIÓN
+// ============================================================
+
+async function cargarConfigCompartida({
+  force = false,
+  silent = false,
+} = {}) {
+  // Si ya existe una petición en curso,
+  // todos los componentes esperan la misma.
+  if (requestPromise) {
+    return requestPromise;
+  }
+
+  // Si ya tenemos configuración y no estamos
+  // forzando una actualización, no consultamos otra vez.
+  if (!force && sharedConfig) {
+    return sharedConfig;
+  }
+
+  if (!silent) {
+    sharedLoading = true;
+    sharedError = null;
+    notifySubscribers();
+  }
+
+  requestPromise = (async () => {
+    try {
+      const res = await fetch(
+        "/api/configuracion-publica",
+        {
+          method: "GET",
+          cache: "no-store",
+          headers: {
+            "Cache-Control":
+              "no-cache, no-store, max-age=0",
+            Pragma: "no-cache",
+          },
+        }
+      );
 
       const data = await res.json();
 
-      if (!mountedRef.current) return null;
-      if (requestId !== requestRef.current) return null;
-
       if (!res.ok || !data?.ok) {
         throw new Error(
-          data?.error || "No se pudo cargar la configuración"
+          data?.error ||
+            "No se pudo cargar la configuración"
         );
       }
 
-      setConfig(data.configuracion || null);
-      setErrorConfig(null);
+      sharedConfig =
+        data.configuracion || null;
 
-      return data.configuracion || null;
+      sharedError = null;
+
+      return sharedConfig;
     } catch (error) {
-      console.error("Error cargando configuración pública:", error);
-
-      if (!mountedRef.current) return null;
-      if (requestId !== requestRef.current) return null;
-
-      setErrorConfig(
-        error?.message || "Error cargando configuración"
+      console.error(
+        "Error cargando configuración pública:",
+        error
       );
+
+      sharedError =
+        error?.message ||
+        "Error cargando configuración";
 
       return null;
     } finally {
-      if (
-        mountedRef.current &&
-        primeraCargaRef.current
-      ) {
-        setLoadingConfig(false);
-        primeraCargaRef.current = false;
-      }
+      sharedLoading = false;
+      requestPromise = null;
+
+      notifySubscribers();
     }
-  }, []);
+  })();
+
+  return requestPromise;
+}
+
+// ============================================================
+// RECARGA GLOBAL
+// ============================================================
+
+function recargarConfigGlobal() {
+  return cargarConfigCompartida({
+    force: true,
+    silent: true,
+  });
+}
+
+// ============================================================
+// LISTENERS GLOBALES
+// ============================================================
+
+function instalarListenersGlobales() {
+  if (
+    typeof window === "undefined" ||
+    listenersInstalled
+  ) {
+    return;
+  }
+
+  listenersInstalled = true;
+
+  // ----------------------------------------------------------
+  // VOLVER A LA PESTAÑA
+  // ----------------------------------------------------------
+
+const handleVisibilityChange = () => {
+  // No recargamos la configuración simplemente
+  // por volver a esta pestaña.
+  //
+  // Los cambios reales del Admin ya se sincronizan
+  // mediante:
+  // - site-config-updated
+  // - storage
+  // - BroadcastChannel
+};
+
+  // ----------------------------------------------------------
+  // EVENTO INTERNO DEL ADMIN
+  // ----------------------------------------------------------
+
+  const handleSiteConfigUpdated = () => {
+    recargarConfigGlobal();
+  };
+
+  // ----------------------------------------------------------
+  // LOCALSTORAGE ENTRE PESTAÑAS
+  // ----------------------------------------------------------
+
+  const handleStorage = (event) => {
+    if (event.key === STORAGE_KEY) {
+      recargarConfigGlobal();
+    }
+  };
+
+  document.addEventListener(
+    "visibilitychange",
+    handleVisibilityChange
+  );
+
+  window.addEventListener(
+    "site-config-updated",
+    handleSiteConfigUpdated
+  );
+
+  window.addEventListener(
+    "storage",
+    handleStorage
+  );
+
+  // ----------------------------------------------------------
+  // BROADCAST CHANNEL
+  // ----------------------------------------------------------
+
+  if ("BroadcastChannel" in window) {
+    broadcastChannel =
+      new BroadcastChannel(CHANNEL_NAME);
+
+    broadcastChannel.onmessage = (event) => {
+      if (
+        event?.data?.type ===
+        "site-config-updated"
+      ) {
+        recargarConfigGlobal();
+      }
+    };
+  }
+}
+
+// ============================================================
+// HOOK
+// ============================================================
+
+export function useSiteConfig() {
+  const [state, setState] = useState(() => ({
+    config: sharedConfig,
+    loadingConfig: sharedLoading,
+    errorConfig: sharedError,
+  }));
+
+  // ==========================================================
+  // SUSCRIPCIÓN
+  // ==========================================================
 
   useEffect(() => {
-    mountedRef.current = true;
-
-    // Primera carga
-    cargarConfig();
-
-    // Si el usuario vuelve a la pestaña,
-    // comprobamos si hubo cambios mientras estaba fuera.
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === "visible") {
-        cargarConfig({ silent: true });
-      }
+    const actualizar = (nuevoEstado) => {
+      setState(nuevoEstado);
     };
 
-    // Si desde Admin se dispara una actualización manual.
-    const handleSiteConfigUpdated = () => {
-      cargarConfig({ silent: true });
-    };
+    subscribers.add(actualizar);
 
-    // Si otra pestaña cambia la configuración usando localStorage.
-    const handleStorage = (event) => {
-      if (event.key === STORAGE_KEY) {
-        cargarConfig({ silent: true });
-      }
-    };
+    instalarListenersGlobales();
 
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
-    );
+    // Sincronizamos inmediatamente esta instancia
+    // con el estado compartido actual.
+    actualizar({
+      config: sharedConfig,
+      loadingConfig: sharedLoading,
+      errorConfig: sharedError,
+    });
 
-    window.addEventListener(
-      "site-config-updated",
-      handleSiteConfigUpdated
-    );
-
-    window.addEventListener(
-      "storage",
-      handleStorage
-    );
-
-    // BroadcastChannel para sincronizar cambios entre pestañas.
-    if (
-      typeof window !== "undefined" &&
-      "BroadcastChannel" in window
-    ) {
-      channelRef.current = new BroadcastChannel(
-        "site-config-channel"
-      );
-
-      channelRef.current.onmessage = (event) => {
-        if (event?.data?.type === "site-config-updated") {
-          cargarConfig({ silent: true });
-        }
-      };
-    }
+    // Solamente la primera instancia provocará el fetch.
+    // Las demás reutilizarán requestPromise o sharedConfig.
+    cargarConfigCompartida();
 
     return () => {
-      mountedRef.current = false;
-
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
-
-      window.removeEventListener(
-        "site-config-updated",
-        handleSiteConfigUpdated
-      );
-
-      window.removeEventListener(
-        "storage",
-        handleStorage
-      );
-
-      if (channelRef.current) {
-        channelRef.current.close();
-        channelRef.current = null;
-      }
+      subscribers.delete(actualizar);
     };
-  }, [cargarConfig]);
+  }, []);
+
+  // ==========================================================
+  // SET CONFIG
+  // ==========================================================
+  //
+  // Conservamos setConfig para no romper ningún componente
+  // que ya lo esté utilizando.
+  // ==========================================================
+
+  const setConfig = useCallback((value) => {
+    if (typeof value === "function") {
+      setSharedConfig(
+        value(sharedConfig)
+      );
+      return;
+    }
+
+    setSharedConfig(value);
+  }, []);
+
+  // ==========================================================
+  // RECARGAR CONFIG
+  // ==========================================================
 
   const recargarConfig = useCallback(() => {
-    return cargarConfig({ silent: true });
-  }, [cargarConfig]);
+    return recargarConfigGlobal();
+  }, []);
+
+  // ==========================================================
+  // RESPUESTA DEL HOOK
+  // ==========================================================
 
   return {
-    config,
+    config: state.config,
     setConfig,
-    loadingConfig,
-    errorConfig,
+    loadingConfig: state.loadingConfig,
+    errorConfig: state.errorConfig,
     recargarConfig,
   };
 }

@@ -308,7 +308,7 @@ export default function HeroRifa({
               </svg>
 
               <div className="adminhero4__ring-center">
-                <strong>{Math.round(porcentajeVendido)}%</strong>
+                <strong>{toNumber(porcentajeVendido, 0).toFixed(1)}%</strong>
                 <span>Vendido</span>
               </div>
             </div>

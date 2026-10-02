@@ -401,6 +401,15 @@ export default function AdminDashboardSection({
   useEffect(() => {
     const rifaId = rifaSeleccionada?.id;
 
+    const necesitaDetallesFree =
+  filtroDashboard === "free" ||
+  (filtroDashboard === "tickets" && tipoTicket === "free");
+
+if (!necesitaDetallesFree) {
+  setParticipacionesFreeDashboard([]);
+  return;
+}
+
     if (!rifaId) {
       setParticipacionesFreeDashboard([]);
       return;
@@ -452,7 +461,7 @@ export default function AdminDashboardSection({
     cargarParticipacionesFreeDashboard();
 
     return () => controller.abort();
-  }, [rifaSeleccionada?.id]);
+  }, [rifaSeleccionada?.id, filtroDashboard, tipoTicket]);
 
   const estadoNormalizado = (valor) =>
 
@@ -616,6 +625,7 @@ export default function AdminDashboardSection({
   const resumenRifa =
 
     dashboardCompactSummary || {};
+    
 
   const totalTickets = Number(
 

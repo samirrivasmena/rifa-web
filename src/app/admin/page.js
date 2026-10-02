@@ -66,8 +66,7 @@ export default function Admin() {
   const [rifas, setRifas] = useState([]);
 
   const [rifaSeleccionadaId, setRifaSeleccionadaId] = useState("");
-  const [rifaActiva, setRifaActiva] = useState(null);
-  const [loadingRifa, setLoadingRifa] = useState(true);
+  const rifaSeleccionadaIdRef = useRef("");
 
   const [loadingAprobacion, setLoadingAprobacion] = useState(null);
   const [loadingRechazo, setLoadingRechazo] = useState(null);
@@ -84,184 +83,201 @@ export default function Admin() {
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
 
-  const cargarDashboard = useCallback(
-    async (headersParam = null) => {
-      if (!accesoPermitido) return { compras: [], tickets: [] };
+const cargarDashboard = useCallback(
+  async (headersParam = null, rifaIdParam = null) => {
+    if (!accesoPermitido) {
+      return { compras: [], tickets: [] };
+    }
 
-      try {
-        const headers = headersParam || (await getAdminAuthHeaders());
-
-        if (!headers.Authorization) {
-          console.warn("No hay token admin listo todavía para cargar dashboard");
-          return { compras: [], tickets: [] };
-        }
-
-        const res = await fetch("/api/admin-compras", {
-          method: "GET",
-          headers,
-          cache: "no-store",
-        });
-
-        const rawText = await res.text();
-
-        let data;
-        try {
-          data = JSON.parse(rawText);
-        } catch {
-          console.error("Respuesta inválida en /api/admin-compras");
-          return { compras: [], tickets: [] };
-        }
-
-        if (!res.ok) {
-          console.error("Error admin compras:", data.error);
-          return { compras: [], tickets: [] };
-        }
-
-        const comprasData = Array.isArray(data.compras) ? data.compras : [];
-        const ticketsData = Array.isArray(data.tickets) ? data.tickets : [];
-
-        setCompras(comprasData);
-        setTickets(ticketsData);
-
-        return { compras: comprasData, tickets: ticketsData };
-      } catch (err) {
-        console.error("Error cargando dashboard:", err);
-        await Swal.fire({
-          icon: "error",
-          title: "Error",
-          text: "No se pudo cargar el dashboard",
-        });
-        return { compras: [], tickets: [] };
-      }
-    },
-    [accesoPermitido]
-  );
-
-  const cargarRifasGlobal = useCallback(async () => {
     try {
-      const headers = await getAdminAuthHeaders();
+      const headers = headersParam || (await getAdminAuthHeaders());
 
       if (!headers.Authorization) {
-        console.warn("No hay token admin listo todavía para listar rifas");
-        return;
-      }
-
-      const resRifas = await fetch("/api/listar-rifas", {
-        method: "GET",
-        headers,
-        cache: "no-store",
-      });
-
-      const rawTextRifas = await resRifas.text();
-
-      let dataRifas;
-      try {
-        dataRifas = JSON.parse(rawTextRifas);
-      } catch {
-        console.error("Respuesta inválida en /api/listar-rifas");
-        return;
-      }
-
-      if (!resRifas.ok) {
-        console.error("Error en /api/listar-rifas:", dataRifas.error);
-        return;
-      }
-
-      const listaRifas = Array.isArray(dataRifas.rifas) ? dataRifas.rifas : [];
-      const rifasConStats = await enriquecerListaRifasConResumen(listaRifas);
-
-      setRifas(rifasConStats);
-
-      setRifaSeleccionadaId((prev) => {
-        if (prev && rifasConStats.find((r) => String(r.id) === String(prev))) {
-          return prev;
-        }
-
-        const activa = rifasConStats.find(
-          (r) => String(r.estado || "").toLowerCase() === "activa"
+        console.warn(
+          "No hay token admin listo todavía para cargar dashboard"
         );
 
-        if (activa) return activa.id;
+        return { compras: [], tickets: [] };
+      }
 
-        return rifasConStats[0]?.id || "";
-      });
-    } catch (error) {
-      console.error("Error cargando rifas globales:", error);
-    }
-  }, []);
+      const urlAdminCompras = rifaIdParam
+        ? `/api/admin-compras?rifaId=${encodeURIComponent(rifaIdParam)}`
+        : "/api/admin-compras";
 
-  const cargarRifaActiva = useCallback(async () => {
-    try {
-      setLoadingRifa(true);
-
-      const res = await fetch("/api/rifa-activa", {
+      const res = await fetch(urlAdminCompras, {
         method: "GET",
+        headers,
         cache: "no-store",
       });
 
       const rawText = await res.text();
 
       let data;
+
       try {
         data = JSON.parse(rawText);
       } catch {
-        console.error("Respuesta inválida en /api/rifa-activa");
-        setRifaActiva(null);
-        return;
-      }
-
-      if (!res.ok) {
-        console.error(data.error || "No se pudo cargar la rifa activa");
-        setRifaActiva(null);
-        return;
-      }
-
-      const rifa = data.rifa || null;
-
-      if (!rifa?.id) {
-        setRifaActiva(null);
-        return;
-      }
-
-      const rifaEnriquecida = await enriquecerRifaConResumen(rifa);
-      setRifaActiva(rifaEnriquecida);
-    } catch (error) {
-      console.error("Error cargando rifa activa:", error);
-      setRifaActiva(null);
-    } finally {
-      setLoadingRifa(false);
-    }
-  }, []);
-
-  const recargarTodo = useCallback(async () => {
-    try {
-      setDataLoading(true);
-
-      const headers = await getAdminAuthHeaders();
-
-      if (!headers.Authorization) {
-        console.warn("Aún no hay sesión admin lista para recargar datos");
+        console.error("Respuesta inválida en /api/admin-compras");
         return { compras: [], tickets: [] };
       }
 
-      const { compras: comprasData, tickets: ticketsData } =
-        await cargarDashboard(headers);
+      if (!res.ok) {
+        console.error("Error admin compras:", data.error);
+        return { compras: [], tickets: [] };
+      }
 
-      await Promise.all([cargarRifasGlobal(), cargarRifaActiva()]);
+      const comprasData = Array.isArray(data.compras)
+        ? data.compras
+        : [];
 
-      return { compras: comprasData, tickets: ticketsData };
-    } catch (error) {
-      console.error("Error recargando datos:", error);
+      const ticketsData = Array.isArray(data.tickets)
+        ? data.tickets
+        : [];
+
+      setCompras(comprasData);
+      setTickets(ticketsData);
+
+      return {
+        compras: comprasData,
+        tickets: ticketsData,
+      };
+    } catch (err) {
+      console.error("Error cargando dashboard:", err);
+
       await Swal.fire({
         icon: "error",
         title: "Error",
-        text: "No se pudieron actualizar los datos",
+        text: "No se pudo cargar el dashboard",
       });
+
       return { compras: [], tickets: [] };
-    } finally {
-      setDataLoading(false);
     }
-  }, [cargarDashboard, cargarRifasGlobal, cargarRifaActiva]);
+  },
+  [accesoPermitido]
+);
+
+const cargarRifasGlobal = useCallback(async () => {
+  try {
+    const headers = await getAdminAuthHeaders();
+
+    if (!headers.Authorization) {
+      console.warn("No hay token admin listo todavía para listar rifas");
+      return "";
+    }
+
+    const resRifas = await fetch("/api/listar-rifas", {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    const rawTextRifas = await resRifas.text();
+
+    let dataRifas;
+
+    try {
+      dataRifas = JSON.parse(rawTextRifas);
+    } catch {
+      console.error("Respuesta inválida en /api/listar-rifas");
+      return "";
+    }
+
+    if (!resRifas.ok) {
+      console.error("Error en /api/listar-rifas:", dataRifas.error);
+      return "";
+    }
+
+    const listaRifas = Array.isArray(dataRifas.rifas)
+      ? dataRifas.rifas
+      : [];
+
+    const rifasConStats =
+      await enriquecerListaRifasConResumen(listaRifas);
+
+    setRifas(rifasConStats);
+
+    let rifaIdElegida = "";
+
+if (
+  rifaSeleccionadaIdRef.current &&
+  rifasConStats.find(
+    (r) =>
+      String(r.id) === String(rifaSeleccionadaIdRef.current)
+  )
+) {
+  rifaIdElegida = rifaSeleccionadaIdRef.current;
+} else {
+      const activa = rifasConStats.find(
+        (r) => String(r.estado || "").toLowerCase() === "activa"
+      );
+
+      rifaIdElegida = activa?.id || rifasConStats[0]?.id || "";
+    }
+
+rifaSeleccionadaIdRef.current = rifaIdElegida;
+setRifaSeleccionadaId(rifaIdElegida);
+
+return rifaIdElegida;
+  } catch (error) {
+    console.error("Error cargando rifas globales:", error);
+    return "";
+  }
+}, []);
+const recargarTodo = useCallback(async () => {
+  try {
+    setDataLoading(true);
+
+    const headers = await getAdminAuthHeaders();
+
+    if (!headers.Authorization) {
+      console.warn(
+        "Aún no hay sesión admin lista para recargar datos"
+      );
+
+      return {
+        compras: [],
+        tickets: [],
+      };
+    }
+
+    const rifaId = await cargarRifasGlobal();
+
+    if (!rifaId) {
+      setCompras([]);
+      setTickets([]);
+
+      return {
+        compras: [],
+        tickets: [],
+      };
+    }
+
+    const {
+      compras: comprasData,
+      tickets: ticketsData,
+    } = await cargarDashboard(headers, rifaId);
+
+    return {
+      compras: comprasData,
+      tickets: ticketsData,
+    };
+  } catch (error) {
+    console.error("Error recargando datos:", error);
+
+    await Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se pudieron actualizar los datos",
+    });
+
+    return {
+      compras: [],
+      tickets: [],
+    };
+  } finally {
+    setDataLoading(false);
+  }
+}, [cargarDashboard, cargarRifasGlobal]);
 
   useEffect(() => {
     if (!accesoPermitido) return;
@@ -276,6 +292,37 @@ export default function Admin() {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+const cambiarRifaSeleccionada = useCallback(
+  async (nuevoId) => {
+    const id = nuevoId || "";
+
+    rifaSeleccionadaIdRef.current = id;
+    setRifaSeleccionadaId(id);
+
+    if (!id || !accesoPermitido) {
+      setCompras([]);
+      setTickets([]);
+      return;
+    }
+
+    try {
+      setDataLoading(true);
+
+      const headers = await getAdminAuthHeaders();
+
+      if (!headers.Authorization) {
+        return;
+      }
+
+      await cargarDashboard(headers, id);
+    } catch (error) {
+      console.error("Error cambiando de rifa:", error);
+    } finally {
+      setDataLoading(false);
+    }
+  },
+  [accesoPermitido, cargarDashboard]
+);
 
   const rifaSeleccionada = useMemo(() => {
     return rifas.find((r) => String(r.id) === String(rifaSeleccionadaId)) || null;
@@ -423,27 +470,24 @@ export default function Admin() {
         0
     );
 
-    const ticketsVendidos = Number(
-      progresoRifa.vendidos ??
-        rifaSeleccionada?.stats?.vendidos ??
-        rifaSeleccionada?.tickets_vendidos ??
-        0
-    );
+const ticketsVendidos = Number(
+  rifaSeleccionada?.tickets_ocupados ??
+    rifaSeleccionada?.stats?.ocupados ??
+    rifaSeleccionada?.tickets_vendidos ??
+    rifaSeleccionada?.stats?.vendidos ??
+    progresoRifa.vendidos ??
+    0
+);
 
-    const disponibles = Number(
-      progresoRifa.disponibles ??
-        rifaSeleccionada?.stats?.disponibles ??
-        Math.max(totalTickets - ticketsVendidos, 0)
-    );
+const disponibles = Math.max(
+  totalTickets - ticketsVendidos,
+  0
+);
 
-    const porcentajeVendido = Number(
-      progresoRifa.porcentaje ??
-        rifaSeleccionada?.stats?.porcentaje ??
-        rifaSeleccionada?.porcentaje_vendido ??
-        (totalTickets > 0
-          ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
-          : 0)
-    );
+const porcentajeVendido =
+  totalTickets > 0
+    ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
+    : 0;
 
     return {
       totalCompras,
@@ -1156,7 +1200,7 @@ export default function Admin() {
           <HeaderPanel
             rifas={rifas}
             rifaSeleccionadaId={rifaSeleccionadaId}
-            setRifaSeleccionadaId={setRifaSeleccionadaId}
+            setRifaSeleccionadaId={cambiarRifaSeleccionada}
             onRecargar={recargarTodo}
             dataLoading={dataLoading}
           />
@@ -1217,20 +1261,18 @@ export default function Admin() {
             />
           )}
 
-          {seccionActiva === "rifas" && (
-            <AdminRifasSection
-              rifas={rifas}
-              recargarTodo={recargarTodo}
-              setRifaSeleccionadaId={setRifaSeleccionadaId}
-              setSeccionActiva={setSeccionActiva}
-              setFiltroDashboard={setFiltroDashboard}
-              topRef={topRef}
-              scrollToRef={scrollToRef}
-              formatearFecha={formatearFecha}
-              rifaActiva={rifaActiva}
-              loadingRifa={loadingRifa}
-            />
-          )}
+{seccionActiva === "rifas" && (
+  <AdminRifasSection
+    rifas={rifas}
+    recargarTodo={recargarTodo}
+    setRifaSeleccionadaId={setRifaSeleccionadaId}
+    setSeccionActiva={setSeccionActiva}
+    setFiltroDashboard={setFiltroDashboard}
+    topRef={topRef}
+    scrollToRef={scrollToRef}
+    formatearFecha={formatearFecha}
+  />
+)}
 
           {seccionActiva === "configuracion" && <AdminConfiguracionSection />}
 

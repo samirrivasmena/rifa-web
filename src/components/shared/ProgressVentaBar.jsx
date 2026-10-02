@@ -45,7 +45,7 @@ export default function ProgressVentaBar({
     color: "var(--site-progress, #dc2626)",
   }}
 >
-  {porcentaje.toFixed(0)}%
+  {porcentaje.toFixed(1)}%
 </strong>
 
         <span className="progress-white-red__text">

@@ -872,15 +872,6 @@ if (fueAprobadaAutomaticamente) {
         ticket_id:
           resultado.ticket_id,
 
-        nombre,
-        apellido,
-        email,
-
-        telefono:
-          telefonoOriginal,
-
-        estado_residencia:
-          estadoResidencia,
 
         codigo_unico:
           resultado.codigo_unico ||

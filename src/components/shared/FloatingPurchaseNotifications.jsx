@@ -17,10 +17,17 @@ export default function FloatingPurchaseNotifications() {
   const [notificacion, setNotificacion] = useState(null);
   const [saliendo, setSaliendo] = useState(false);
 
+  // Deslizamiento táctil
+  const [desplazamientoX, setDesplazamientoX] = useState(0);
+  const [arrastrando, setArrastrando] = useState(false);
+
   const ultimaCompraMostrada = useRef(null);
 
   const timerSalir = useRef(null);
   const timerCerrar = useRef(null);
+
+  const touchStartX = useRef(null);
+  const touchActualX = useRef(0);
 
   useEffect(() => {
     let activo = true;
@@ -67,6 +74,8 @@ export default function FloatingPurchaseNotifications() {
         ultimaCompraMostrada.current = ultimaCompra.id;
 
         setSaliendo(false);
+        setDesplazamientoX(0);
+        setArrastrando(false);
         setNotificacion(ultimaCompra);
 
         clearTimeout(timerSalir.current);
@@ -87,12 +96,11 @@ export default function FloatingPurchaseNotifications() {
 
           setNotificacion(null);
           setSaliendo(false);
+          setDesplazamientoX(0);
+          setArrastrando(false);
         }, 3000);
       } catch (error) {
-        console.log(
-          "Error cargando última compra:",
-          error
-        );
+        console.log("Error cargando última compra:", error);
       }
     }
 
@@ -102,32 +110,12 @@ export default function FloatingPurchaseNotifications() {
     cargarUltimaCompra();
 
     /*
-     * Actualización mucho más razonable.
-     *
-     * Antes:
-     * cada 3 segundos = 20 consultas/minuto por visitante.
-     *
-     * Ahora:
-     * cada 60 segundos = 1 consulta/minuto por visitante.
+     * Actualización cada 60 segundos.
      */
     const intervalo = setInterval(() => {
       cargarUltimaCompra();
     }, 60000);
 
-    /*
-     * Cuando el usuario vuelve a la pestaña,
-     * actualizamos inmediatamente.
-     */
-    function handleVisibilityChange() {
-      if (document.visibilityState === "visible") {
-        cargarUltimaCompra();
-      }
-    }
-
-    document.addEventListener(
-      "visibilitychange",
-      handleVisibilityChange
-    );
 
     return () => {
       activo = false;
@@ -136,33 +124,166 @@ export default function FloatingPurchaseNotifications() {
       clearTimeout(timerSalir.current);
       clearTimeout(timerCerrar.current);
 
-      document.removeEventListener(
-        "visibilitychange",
-        handleVisibilityChange
-      );
     };
   }, []);
+
+  /*
+   * Cerrar notificación manualmente.
+   */
+const cerrarNotificacion = () => {
+  clearTimeout(timerSalir.current);
+  clearTimeout(timerCerrar.current);
+
+  setArrastrando(false);
+  setDesplazamientoX(0);
+  setSaliendo(true);
+};
+  /*
+   * Comienza el gesto táctil.
+   */
+  const handleTouchStart = (e) => {
+    if (saliendo) {
+      return;
+    }
+
+    const touch = e.touches?.[0];
+
+    if (!touch) {
+      return;
+    }
+
+    clearTimeout(timerSalir.current);
+    clearTimeout(timerCerrar.current);
+
+    touchStartX.current = touch.clientX;
+    touchActualX.current = 0;
+
+    setArrastrando(true);
+  };
+
+  /*
+   * Mueve la notificación siguiendo el dedo.
+   */
+  const handleTouchMove = (e) => {
+    if (touchStartX.current === null || saliendo) {
+      return;
+    }
+
+    const touch = e.touches?.[0];
+
+    if (!touch) {
+      return;
+    }
+
+    const diferencia = touch.clientX - touchStartX.current;
+
+    touchActualX.current = diferencia;
+    setDesplazamientoX(diferencia);
+  };
+
+  /*
+   * Cuando el usuario levanta el dedo:
+   *
+   * - Si movió suficiente -> cerramos.
+   * - Si no -> vuelve suavemente al centro.
+   */
+const handleTouchEnd = () => {
+  if (touchStartX.current === null) {
+    return;
+  }
+
+  const distancia = touchActualX.current;
+
+  touchStartX.current = null;
+  touchActualX.current = 0;
+
+  setArrastrando(false);
+
+  /*
+   * DESLIZÓ HACIA LA IZQUIERDA
+   * Si supera 60px, NO lo devolvemos al centro.
+   * Lo mandamos completamente fuera de la pantalla.
+   */
+  if (distancia <= -60) {
+    clearTimeout(timerSalir.current);
+    clearTimeout(timerCerrar.current);
+
+    /*
+     * IMPORTANTE:
+     * mantenemos el desplazamiento donde soltó el dedo.
+     */
+    setDesplazamientoX(distancia);
+
+    /*
+     * Activamos la salida.
+     */
+    setSaliendo(true);
+
+    return;
+  }
+
+  /*
+   * Si NO llegó a 60px,
+   * entonces sí vuelve al centro.
+   */
+  setDesplazamientoX(0);
+
+  timerSalir.current = setTimeout(() => {
+    setSaliendo(true);
+  }, 1800);
+};
+
+  const handleTouchCancel = () => {
+    touchStartX.current = null;
+    touchActualX.current = 0;
+
+    setArrastrando(false);
+    setDesplazamientoX(0);
+  };
 
   if (!notificacion) {
     return null;
   }
 
-  return (
-    <div
-      className={`floating-purchase-notification ${
-        saliendo ? "purchase-toast-exit" : ""
-      }`}
-    >
-      <button
-        className="purchase-close-btn"
-        onClick={() => {
-          setSaliendo(true);
+  /*
+   * Mientras se arrastra usamos una variable CSS.
+   * Esto permite mantener separado el centrado
+   * de la tarjeta de su movimiento horizontal.
+   */
+  const estiloDeslizamiento = {
+    "--purchase-swipe-x": `${desplazamientoX}px`,
+  };
 
-          setTimeout(() => {
-            setNotificacion(null);
-            setSaliendo(false);
-          }, 400);
-        }}
+  return (
+<div
+  className={`floating-purchase-notification ${
+    saliendo ? "purchase-toast-exit" : ""
+  } ${arrastrando ? "purchase-toast-dragging" : ""}`}
+  style={estiloDeslizamiento}
+  onTouchStart={handleTouchStart}
+  onTouchMove={handleTouchMove}
+  onTouchEnd={handleTouchEnd}
+  onTouchCancel={handleTouchCancel}
+  onAnimationEnd={(e) => {
+    if (
+      saliendo &&
+      e.animationName === "purchaseToastOutLeft"
+    ) {
+      setNotificacion(null);
+      setSaliendo(false);
+      setDesplazamientoX(0);
+      setArrastrando(false);
+
+      touchStartX.current = null;
+      touchActualX.current = 0;
+    }
+  }}
+>
+      <button
+        type="button"
+        className="purchase-close-btn"
+        onClick={cerrarNotificacion}
+        aria-label="Cerrar notificación"
       >
         ✕
       </button>

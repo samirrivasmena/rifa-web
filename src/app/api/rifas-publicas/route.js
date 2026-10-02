@@ -3,87 +3,128 @@ import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+export const runtime = "nodejs";
+
+// ============================================================
+// CAMPOS PÚBLICOS DE RIFAS
+// ============================================================
+
+const CAMPOS_PUBLICOS_RIFA = `
+  id,
+  nombre,
+  descripcion,
+  numero_inicio,
+  numero_fin,
+  cantidad_numeros,
+  formato,
+  estado,
+  numero_ganador,
+  portada_url,
+  portada_scroll_url,
+  premio,
+  precio_ticket,
+  fecha_sorteo,
+  hora_sorteo,
+  publicada,
+  destacada
+`;
+
+// ============================================================
+// TOTAL DE NÚMEROS
+// ============================================================
 
 function obtenerTotalNumeros(rifa = {}) {
   const inicio = Number(rifa?.numero_inicio);
   const fin = Number(rifa?.numero_fin);
 
-  if (Number.isFinite(inicio) && Number.isFinite(fin) && fin >= inicio) {
+  if (
+    Number.isFinite(inicio) &&
+    Number.isFinite(fin) &&
+    fin >= inicio
+  ) {
     return fin - inicio + 1;
   }
 
   const cantidad = Number(rifa?.cantidad_numeros);
-  return Number.isFinite(cantidad) ? cantidad : 0;
+
+  return Number.isFinite(cantidad)
+    ? cantidad
+    : 0;
 }
 
-function normalizarTexto(valor) {
-  return String(valor ?? "")
-    .trim()
-    .toLowerCase();
+// ============================================================
+// NÚMERO SEGURO
+// ============================================================
+
+function numeroSeguro(valor) {
+  const numero = Number(valor);
+
+  return Number.isFinite(numero)
+    ? numero
+    : 0;
 }
 
-function esTicketFree(ticket = {}) {
-  return (
-    ticket?.free_drop_id != null ||
-    ticket?.free_drop_participation_id != null ||
-    normalizarTexto(ticket?.tipo) === "free"
-  );
-}
-
-function esTicketPagado(ticket = {}) {
-  return ticket?.compra_id != null && !esTicketFree(ticket);
-}
-
-function esTicketDisponible(ticket = {}) {
-  return (
-    ticket?.compra_id == null &&
-    ticket?.free_drop_id == null &&
-    ticket?.free_drop_participation_id == null &&
-    normalizarTexto(ticket?.tipo) !== "free" &&
-    normalizarTexto(ticket?.estado) === "disponible"
-  );
-}
-
-function agregarNumero(mapa, rifaId, numeroTicket) {
-  if (
-    rifaId == null ||
-    numeroTicket == null ||
-    numeroTicket === ""
-  ) {
-    return;
-  }
-
-  const rifaKey = String(rifaId);
-  const numeroKey = String(numeroTicket);
-
-  if (!mapa[rifaKey]) {
-    mapa[rifaKey] = new Set();
-  }
-
-  mapa[rifaKey].add(numeroKey);
-}
+// ============================================================
+// GET
+// ============================================================
 
 export async function GET() {
   try {
-    const { data: rifasData, error: rifasError } = await supabaseAdmin
+    // ========================================================
+    // 1. CARGAR ÚNICAMENTE RIFAS PÚBLICAS
+    // ========================================================
+
+    const {
+      data: rifasData,
+      error: rifasError,
+    } = await supabaseAdmin
       .from("rifas")
-      .select("*")
-      .in("estado", ["activa", "finalizada", "agotada", "publicada"])
+      .select(CAMPOS_PUBLICOS_RIFA)
+      .in(
+        "estado",
+        [
+          "activa",
+          "finalizada",
+          "agotada",
+          "publicada",
+        ]
+      )
       .eq("publicada", true)
-      .order("created_at", { ascending: false });
+      .order("created_at", {
+        ascending: false,
+      });
 
     if (rifasError) {
+      console.error(
+        "Error cargando rifas públicas:",
+        rifasError
+      );
+
       return NextResponse.json(
         {
           error:
-            rifasError.message ||
             "No se pudieron cargar las rifas públicas",
         },
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
       );
     }
 
-    const rifas = Array.isArray(rifasData) ? rifasData : [];
+    const rifas =
+      Array.isArray(rifasData)
+        ? rifasData
+        : [];
+
+    // ========================================================
+    // 2. SI NO HAY RIFAS PÚBLICAS
+    // ========================================================
 
     if (!rifas.length) {
       return NextResponse.json(
@@ -102,291 +143,402 @@ export async function GET() {
       );
     }
 
-    const rifaIds = rifas.map((rifa) => rifa.id);
+    // ========================================================
+    // 3. IDS DE RIFAS
+    // ========================================================
 
-    /*
-     * IMPORTANTE:
-     *
-     * Ya no podemos consultar solamente tickets con compra_id.
-     *
-     * Un número puede estar ocupado por:
-     * - una compra normal;
-     * - una participación FREE.
-     *
-     * Además necesitamos conocer el estado real del inventario para
-     * distinguir correctamente:
-     *
-     * PAGADOS
-     * FREE
-     * OCUPADOS
-     * DISPONIBLES
-     */
-    const { data: ticketsData, error: ticketsError } = await supabaseAdmin
-      .from("tickets")
+    const rifaIds = rifas.map(
+      (rifa) => rifa.id
+    );
+
+    // ========================================================
+    // 4. CARGAR RESUMEN DE TICKETS
+    // ========================================================
+    //
+    // IMPORTANTE:
+    //
+    // Ya NO descargamos todos los tickets de todas las rifas.
+    //
+    // Supabase calcula directamente:
+    //
+    // - PAGADOS
+    // - FREE
+    // - OCUPADOS
+    // - DISPONIBLES DEL INVENTARIO
+    //
+    // usando la vista:
+    //
+    // resumen_publico_tickets_por_rifa
+    //
+    // ========================================================
+
+    const {
+      data: resumenTicketsData,
+      error: resumenTicketsError,
+    } = await supabaseAdmin
+      .from("resumen_publico_tickets_por_rifa")
       .select(`
-        id,
         rifa_id,
-        numero_ticket,
-        compra_id,
-        tipo,
-        estado,
-        free_drop_id,
-        free_drop_participation_id
+        tickets_pagados,
+        tickets_free,
+        tickets_ocupados,
+        disponibles_inventario
       `)
       .in("rifa_id", rifaIds);
 
-    if (ticketsError) {
+    if (resumenTicketsError) {
+      console.error(
+        "Error cargando resumen público de tickets:",
+        resumenTicketsError
+      );
+
       return NextResponse.json(
         {
           error:
-            ticketsError.message ||
-            "No se pudieron cargar los tickets",
+            "No se pudo cargar el resumen de tickets",
         },
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
       );
     }
 
-    const { data: sorteosData, error: sorteosError } = await supabaseAdmin
+    // ========================================================
+    // 5. CARGAR RESULTADOS DE SORTEOS
+    // ========================================================
+
+    const {
+      data: sorteosData,
+      error: sorteosError,
+    } = await supabaseAdmin
       .from("sorteos")
       .select(
-        "id, rifa_id, numero_ganador, numero_oficial, fecha_sorteo, fuente"
+        [
+          "id",
+          "rifa_id",
+          "numero_ganador",
+          "numero_oficial",
+          "fecha_sorteo",
+          "fuente",
+        ].join(",")
       )
       .in("rifa_id", rifaIds)
-      .order("fecha_sorteo", { ascending: false });
+      .order("fecha_sorteo", {
+        ascending: false,
+      });
 
     if (sorteosError) {
+      console.error(
+        "Error cargando sorteos:",
+        sorteosError
+      );
+
       return NextResponse.json(
         {
           error:
-            sorteosError.message ||
             "No se pudieron cargar los sorteos",
         },
-        { status: 500 }
+        {
+          status: 500,
+          headers: {
+            "Cache-Control":
+              "no-store, no-cache, must-revalidate, proxy-revalidate",
+            Pragma: "no-cache",
+            Expires: "0",
+          },
+        }
       );
     }
 
-    const tickets = Array.isArray(ticketsData)
-      ? ticketsData
-      : [];
+    // ========================================================
+    // 6. NORMALIZAR DATOS
+    // ========================================================
 
-    const sorteos = Array.isArray(sorteosData)
-      ? sorteosData
-      : [];
+    const resumenTickets =
+      Array.isArray(resumenTicketsData)
+        ? resumenTicketsData
+        : [];
 
-    /*
-     * Sets independientes por rifa.
-     *
-     * Usamos Set para protegernos de posibles duplicados y contar
-     * números únicos, no filas.
-     */
-    const pagadosPorRifa = {};
-    const freePorRifa = {};
-    const ocupadosPorRifa = {};
-    const disponiblesInventarioPorRifa = {};
+    const sorteos =
+      Array.isArray(sorteosData)
+        ? sorteosData
+        : [];
 
-    for (const ticket of tickets) {
-      if (
-        ticket?.rifa_id == null ||
-        ticket?.numero_ticket == null ||
-        ticket?.numero_ticket === ""
-      ) {
-        continue;
-      }
+    // ========================================================
+    // 7. MAPA DE RESUMEN POR RIFA
+    // ========================================================
 
-      if (esTicketFree(ticket)) {
-        agregarNumero(
-          freePorRifa,
-          ticket.rifa_id,
-          ticket.numero_ticket
-        );
+    const resumenPorRifa =
+      resumenTickets.reduce(
+        (acc, item) => {
+          if (item?.rifa_id == null) {
+            return acc;
+          }
 
-        agregarNumero(
-          ocupadosPorRifa,
-          ticket.rifa_id,
-          ticket.numero_ticket
-        );
+          acc[String(item.rifa_id)] = item;
 
-        continue;
-      }
-
-      if (esTicketPagado(ticket)) {
-        agregarNumero(
-          pagadosPorRifa,
-          ticket.rifa_id,
-          ticket.numero_ticket
-        );
-
-        agregarNumero(
-          ocupadosPorRifa,
-          ticket.rifa_id,
-          ticket.numero_ticket
-        );
-
-        continue;
-      }
-
-      if (esTicketDisponible(ticket)) {
-        agregarNumero(
-          disponiblesInventarioPorRifa,
-          ticket.rifa_id,
-          ticket.numero_ticket
-        );
-
-        continue;
-      }
-
-      /*
-       * Cualquier ticket que no sea realmente disponible también
-       * se considera ocupado/reservado para que el frontend nunca
-       * anuncie como libre un número que el inventario tiene bloqueado.
-       */
-      agregarNumero(
-        ocupadosPorRifa,
-        ticket.rifa_id,
-        ticket.numero_ticket
-      );
-    }
-
-    /*
-     * Conservamos exactamente la lógica actual:
-     * el primer sorteo de cada rifa es el más reciente porque la
-     * consulta viene ordenada por fecha_sorteo DESC.
-     */
-    const sorteoPorRifa = sorteos.reduce((acc, sorteo) => {
-      const rifaKey = String(sorteo.rifa_id);
-
-      if (!acc[rifaKey]) {
-        acc[rifaKey] = sorteo;
-      }
-
-      return acc;
-    }, {});
-
-    const rifasConStats = rifas.map((rifa) => {
-      const rifaKey = String(rifa.id);
-
-      const totalNumeros = obtenerTotalNumeros(rifa);
-
-      const pagadosSet =
-        pagadosPorRifa[rifaKey] || new Set();
-
-      const freeSet =
-        freePorRifa[rifaKey] || new Set();
-
-      const ocupadosSet =
-        ocupadosPorRifa[rifaKey] || new Set();
-
-      const disponiblesInventarioSet =
-        disponiblesInventarioPorRifa[rifaKey] || new Set();
-
-      const ticketsPagados = pagadosSet.size;
-      const ticketsFree = freeSet.size;
-      const ticketsOcupados = ocupadosSet.size;
-
-      /*
-       * La disponibilidad pública se calcula contra los números
-       * realmente ocupados.
-       *
-       * Esto evita que un ticket FREE vuelva a aparecer como
-       * disponible para una compra normal.
-       */
-      const ticketsDisponibles = Math.max(
-        totalNumeros - ticketsOcupados,
-        0
-      );
-
-      const porcentajeVendido =
-        totalNumeros > 0
-          ? Number(
-              (
-                (ticketsOcupados / totalNumeros) *
-                100
-              ).toFixed(2)
-            )
-          : 0;
-
-      const soldOut =
-        totalNumeros > 0 &&
-        ticketsOcupados >= totalNumeros;
-
-      const sorteo =
-        sorteoPorRifa[rifaKey] || null;
-
-      return {
-        ...rifa,
-
-        sorteo,
-
-        numero_ganador:
-          sorteo?.numero_ganador ??
-          rifa.numero_ganador ??
-          null,
-
-        numero_oficial:
-          sorteo?.numero_oficial ??
-          rifa.numero_oficial ??
-          null,
-
-        total_numeros: totalNumeros,
-
-        /*
-         * COMPATIBILIDAD:
-         *
-         * Conservamos tickets_vendidos porque tu frontend ya lo usa.
-         *
-         * Para el progreso público representa números que ya no están
-         * disponibles: PAGADOS + FREE + cualquier otro número ocupado.
-         */
-        tickets_vendidos: ticketsOcupados,
-
-        tickets_pagados: ticketsPagados,
-        tickets_free: ticketsFree,
-        tickets_ocupados: ticketsOcupados,
-        tickets_disponibles: ticketsDisponibles,
-
-        porcentaje_vendido: porcentajeVendido,
-        sold_out: soldOut,
-
-        stats: {
-          total: totalNumeros,
-
-          /*
-           * Campos anteriores conservados.
-           */
-          vendidos: ticketsOcupados,
-          disponibles: ticketsDisponibles,
-          porcentaje: porcentajeVendido,
-          soldOut,
-          ticketsVendidos: ticketsOcupados,
-          porcentajeVendido,
-
-          /*
-           * Nuevos campos explícitos.
-           */
-          pagados: ticketsPagados,
-          free: ticketsFree,
-          ocupados: ticketsOcupados,
-
-          ticketsPagados,
-          ticketsFree,
-          ticketsOcupados,
-
-          /*
-           * Dato de diagnóstico.
-           *
-           * Nos permite comparar el inventario físico marcado como
-           * disponible con la disponibilidad matemática de la rifa.
-           */
-          disponiblesInventario:
-            disponiblesInventarioSet.size,
+          return acc;
         },
-      };
-    });
+        {}
+      );
+
+    // ========================================================
+    // 8. SORTEO MÁS RECIENTE POR RIFA
+    // ========================================================
+
+    const sorteoPorRifa =
+      sorteos.reduce(
+        (acc, sorteo) => {
+          const rifaKey =
+            String(sorteo.rifa_id);
+
+          if (!acc[rifaKey]) {
+            acc[rifaKey] = sorteo;
+          }
+
+          return acc;
+        },
+        {}
+      );
+
+    // ========================================================
+    // 9. CONSTRUIR RIFAS CON ESTADÍSTICAS
+    // ========================================================
+
+    const rifasConStats =
+      rifas.map((rifa) => {
+        const rifaKey =
+          String(rifa.id);
+
+        const totalNumeros =
+          obtenerTotalNumeros(rifa);
+
+        const resumen =
+          resumenPorRifa[rifaKey] || {};
+
+        // ----------------------------------------------------
+        // PAGADOS
+        // ----------------------------------------------------
+
+        const ticketsPagados =
+          numeroSeguro(
+            resumen.tickets_pagados
+          );
+
+        // ----------------------------------------------------
+        // FREE
+        // ----------------------------------------------------
+
+        const ticketsFree =
+          numeroSeguro(
+            resumen.tickets_free
+          );
+
+        // ----------------------------------------------------
+        // OCUPADOS
+        // ----------------------------------------------------
+        //
+        // Incluye:
+        //
+        // - tickets de compra
+        // - tickets FREE
+        // - cualquier otro número ocupado
+        //
+        // ----------------------------------------------------
+
+        const ticketsOcupados =
+          numeroSeguro(
+            resumen.tickets_ocupados
+          );
+
+        // ----------------------------------------------------
+        // DISPONIBLES FÍSICOS DEL INVENTARIO
+        // ----------------------------------------------------
+
+        const disponiblesInventario =
+          numeroSeguro(
+            resumen.disponibles_inventario
+          );
+
+        // ----------------------------------------------------
+        // DISPONIBLES PÚBLICOS
+        // ----------------------------------------------------
+        //
+        // Siempre:
+        //
+        // TOTAL - OCUPADOS
+        //
+        // Así un FREE nunca vuelve a aparecer disponible.
+        //
+        // ----------------------------------------------------
+
+        const ticketsDisponibles =
+          Math.max(
+            totalNumeros -
+              ticketsOcupados,
+            0
+          );
+
+        // ----------------------------------------------------
+        // PORCENTAJE
+        // ----------------------------------------------------
+
+        const porcentajeVendido =
+          totalNumeros > 0
+            ? Number(
+                (
+                  (ticketsOcupados /
+                    totalNumeros) *
+                  100
+                ).toFixed(2)
+              )
+            : 0;
+
+        // ----------------------------------------------------
+        // AGOTADA
+        // ----------------------------------------------------
+
+        const soldOut =
+          totalNumeros > 0 &&
+          ticketsOcupados >=
+            totalNumeros;
+
+        // ----------------------------------------------------
+        // SORTEO
+        // ----------------------------------------------------
+
+        const sorteo =
+          sorteoPorRifa[rifaKey] ||
+          null;
+
+        // ----------------------------------------------------
+        // RESPUESTA
+        // ----------------------------------------------------
+
+        return {
+          ...rifa,
+
+          sorteo,
+
+          numero_ganador:
+            sorteo?.numero_ganador ??
+            rifa.numero_ganador ??
+            null,
+
+          numero_oficial:
+            sorteo?.numero_oficial ??
+            null,
+
+          // ==================================================
+          // ESTADÍSTICAS PRINCIPALES
+          // ==================================================
+
+          total_numeros:
+            totalNumeros,
+
+          /*
+           * COMPATIBILIDAD CON TU FRONTEND:
+           *
+           * tickets_vendidos representa aquí
+           * todos los números OCUPADOS.
+           *
+           * Es decir:
+           *
+           * PAGADOS + FREE + OTROS OCUPADOS.
+           */
+
+          tickets_vendidos:
+            ticketsOcupados,
+
+          tickets_pagados:
+            ticketsPagados,
+
+          tickets_free:
+            ticketsFree,
+
+          tickets_ocupados:
+            ticketsOcupados,
+
+          tickets_disponibles:
+            ticketsDisponibles,
+
+          porcentaje_vendido:
+            porcentajeVendido,
+
+          sold_out:
+            soldOut,
+
+          // ==================================================
+          // STATS
+          // ==================================================
+
+          stats: {
+            total:
+              totalNumeros,
+
+            vendidos:
+              ticketsOcupados,
+
+            disponibles:
+              ticketsDisponibles,
+
+            porcentaje:
+              porcentajeVendido,
+
+            soldOut,
+
+            // ----------------------------------------------
+            // CAMPOS DE COMPATIBILIDAD
+            // ----------------------------------------------
+
+            ticketsVendidos:
+              ticketsOcupados,
+
+            porcentajeVendido,
+
+            // ----------------------------------------------
+            // CAMPOS EXPLÍCITOS
+            // ----------------------------------------------
+
+            pagados:
+              ticketsPagados,
+
+            free:
+              ticketsFree,
+
+            ocupados:
+              ticketsOcupados,
+
+            ticketsPagados,
+
+            ticketsFree,
+
+            ticketsOcupados,
+
+            // ----------------------------------------------
+            // DIAGNÓSTICO DEL INVENTARIO
+            // ----------------------------------------------
+
+            disponiblesInventario,
+          },
+        };
+      });
+
+    // ========================================================
+    // 10. RESPUESTA FINAL
+    // ========================================================
 
     return NextResponse.json(
       {
         ok: true,
-        rifas: rifasConStats,
+        rifas:
+          rifasConStats,
       },
       {
         headers: {
@@ -398,15 +550,25 @@ export async function GET() {
       }
     );
   } catch (error) {
-    console.error("rifas-publicas error:", error);
+    console.error(
+      "rifas-publicas error:",
+      error
+    );
 
     return NextResponse.json(
       {
         error:
-          error?.message ||
           "Error interno del servidor",
       },
-      { status: 500 }
+      {
+        status: 500,
+        headers: {
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate, proxy-revalidate",
+          Pragma: "no-cache",
+          Expires: "0",
+        },
+      }
     );
   }
 }

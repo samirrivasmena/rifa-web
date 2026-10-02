@@ -99,6 +99,7 @@ export default function HomePageClient() {
   const [showAppPayModal, setShowAppPayModal] = useState(false);
 
   const fileInputRef = useRef(null);
+  
 
   const [formData, setFormData] = useState({
     nombre: "",
@@ -151,81 +152,12 @@ export default function HomePageClient() {
   }, []);
 
   useEffect(() => {
-    const cargarRifa = async () => {
+    let cancelado = false;
+
+    const cargarDatosRifas = async () => {
       try {
         setLoadingRifa(true);
 
-        if (rifaDesdeQuery) {
-          const resRifas = await fetch("/api/rifas-publicas", {
-            method: "GET",
-            cache: "no-store",
-          });
-
-          const dataRifas = await resRifas.json();
-
-          if (!resRifas.ok) {
-            console.error(
-              dataRifas.error || "No se pudo cargar la lista de rifas"
-            );
-            setRifaActiva(null);
-            return;
-          }
-
-          const listaRifas = Array.isArray(dataRifas.rifas)
-            ? dataRifas.rifas
-            : [];
-
-          const rifaEncontrada = listaRifas.find(
-            (r) =>
-              String(r.id) === String(rifaDesdeQuery) && esPublicada(r.publicada)
-          );
-
-          if (!rifaEncontrada) {
-            console.warn("No se encontró la rifa solicitada en la URL");
-            setRifaActiva(null);
-            return;
-          }
-
-          const rifaResumen = await enriquecerRifaConResumen(rifaEncontrada);
-          setRifaActiva(rifaResumen);
-          return;
-        }
-
-        const res = await fetch("/api/rifa-activa", {
-          method: "GET",
-          cache: "no-store",
-        });
-
-        const data = await res.json();
-
-        if (!res.ok) {
-          console.error(data.error || "No se pudo cargar la rifa activa");
-          setRifaActiva(null);
-          return;
-        }
-
-        const rifa = data.rifa || null;
-        if (!rifa?.id) {
-          setRifaActiva(null);
-          return;
-        }
-
-        const rifaResumen = await enriquecerRifaConResumen(rifa);
-        setRifaActiva(rifaResumen);
-      } catch (error) {
-        console.error("Error cargando rifa:", error);
-        setRifaActiva(null);
-      } finally {
-        setLoadingRifa(false);
-      }
-    };
-
-    cargarRifa();
-  }, [rifaDesdeQuery]);
-
-  useEffect(() => {
-    const cargarRifas = async () => {
-      try {
         const res = await fetch("/api/rifas-publicas", {
           method: "GET",
           cache: "no-store",
@@ -234,20 +166,85 @@ export default function HomePageClient() {
         const data = await res.json();
 
         if (!res.ok) {
-          console.error(data.error || "No se pudo cargar la lista de rifas");
+          console.error(
+            data.error || "No se pudo cargar la lista de rifas"
+          );
+
+          if (!cancelado) {
+            setRifaActiva(null);
+            setRifas([]);
+          }
+
           return;
         }
 
-        const lista = Array.isArray(data.rifas) ? data.rifas : [];
-        const listaEnriquecida = await enriquecerListaRifasConResumen(lista);
+        const lista = Array.isArray(data.rifas)
+          ? data.rifas
+          : [];
+
+        const listaEnriquecida =
+          await enriquecerListaRifasConResumen(lista);
+
+        if (cancelado) return;
+
         setRifas(listaEnriquecida);
+
+        // Si viene una rifa específica en la URL
+        if (rifaDesdeQuery) {
+          const rifaEncontrada = listaEnriquecida.find(
+            (r) =>
+              String(r.id) === String(rifaDesdeQuery) &&
+              esPublicada(r.publicada)
+          );
+
+          if (!rifaEncontrada) {
+            console.warn(
+              "No se encontró la rifa solicitada en la URL"
+            );
+            setRifaActiva(null);
+            return;
+          }
+
+          setRifaActiva(rifaEncontrada);
+          return;
+        }
+
+        // Rifa principal:
+        // primero ACTIVA y, si no existe, AGOTADA.
+        const rifaPrincipal =
+          listaEnriquecida.find(
+            (r) =>
+              esPublicada(r.publicada) &&
+              String(r.estado || "").toLowerCase() === "activa"
+          ) ||
+          listaEnriquecida.find(
+            (r) =>
+              esPublicada(r.publicada) &&
+              String(r.estado || "").toLowerCase() === "agotada"
+          ) ||
+          null;
+
+        setRifaActiva(rifaPrincipal);
       } catch (error) {
         console.error("Error cargando rifas:", error);
+
+        if (!cancelado) {
+          setRifaActiva(null);
+          setRifas([]);
+        }
+      } finally {
+        if (!cancelado) {
+          setLoadingRifa(false);
+        }
       }
     };
 
-    cargarRifas();
-  }, []);
+    cargarDatosRifas();
+
+    return () => {
+      cancelado = true;
+    };
+  }, [rifaDesdeQuery]);
 
   useEffect(() => {
     if (!config?.metodos_pago) return;
@@ -906,7 +903,11 @@ export default function HomePageClient() {
           contactoHref="/#contacto"
         />
 
-        <header className="floating-header">
+<header
+  className={`floating-header ${
+    showSecondImage ? "floating-header-hidden" : ""
+  }`}
+>
           <SiteLogo
             src={logoUrl}
             alt="Logo"
@@ -935,23 +936,29 @@ export default function HomePageClient() {
             <section className="hero-showcase reveal-fade-up">
               <div className="hero-showcase-image-wrap">
                 {imagenRifaPrincipal && (
-                  <img
-                    src={imagenRifaPrincipal}
-                    alt={nombreRifa || "Rifa"}
-                    className={`hero-showcase-image fade-image ${
-                      showSecondImage ? "hide" : "show"
-                    }`}
-                  />
+<img
+  src={imagenRifaPrincipal}
+  alt={nombreRifa || "Rifa"}
+  loading="eager"
+  fetchPriority="high"
+  decoding="async"
+  className={`hero-showcase-image fade-image ${
+    showSecondImage ? "hide" : "show"
+  }`}
+/>
                 )}
 
                 {imagenRifaScroll && (
-                  <img
-                    src={imagenRifaScroll}
-                    alt={`${nombreRifa || "Rifa"} scroll`}
-                    className={`hero-showcase-image fade-image ${
-                      showSecondImage ? "show" : "hide"
-                    }`}
-                  />
+<img
+  src={imagenRifaScroll}
+  alt={`${nombreRifa || "Rifa"} scroll`}
+  loading="lazy"
+  fetchPriority="low"
+  decoding="async"
+  className={`hero-showcase-image fade-image ${
+    showSecondImage ? "show" : "hide"
+  }`}
+/>
                 )}
 
                 <div className="hero-showcase-fade"></div>
@@ -1450,9 +1457,11 @@ export default function HomePageClient() {
 
       {!showVerifyModal && !showAppPayModal && (
         <div className="home-floating-bar" aria-label="Acciones flotantes">
-          <div className="home-floating-bar-left">
-            <PurchaseGuideFloating />
-          </div>
+<div className="home-floating-bar-left">
+  <PurchaseGuideFloating
+    onOpenVerifier={() => setShowVerifyModal(true)}
+  />
+</div>
 
           <div className="home-floating-bar-total" aria-label="Total de la compra">
             {rifaActiva?.id ? (

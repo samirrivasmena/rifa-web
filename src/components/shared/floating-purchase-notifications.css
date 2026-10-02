@@ -1,7 +1,8 @@
 .floating-purchase-notification {
+  --purchase-swipe-x: 0px;
+
   position: fixed;
 
-  /* CENTRADO REAL */
   left: 50%;
   right: auto;
   top: 90px;
@@ -31,14 +32,31 @@
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 
+  /*
+   * Centrado + desplazamiento del dedo.
+   */
+  translate: calc(-50% + var(--purchase-swipe-x)) 0;
+
+  transition:
+    translate 0.25s ease,
+    opacity 0.25s ease;
+
   animation: purchaseToastIn 0.4s ease;
 
   /*
-   * Usamos translate separado de transform.
-   * Así podemos centrar la tarjeta sin romper
-   * las animaciones que usan transform.
+   * Permite el scroll vertical normal de la página,
+   * pero nosotros controlamos el gesto horizontal.
    */
-  translate: -50% 0;
+  touch-action: pan-y;
+}
+
+
+/* =========================================================
+   CUANDO EL USUARIO ESTÁ ARRASTRANDO
+========================================================= */
+
+.floating-purchase-notification.purchase-toast-dragging {
+  transition: none;
 }
 
 
@@ -61,6 +79,9 @@
   font-size: 19px;
 
   flex: 0 0 auto;
+
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 
@@ -71,6 +92,9 @@
 .floating-purchase-content {
   min-width: 0;
   flex: 1;
+
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .purchase-live {
@@ -144,6 +168,8 @@
   transition:
     transform 0.2s ease,
     background 0.2s ease;
+
+  z-index: 2;
 }
 
 .purchase-close-btn:hover {
@@ -157,7 +183,7 @@
 
 
 /* =========================================================
-   ANIMACIÓN DE ENTRADA
+   ENTRADA
 ========================================================= */
 
 @keyframes purchaseToastIn {
@@ -174,22 +200,24 @@
 
 
 /* =========================================================
-   ANIMACIÓN DE SALIDA
+   SALIDA
 ========================================================= */
 
 .purchase-toast-exit {
-  animation: purchaseToastOut 0.5s ease forwards;
+  pointer-events: none;
+
+  animation: purchaseToastOutLeft 0.4s
+    cubic-bezier(0.4, 0, 0.2, 1) forwards !important;
 }
 
-@keyframes purchaseToastOut {
+@keyframes purchaseToastOutLeft {
   from {
     opacity: 1;
-    transform: translateY(0) scale(1);
   }
 
   to {
     opacity: 0;
-    transform: translateY(16px) scale(0.96);
+    translate: calc(-50% - 120vw) 0;
   }
 }
 
@@ -215,7 +243,15 @@
 
     background: rgba(255, 255, 255, 0.68);
 
-    translate: -50% 0;
+    /*
+     * Le indica visualmente al usuario que
+     * esta tarjeta se puede manipular.
+     */
+    cursor: grab;
+  }
+
+  .floating-purchase-notification.purchase-toast-dragging {
+    cursor: grabbing;
   }
 
   .floating-purchase-icon {

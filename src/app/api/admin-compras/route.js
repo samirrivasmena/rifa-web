@@ -5,17 +5,38 @@ import { requireAdmin } from "../../../lib/requireAdmin";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-async function traerTodosLosTickets() {
+async function traerTodosLosTickets(rifaId = null) {
   const pageSize = 1000;
   let from = 0;
   let allTickets = [];
 
   while (true) {
-    const { data, error } = await supabaseAdmin
-      .from("tickets")
-      .select("*")
-      .order("numero_ticket", { ascending: true })
-      .range(from, from + pageSize - 1);
+let query = supabaseAdmin
+  .from("tickets")
+  .select(`
+    id,
+    rifa_id,
+    numero_ticket,
+    compra_id,
+    estado,
+    tipo,
+    free_drop_id,
+    free_drop_participation_id,
+    asignado_at,
+    fecha_asignacion,
+    asignado_a_nombre,
+    asignado_a_email,
+    asignado_a_telefono
+  `)
+  .neq("estado", "disponible")
+  .order("numero_ticket", { ascending: true })
+  .range(from, from + pageSize - 1);
+
+if (rifaId) {
+  query = query.eq("rifa_id", rifaId);
+}
+
+const { data, error } = await query;
 
     if (error) throw error;
 
@@ -39,58 +60,74 @@ function normalizarCompra(compra = {}) {
 export async function GET(req) {
   const auth = await requireAdmin(req);
 
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
+if (!auth.ok) {
+  return NextResponse.json({ error: auth.error }, { status: auth.status });
+}
 
-  try {
-    const { data: comprasBase, error: comprasError } = await supabaseAdmin
-      .from("compras")
-      .select(`
+const { searchParams } = new URL(req.url);
+const rifaId = searchParams.get("rifaId");
+
+try {
+const [comprasResult, tickets] = await Promise.all([
+  supabaseAdmin
+    .from("compras")
+    .select(`
+      id,
+      rifa_id,
+      usuario_id,
+      cantidad_tickets,
+      monto_total,
+      referencia,
+      metodo_pago,
+      estado_pago,
+      comprobante_url,
+      fecha_compra,
+      created_at,
+      usuarios (
         id,
-        rifa_id,
-        usuario_id,
-        cantidad_tickets,
-        monto_total,
-        referencia,
-        metodo_pago,
-        estado_pago,
-        comprobante_url,
-        fecha_compra,
-        created_at,
-        usuarios (
-          id,
-          nombre,
-          email,
-          telefono
-        ),
-        rifas (
-          id,
-          nombre,
-          premio,
-          descripcion,
-          portada_url,
-          portada_scroll_url,
-          fecha_sorteo,
-          hora_sorteo,
-          formato,
-          estado
-        )
-      `)
-      .order("fecha_compra", { ascending: false });
+        nombre,
+        email,
+        telefono
+      ),
+      rifas (
+        id,
+        nombre,
+        premio,
+        descripcion,
+        portada_url,
+        portada_scroll_url,
+        fecha_sorteo,
+        hora_sorteo,
+        formato,
+        estado
+      )
+    `)
+    .order("fecha_compra", { ascending: false }),
 
-    if (comprasError) {
-      return NextResponse.json(
-        { error: comprasError.message || "Error al cargar compras" },
-        { status: 500 }
-      );
+  traerTodosLosTickets(rifaId),
+]);
+
+const {
+  data: comprasBase,
+  error: comprasError,
+} = comprasResult;
+
+if (comprasError) {
+  return NextResponse.json(
+    {
+      error:
+        comprasError.message ||
+        "Error al cargar compras",
+    },
+    {
+      status: 500,
     }
+  );
+}
 
-    const compras = Array.isArray(comprasBase)
-      ? comprasBase.map(normalizarCompra)
-      : [];
-
-    const tickets = await traerTodosLosTickets();
+const compras = Array.isArray(comprasBase)
+  ? comprasBase.map(normalizarCompra)
+  : [];
 
     return NextResponse.json(
       {

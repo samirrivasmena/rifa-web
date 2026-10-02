@@ -19,61 +19,65 @@ const toBoolean = (value) => {
 function normalizarStats(stats = {}, resumen = {}) {
   return {
     total: toNumber(
-      stats.total ?? resumen.total_numeros ?? resumen.cantidad_numeros
+      stats.total ??
+        resumen.total_numeros ??
+        resumen.cantidad_numeros
     ),
+
     vendidos: toNumber(
       stats.vendidos ??
         stats.ticketsVendidos ??
         resumen.tickets_vendidos ??
         resumen.vendidos
     ),
+
     disponibles: toNumber(
-      stats.disponibles ?? resumen.tickets_disponibles ?? resumen.disponibles
+      stats.disponibles ??
+        resumen.tickets_disponibles ??
+        resumen.disponibles
     ),
+
     porcentaje: toNumber(
-      stats.porcentaje ?? stats.porcentajeVendido ?? resumen.porcentaje_vendido
+      stats.porcentaje ??
+        stats.porcentajeVendido ??
+        resumen.porcentaje_vendido
     ),
-    soldOut: toBoolean(stats.soldOut ?? resumen.sold_out ?? resumen.soldOut),
+
+    soldOut: toBoolean(
+      stats.soldOut ??
+        resumen.sold_out ??
+        resumen.soldOut
+    ),
   };
 }
 
 export async function enriquecerRifaConResumen(rifa) {
   if (!rifa?.id) return rifa;
 
-  try {
-    const res = await fetch(
-      `/api/rifa-resumen?rifaId=${encodeURIComponent(rifa.id)}`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
+  const stats = normalizarStats(
+    rifa.stats || {},
+    rifa
+  );
 
-    const data = await res.json();
+  return {
+    ...rifa,
 
-    if (res.ok && data?.rifa) {
-      const resumen = data.rifa;
-      const stats = normalizarStats(resumen.stats || {}, resumen);
+    total_numeros: stats.total,
+    tickets_vendidos: stats.vendidos,
+    tickets_disponibles: stats.disponibles,
+    porcentaje_vendido: stats.porcentaje,
 
-      return {
-        ...rifa,
-        ...resumen,
-        total_numeros: toNumber(resumen.total_numeros),
-        tickets_vendidos: toNumber(resumen.tickets_vendidos),
-        tickets_disponibles: toNumber(resumen.tickets_disponibles),
-        porcentaje_vendido: toNumber(resumen.porcentaje_vendido),
-        sold_out: toBoolean(resumen.sold_out ?? resumen.soldOut),
-        soldOut: toBoolean(resumen.soldOut ?? resumen.sold_out),
-        stats,
-      };
-    }
-  } catch (error) {
-    console.error("Error enriqueciendo rifa con resumen:", error);
-  }
+    sold_out: stats.soldOut,
+    soldOut: stats.soldOut,
 
-  return rifa;
+    stats,
+  };
 }
 
 export async function enriquecerListaRifasConResumen(rifas = []) {
-  return Promise.all(rifas.map((rifa) => enriquecerRifaConResumen(rifa)));
+  return Promise.all(
+    rifas.map((rifa) =>
+      enriquecerRifaConResumen(rifa)
+    )
+  );
 }

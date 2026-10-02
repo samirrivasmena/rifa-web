@@ -121,6 +121,195 @@ function obtenerColorEstadoEvento(estado) {
     punto: "#3b82f6",
   };
 }
+function TurnstileWidget({ onToken }) {
+  const containerRef = useRef(null);
+  const widgetIdRef = useRef(null);
+
+  useEffect(() => {
+    const siteKey =
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
+
+    if (!siteKey) {
+      console.warn(
+        "Falta NEXT_PUBLIC_TURNSTILE_SITE_KEY"
+      );
+      return;
+    }
+
+    let cancelled = false;
+    let intentos = 0;
+    let timerId = null;
+
+    const limpiarWidget = () => {
+      const widgetId = widgetIdRef.current;
+
+      if (
+        widgetId !== null &&
+        widgetId !== undefined &&
+        window.turnstile
+      ) {
+        try {
+          window.turnstile.remove(widgetId);
+        } catch (error) {
+          console.warn(
+            "No se pudo limpiar Turnstile:",
+            error
+          );
+        }
+      }
+
+      widgetIdRef.current = null;
+
+      if (containerRef.current) {
+        containerRef.current.innerHTML = "";
+      }
+    };
+
+    const renderWidget = () => {
+      if (
+        cancelled ||
+        !containerRef.current ||
+        !window.turnstile
+      ) {
+        return false;
+      }
+
+      limpiarWidget();
+
+      if (
+        cancelled ||
+        !containerRef.current
+      ) {
+        return false;
+      }
+
+      try {
+        const widgetId =
+          window.turnstile.render(
+            containerRef.current,
+            {
+              sitekey: siteKey,
+
+              callback: (token) => {
+                if (!cancelled) {
+                  onToken(token);
+                }
+              },
+
+              "expired-callback": () => {
+                if (!cancelled) {
+                  onToken("");
+                }
+              },
+
+              "error-callback": () => {
+                if (!cancelled) {
+                  onToken("");
+                }
+              },
+            }
+          );
+
+        widgetIdRef.current = widgetId;
+
+        return true;
+      } catch (error) {
+        console.error(
+          "No se pudo renderizar Turnstile:",
+          error
+        );
+
+        if (!cancelled) {
+          onToken("");
+        }
+
+        return false;
+      }
+    };
+
+    const esperarTurnstile = () => {
+      if (cancelled) return;
+
+      if (
+        window.turnstile &&
+        containerRef.current
+      ) {
+        renderWidget();
+        return;
+      }
+
+      intentos += 1;
+
+      if (intentos >= 100) {
+        console.error(
+          "Cloudflare Turnstile no estuvo disponible después de esperar."
+        );
+
+        if (!cancelled) {
+          onToken("");
+        }
+
+        return;
+      }
+
+      timerId = window.setTimeout(
+        esperarTurnstile,
+        100
+      );
+    };
+
+    if (window.turnstile) {
+      renderWidget();
+
+      return () => {
+        cancelled = true;
+
+        if (timerId) {
+          window.clearTimeout(timerId);
+        }
+
+        limpiarWidget();
+      };
+    }
+
+    let script = document.querySelector(
+      'script[data-turnstile="true"]'
+    );
+
+    if (!script) {
+      script = document.createElement("script");
+
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+
+      script.async = true;
+      script.defer = true;
+
+      script.dataset.turnstile = "true";
+
+      document.head.appendChild(script);
+    }
+
+    esperarTurnstile();
+
+    return () => {
+      cancelled = true;
+
+      if (timerId) {
+        window.clearTimeout(timerId);
+      }
+
+      limpiarWidget();
+    };
+  }, [onToken]);
+
+  return (
+    <div
+      className="turnstile-wrap"
+      ref={containerRef}
+    />
+  );
+}
 
 export default function VerifyTicketsModal({
   open,
@@ -153,6 +342,16 @@ export default function VerifyTicketsModal({
   ] = useState("");
 
   const [reenviarEn, setReenviarEn] = useState(0);
+
+  const [
+  misTicketsCaptchaToken,
+  setMisTicketsCaptchaToken,
+] = useState("");
+
+const [
+  misTicketsCaptchaResetKey,
+  setMisTicketsCaptchaResetKey,
+] = useState(0);
 
   const inputRef = useRef(null);
 
@@ -209,6 +408,10 @@ export default function VerifyTicketsModal({
     setCodigoEnviado(false);
     setEmailCodigoEnviado("");
     setReenviarEn(0);
+    setMisTicketsCaptchaToken("");
+setMisTicketsCaptchaResetKey(
+  (actual) => actual + 1
+);
   }, [open, initialMode, initialFreeCode]);
 
   useEffect(() => {
@@ -263,15 +466,22 @@ export default function VerifyTicketsModal({
     },
   };
 
-  const limpiarYcerrar = () => {
-    setEmail("");
-    setCodigoFree("");
-    setCodigoMisTickets("");
-    setCodigoEnviado(false);
-    setEmailCodigoEnviado("");
-    setModo(initialMode || "tickets");
-    onClose?.();
-  };
+const limpiarYcerrar = () => {
+  setEmail("");
+  setCodigoFree("");
+  setCodigoMisTickets("");
+  setCodigoEnviado(false);
+  setEmailCodigoEnviado("");
+  setReenviarEn(0);
+
+  setMisTicketsCaptchaToken("");
+  setMisTicketsCaptchaResetKey(
+    (actual) => actual + 1
+  );
+
+  setModo(initialMode || "tickets");
+  onClose?.();
+};
 
   const cerrarModal = () => {
     if (loading) return;
@@ -317,11 +527,32 @@ export default function VerifyTicketsModal({
          PASO 1 — SOLICITAR CÓDIGO
       ===================================================== */
 
-      if (!codigoEnviado) {
-        const solicitud =
-          await solicitarCodigoMisTickets(cleanEmail);
+if (!codigoEnviado) {
+  if (!misTicketsCaptchaToken) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Verificación requerida",
+      text: "Completa la verificación de seguridad antes de solicitar el código.",
+    });
 
-        const solicitudData = solicitud.data || {};
+    return;
+  }
+
+const solicitud =
+  await solicitarCodigoMisTickets(
+    cleanEmail,
+    misTicketsCaptchaToken
+  );
+
+// El token de Turnstile es de un solo uso.
+// Lo limpiamos y preparamos un CAPTCHA nuevo.
+setMisTicketsCaptchaToken("");
+setMisTicketsCaptchaResetKey(
+  (actual) => actual + 1
+);
+
+const solicitudData = solicitud.data || {};
 
         if (!solicitud.ok) {
           await Swal.fire({
@@ -1264,27 +1495,28 @@ export default function VerifyTicketsModal({
      RENDER PROFESIONAL
   ========================================================= */
 
-  const cambiarModo = (
-    nuevoModo
-  ) => {
-    if (
-      loading ||
-      nuevoModo === modo
-    ) {
-      return;
-    }
+ const cambiarModo = (nuevoModo) => {
+  if (
+    loading ||
+    nuevoModo === modo
+  ) {
+    return;
+  }
 
-    setModo(nuevoModo);
+  setModo(nuevoModo);
 
-    if (
-      nuevoModo !== "historial"
-    ) {
-      setCodigoMisTickets("");
-      setCodigoEnviado(false);
-      setEmailCodigoEnviado("");
-      setReenviarEn(0);
-    }
-  };
+  if (nuevoModo !== "historial") {
+    setCodigoMisTickets("");
+    setCodigoEnviado(false);
+    setEmailCodigoEnviado("");
+    setReenviarEn(0);
+
+    setMisTicketsCaptchaToken("");
+    setMisTicketsCaptchaResetKey(
+      (actual) => actual + 1
+    );
+  }
+};
 
   const cambiarCorreoHistorial =
     () => {
@@ -1295,6 +1527,11 @@ export default function VerifyTicketsModal({
       setEmailCodigoEnviado("");
       setReenviarEn(0);
 
+      setMisTicketsCaptchaToken("");
+setMisTicketsCaptchaResetKey(
+  (actual) => actual + 1
+);
+
       setTimeout(
         () =>
           inputRef.current?.focus(),
@@ -1302,69 +1539,87 @@ export default function VerifyTicketsModal({
       );
     };
 
-  const reenviarCodigoHistorial =
-    async () => {
-      if (
-        loading ||
-        reenviarEn > 0
-      ) {
-        return;
+const reenviarCodigoHistorial =
+  async () => {
+    if (
+      loading ||
+      reenviarEn > 0
+    ) {
+      return;
+    }
+
+    const cleanEmail =
+      String(
+        emailCodigoEnviado ||
+          email ||
+          ""
+      )
+        .trim()
+        .toLowerCase();
+
+    if (!validarEmail(cleanEmail)) {
+      return;
+    }
+
+    if (!misTicketsCaptchaToken) {
+      await Swal.fire({
+        ...swalConfig,
+        icon: "warning",
+        title: "Verificación requerida",
+        text: "Completa la verificación de seguridad antes de reenviar el código.",
+      });
+
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const respuesta =
+        await solicitarCodigoMisTickets(
+          cleanEmail,
+          misTicketsCaptchaToken
+        );
+
+      // El token de Turnstile es de un solo uso.
+      // Lo eliminamos y generamos un CAPTCHA nuevo.
+      setMisTicketsCaptchaToken("");
+
+      setMisTicketsCaptchaResetKey(
+        (actual) => actual + 1
+      );
+
+      const respuestaData =
+        respuesta.data || {};
+
+      if (respuesta.ok) {
+        setReenviarEn(60);
       }
 
-      const cleanEmail =
-        String(
-          emailCodigoEnviado ||
-            email ||
-            ""
-        )
-          .trim()
-          .toLowerCase();
+      await Swal.fire({
+        ...swalConfig,
 
-      if (
-        !validarEmail(cleanEmail)
-      ) {
-        return;
-      }
+        icon:
+          respuesta.ok
+            ? "success"
+            : "error",
 
-      try {
-        setLoading(true);
+        title:
+          respuesta.ok
+            ? "Código reenviado"
+            : "No se pudo reenviar",
 
-        const respuesta =
-          await solicitarCodigoMisTickets(
-            cleanEmail
-          );
-
-        const respuestaData =
-          respuesta.data || {};
-
-        if (respuesta.ok) {
-          setReenviarEn(60);
-        }
-
-        await Swal.fire({
-          ...swalConfig,
-
-          icon:
-            respuesta.ok
-              ? "success"
-              : "error",
-
-          title:
-            respuesta.ok
-              ? "Código reenviado"
-              : "No se pudo reenviar",
-
-          text:
-            respuestaData.mensaje ||
-            respuestaData.error ||
-            (respuesta.ok
-              ? "Revisa tu correo para ver el nuevo código."
-              : "Intenta nuevamente en unos segundos."),
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
+        text:
+          respuestaData.mensaje ||
+          respuestaData.error ||
+          (respuesta.ok
+            ? "Revisa tu correo para ver el nuevo código."
+            : "Intenta nuevamente en unos segundos."),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const historialPasoCodigo =
     modo === "historial" &&
@@ -1645,6 +1900,20 @@ export default function VerifyTicketsModal({
                 <small className="verify-modal-helper">
                   Ingresa los 6 dígitos que enviamos a tu correo.
                 </small>
+                
+              <div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    width: "100%",
+    marginTop: "12px",
+  }}
+>
+  <TurnstileWidget
+    key={misTicketsCaptchaResetKey}
+    onToken={setMisTicketsCaptchaToken}
+  />
+</div>
               </div>
 
               <div className="verify-modal-code-actions">
@@ -1720,6 +1989,21 @@ export default function VerifyTicketsModal({
                   ? "Te enviaremos un código de 6 dígitos antes de mostrar tus participaciones."
                   : "Usa el mismo correo con el que realizaste la compra."}
               </small>
+{modo === "historial" && !codigoEnviado && (
+  <div
+    style={{
+      display: "flex",
+      justifyContent: "center",
+      width: "100%",
+      marginTop: "12px",
+    }}
+  >
+<TurnstileWidget
+  key={misTicketsCaptchaResetKey}
+  onToken={setMisTicketsCaptchaToken}
+/>
+  </div>
+)}
             </div>
           )}
         </div>

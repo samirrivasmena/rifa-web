@@ -15,6 +15,16 @@ export const runtime = "nodejs";
 const CODIGO_DURACION_MINUTOS = 10;
 const ESPERA_REENVIO_SEGUNDOS = 60;
 
+const TURNSTILE_SECRET_KEY =
+  process.env.TURNSTILE_SECRET_KEY;
+
+const TURNSTILE_VERIFY_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate",
+};
+
 /* =========================================================
    HELPERS
 ========================================================= */
@@ -32,10 +42,9 @@ function esEmailValido(email) {
 }
 
 function crearCodigo() {
-  return crypto.randomInt(
-    100000,
-    1000000
-  ).toString();
+  return crypto
+    .randomInt(100000, 1000000)
+    .toString();
 }
 
 function crearHashCodigo(email, codigo) {
@@ -55,15 +64,168 @@ function crearHashCodigo(email, codigo) {
 }
 
 function respuestaGenerica() {
-  return NextResponse.json({
-    ok: true,
+  return NextResponse.json(
+    {
+      ok: true,
 
-    mensaje:
-      "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
+      mensaje:
+        "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
 
-    expiresIn:
-      CODIGO_DURACION_MINUTOS * 60,
-  });
+      expiresIn:
+        CODIGO_DURACION_MINUTOS * 60,
+    },
+    {
+      headers: NO_CACHE_HEADERS,
+    }
+  );
+}
+
+/* =========================================================
+   OBTENER IP DEL CLIENTE
+========================================================= */
+
+function obtenerIp(req) {
+  const forwarded =
+    req.headers.get("x-forwarded-for");
+
+  if (forwarded) {
+    return (
+      forwarded
+        .split(",")[0]
+        ?.trim() || ""
+    );
+  }
+
+  return String(
+    req.headers.get("x-real-ip") || ""
+  ).trim();
+}
+
+/* =========================================================
+   VERIFICAR CLOUDFLARE TURNSTILE
+========================================================= */
+
+async function verificarTurnstile(
+  token,
+  ip = ""
+) {
+  const tokenLimpio =
+    String(token || "").trim();
+
+  if (!TURNSTILE_SECRET_KEY) {
+    console.error(
+      "SEGURIDAD: falta TURNSTILE_SECRET_KEY"
+    );
+
+    return {
+      ok: false,
+      configuracionIncompleta: true,
+    };
+  }
+
+  if (!tokenLimpio) {
+    return {
+      ok: false,
+      configuracionIncompleta: false,
+    };
+  }
+
+  const controller =
+    new AbortController();
+
+  const timeoutId =
+    setTimeout(() => {
+      controller.abort();
+    }, 10000);
+
+  try {
+    const body =
+      new URLSearchParams();
+
+    body.set(
+      "secret",
+      TURNSTILE_SECRET_KEY
+    );
+
+    body.set(
+      "response",
+      tokenLimpio
+    );
+
+    if (ip) {
+      body.set(
+        "remoteip",
+        ip
+      );
+    }
+
+    const response =
+      await fetch(
+        TURNSTILE_VERIFY_URL,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+
+          body: body.toString(),
+
+          signal: controller.signal,
+
+          cache: "no-store",
+        }
+      );
+
+    if (!response.ok) {
+      console.error(
+        "Turnstile Siteverify respondió con estado:",
+        response.status
+      );
+
+      return {
+        ok: false,
+        configuracionIncompleta: false,
+      };
+    }
+
+    const data =
+      await response.json();
+
+    if (!data?.success) {
+      console.warn(
+        "Turnstile rechazó solicitud de Mis Tickets:",
+        Array.isArray(
+          data?.["error-codes"]
+        )
+          ? data["error-codes"]
+          : []
+      );
+
+      return {
+        ok: false,
+        configuracionIncompleta: false,
+      };
+    }
+
+    return {
+      ok: true,
+      configuracionIncompleta: false,
+    };
+  } catch (error) {
+    console.error(
+      "Error verificando Turnstile en Mis Tickets:",
+      error
+    );
+
+    return {
+      ok: false,
+      configuracionIncompleta: false,
+    };
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /* =========================================================
@@ -72,12 +234,40 @@ function respuestaGenerica() {
 
 export async function POST(req) {
   try {
-    const body = await req.json();
+    /* =====================================================
+       LEER BODY
+    ===================================================== */
+
+    const body =
+      await req.json().catch(() => null);
+
+    if (
+      !body ||
+      typeof body !== "object" ||
+      Array.isArray(body)
+    ) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Solicitud inválida",
+        },
+        {
+          status: 400,
+          headers: NO_CACHE_HEADERS,
+        }
+      );
+    }
 
     const email =
       limpiarEmail(
         body?.email
       );
+
+    const captchaToken =
+      String(
+        body?.captchaToken || ""
+      ).trim();
 
     /* =====================================================
        VALIDAR EMAIL
@@ -92,6 +282,7 @@ export async function POST(req) {
         },
         {
           status: 400,
+          headers: NO_CACHE_HEADERS,
         }
       );
     }
@@ -105,6 +296,7 @@ export async function POST(req) {
         },
         {
           status: 400,
+          headers: NO_CACHE_HEADERS,
         }
       );
     }
@@ -114,7 +306,8 @@ export async function POST(req) {
     ===================================================== */
 
     if (
-      !process.env.MIS_TICKETS_OTP_SECRET
+      !process.env
+        .MIS_TICKETS_OTP_SECRET
     ) {
       console.error(
         "Falta MIS_TICKETS_OTP_SECRET"
@@ -128,6 +321,7 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers: NO_CACHE_HEADERS,
         }
       );
     }
@@ -145,6 +339,7 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers: NO_CACHE_HEADERS,
         }
       );
     }
@@ -162,6 +357,88 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers: NO_CACHE_HEADERS,
+        }
+      );
+    }
+
+    if (!TURNSTILE_SECRET_KEY) {
+      console.error(
+        "Falta TURNSTILE_SECRET_KEY"
+      );
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "La verificación de seguridad no está configurada",
+        },
+        {
+          status: 500,
+          headers: NO_CACHE_HEADERS,
+        }
+      );
+    }
+
+    /* =====================================================
+       VALIDAR CLOUDFLARE TURNSTILE
+
+       IMPORTANTE:
+       Esto ocurre ANTES de consultar usuarios,
+       compras, FREE Drops o generar un OTP.
+    ===================================================== */
+
+    if (!captchaToken) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "Completa la verificación de seguridad.",
+        },
+        {
+          status: 400,
+          headers: NO_CACHE_HEADERS,
+        }
+      );
+    }
+
+    const ip =
+      obtenerIp(req);
+
+    const captcha =
+      await verificarTurnstile(
+        captchaToken,
+        ip
+      );
+
+    if (!captcha.ok) {
+      if (
+        captcha.configuracionIncompleta
+      ) {
+        return NextResponse.json(
+          {
+            ok: false,
+            error:
+              "La verificación de seguridad no está disponible.",
+          },
+          {
+            status: 500,
+            headers:
+              NO_CACHE_HEADERS,
+          }
+        );
+      }
+
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "La verificación de seguridad expiró o no es válida. Inténtalo nuevamente.",
+        },
+        {
+          status: 400,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -197,6 +474,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -235,6 +514,8 @@ export async function POST(req) {
           },
           {
             status: 500,
+            headers:
+              NO_CACHE_HEADERS,
           }
         );
       }
@@ -276,6 +557,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -316,6 +599,8 @@ export async function POST(req) {
           },
           {
             status: 500,
+            headers:
+              NO_CACHE_HEADERS,
           }
         );
       }
@@ -327,7 +612,7 @@ export async function POST(req) {
     const tieneFree =
       Boolean(
         freeNormalizado?.id ||
-        freeAntiguo?.id
+          freeAntiguo?.id
       );
 
     const tieneParticipacion =
@@ -386,6 +671,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -401,7 +688,8 @@ export async function POST(req) {
 
       const diferenciaSegundos =
         Math.floor(
-          (ahoraServidor - creado) /
+          (ahoraServidor -
+            creado) /
             1000
         );
 
@@ -416,6 +704,7 @@ export async function POST(req) {
        * no dejamos al usuario atrapado permanentemente
        * en "Espera 60 segundos".
        */
+
       if (
         diferenciaSegundos >= -5 &&
         diferenciaSegundos <
@@ -432,6 +721,7 @@ export async function POST(req) {
             1,
             Math.min(
               ESPERA_REENVIO_SEGUNDOS,
+
               ESPERA_REENVIO_SEGUNDOS -
                 diferenciaSegura
             )
@@ -454,6 +744,8 @@ export async function POST(req) {
             status: 429,
 
             headers: {
+              ...NO_CACHE_HEADERS,
+
               "Retry-After":
                 String(
                   retryAfter
@@ -522,6 +814,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -565,6 +859,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -592,7 +888,8 @@ export async function POST(req) {
 
       if (nuevoOtp?.id) {
         const {
-          error: invalidarNuevoError,
+          error:
+            invalidarNuevoError,
         } = await supabaseAdmin
           .from(
             "mis_tickets_otps"
@@ -623,6 +920,8 @@ export async function POST(req) {
         },
         {
           status: 500,
+          headers:
+            NO_CACHE_HEADERS,
         }
       );
     }
@@ -633,19 +932,24 @@ export async function POST(req) {
        NUNCA devolvemos el código ni su hash.
     ===================================================== */
 
-    return NextResponse.json({
-      ok: true,
+    return NextResponse.json(
+      {
+        ok: true,
 
-      mensaje:
-        "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
+        mensaje:
+          "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
 
-      expiresIn:
-        CODIGO_DURACION_MINUTOS *
-        60,
+        expiresIn:
+          CODIGO_DURACION_MINUTOS *
+          60,
 
-      retryAfter:
-        ESPERA_REENVIO_SEGUNDOS,
-    });
+        retryAfter:
+          ESPERA_REENVIO_SEGUNDOS,
+      },
+      {
+        headers: NO_CACHE_HEADERS,
+      }
+    );
   } catch (error) {
     console.error(
       "Error general solicitar código Mis Tickets:",
@@ -661,6 +965,8 @@ export async function POST(req) {
       },
       {
         status: 500,
+        headers:
+          NO_CACHE_HEADERS,
       }
     );
   }

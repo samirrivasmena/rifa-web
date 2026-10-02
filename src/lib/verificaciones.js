@@ -161,18 +161,23 @@ export async function verificarFreeCode(
 ========================================================= */
 
 export async function solicitarCodigoMisTickets(
-  email
+  email,
+  captchaToken
 ) {
   const emailLimpio =
     String(email || "")
       .trim()
       .toLowerCase();
 
+  const captchaTokenLimpio =
+    String(captchaToken || "")
+      .trim();
+
   return fetchJsonSeguro(
     "/api/mis-tickets/solicitar-codigo",
     {
-      email:
-        emailLimpio,
+      email: emailLimpio,
+      captchaToken: captchaTokenLimpio,
     }
   );
 }
