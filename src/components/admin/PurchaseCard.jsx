@@ -68,7 +68,7 @@ function crearMensajeWhatsapp({ compra, ticketsFormateados, padLength }) {
 
 Hola *${nombre}* 👋
 
-Tu compra fue aprobada correctamente en *Rifas LSD*.
+Tu compra fue aprobada correctamente en *Sorteos LSD*.
 
 ━━━━━━━━━━━━━━
 🎁 *Premio:* ${premio}
@@ -85,7 +85,7 @@ ${eventoUrl}
 🍀 Mucha suerte.
 Gracias por participar con nosotros.
 
-*RIFAS LSD* 🏆`;
+*Sorteos LSD* 🏆`;
 }
 
 export default function PurchaseCard({
@@ -216,6 +216,7 @@ export default function PurchaseCard({
             rel="noreferrer"
             className="adminpro-whatsapp-btn"
           >
+            📱 Contactar por WhatsApp
             📱 Contactar por WhatsApp
           </a>
         ) : (

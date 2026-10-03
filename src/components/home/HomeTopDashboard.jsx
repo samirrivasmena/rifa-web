@@ -7,7 +7,7 @@ export default function HomeTopDashboard({ onOpenVerifier }) {
   const { config } = useSiteConfig();
 
   const logoUrl = config?.logo_url || "";
-  const nombreMarca = config?.nombre_marca || "RIFAS LSD";
+  const nombreMarca = config?.nombre_marca || "Sorteos LSD";
 
   return (
     <header className="home-top-dashboard">

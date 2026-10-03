@@ -1302,7 +1302,7 @@ Tu compra fue aprobada.
 🎫 Tickets:
 ${numerosWhatsapp}
 
-Gracias por participar en Rifas LSD.`;
+Gracias por participar en Sorteos LSD.`;
 
     const whatsappUrl =
       telefonoWhatsapp

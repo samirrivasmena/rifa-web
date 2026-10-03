@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { requireAdmin } from "../../../lib/requireAdmin";
 import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
+import { sendFreeDropCancellationEmail } from "@/lib/email/sendFreeDropCancellationEmail";
 
 function getSupabaseServerClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -837,6 +838,129 @@ export async function PATCH(req) {
         400
       );
     }
+    /*
+|--------------------------------------------------------------------------
+| DATOS PREVIOS PARA CORREO DE ANULACIÓN
+|--------------------------------------------------------------------------
+|
+| Guardamos estos datos ANTES del RPC porque al anular
+| el ticket FREE puede quedar liberado.
+|
+*/
+
+let datosPreviosAnulacion = null;
+
+if (action === "anular") {
+  try {
+    const {
+      data: participacionPrevia,
+      error: participacionPreviaError,
+    } = await supabase
+      .from("free_drop_participations")
+      .select(`
+        id,
+        rifa_id,
+        free_drop_id,
+        ticket_id,
+        nombre,
+        apellido,
+        email,
+        codigo_unico,
+        estado,
+        created_at,
+        updated_at
+      `)
+      .eq("id", participationIdNumber)
+      .eq("rifa_id", rifaId)
+      .maybeSingle();
+
+    if (participacionPreviaError) {
+      throw participacionPreviaError;
+    }
+
+    if (participacionPrevia) {
+      let ticketPrevio = null;
+      let dropPrevio = null;
+      let rifaPrevia = null;
+
+      if (participacionPrevia.ticket_id) {
+        const {
+          data: ticketData,
+          error: ticketError,
+        } = await supabase
+          .from("tickets")
+          .select(`
+            id,
+            numero_ticket,
+            estado,
+            tipo
+          `)
+          .eq("id", participacionPrevia.ticket_id)
+          .maybeSingle();
+
+        if (ticketError) {
+          throw ticketError;
+        }
+
+        ticketPrevio = ticketData || null;
+      }
+
+      if (participacionPrevia.free_drop_id) {
+        const {
+          data: dropData,
+          error: dropError,
+        } = await supabase
+          .from("free_drops")
+          .select(`
+            id,
+            nombre,
+            numero_drop
+          `)
+          .eq("id", participacionPrevia.free_drop_id)
+          .maybeSingle();
+
+        if (dropError) {
+          throw dropError;
+        }
+
+        dropPrevio = dropData || null;
+      }
+
+      const {
+        data: rifaData,
+        error: rifaError,
+      } = await supabase
+        .from("rifas")
+        .select(`
+          id,
+          nombre,
+          formato
+        `)
+        .eq("id", rifaId)
+        .maybeSingle();
+
+      if (rifaError) {
+        throw rifaError;
+      }
+
+      rifaPrevia = rifaData || null;
+
+      datosPreviosAnulacion = {
+        participacion: participacionPrevia,
+        ticket: ticketPrevio,
+        drop: dropPrevio,
+        rifa: rifaPrevia,
+      };
+    }
+  } catch (errorDatosPrevios) {
+    console.error(
+      "No se pudieron preparar los datos del correo de anulación FREE:",
+      errorDatosPrevios
+    );
+
+    // No detenemos la anulación si falla la preparación del correo.
+  }
+}
 
     /*
     |--------------------------------------------------------------------------
@@ -1305,6 +1429,200 @@ if (action === "rechazar") {
 if (action === "anular") {
   message =
     "Participación anulada correctamente";
+
+  try {
+    const participacion =
+      datosPreviosAnulacion?.participacion || null;
+
+    const ticket =
+      datosPreviosAnulacion?.ticket || null;
+
+    const drop =
+      datosPreviosAnulacion?.drop || null;
+
+    const rifa =
+      datosPreviosAnulacion?.rifa || null;
+
+    if (!participacion) {
+      throw new Error(
+        "No se pudieron recuperar los datos previos de la participación"
+      );
+    }
+
+    if (!participacion.email) {
+      throw new Error(
+        "La participación no tiene correo electrónico"
+      );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Nombre completo
+    |--------------------------------------------------------------------------
+    */
+
+    const nombreCompleto = [
+      limpiarTexto(participacion.nombre),
+      limpiarTexto(participacion.apellido),
+    ]
+      .filter(Boolean)
+      .join(" ")
+      .trim();
+
+    /*
+    |--------------------------------------------------------------------------
+    | FREE DROP / EVENTO
+    |--------------------------------------------------------------------------
+    */
+
+    const freeDropNombre =
+      limpiarTexto(drop?.nombre) ||
+      `FREE DROP #${drop?.numero_drop || ""}`;
+
+    const eventoNombre =
+      limpiarTexto(rifa?.nombre) ||
+      "Evento";
+
+    const padLength =
+      rifa?.formato === "3digitos"
+        ? 3
+        : 4;
+
+    /*
+    |--------------------------------------------------------------------------
+    | URLs
+    |--------------------------------------------------------------------------
+    */
+
+    const envBase =
+      process.env.NEXT_PUBLIC_SITE_URL ||
+      process.env.SITE_URL ||
+      process.env.VERCEL_URL ||
+      "";
+
+    let baseUrl =
+      limpiarTexto(envBase);
+
+    if (!baseUrl) {
+      baseUrl =
+        limpiarTexto(
+          req.headers.get("origin")
+        );
+    }
+
+    if (
+      baseUrl &&
+      !/^https?:\/\//i.test(baseUrl)
+    ) {
+      baseUrl =
+        `https://${baseUrl}`;
+    }
+
+    try {
+      baseUrl =
+        baseUrl
+          ? new URL(baseUrl).origin
+          : "";
+    } catch {
+      baseUrl = "";
+    }
+
+    const verificarUrl =
+      baseUrl
+        ? `${baseUrl}/principal`
+        : "/principal";
+
+    const eventoUrl =
+      baseUrl
+        ? `${baseUrl}/evento/${rifaId}`
+        : `/evento/${rifaId}`;
+
+    /*
+    |--------------------------------------------------------------------------
+    | CORREO DE ANULACIÓN
+    |--------------------------------------------------------------------------
+    |
+    | El RPC ya terminó correctamente.
+    | Si el correo falla, NO deshacemos la anulación.
+    |
+    */
+
+    await sendFreeDropCancellationEmail({
+      to: participacion.email,
+
+      nombre:
+        nombreCompleto ||
+        participacion.nombre ||
+        "cliente",
+
+      eventoNombre,
+
+      freeDropNombre,
+
+      numeroParticipacion:
+        ticket?.numero_ticket ?? null,
+
+      codigoFree:
+        participacion.codigo_unico || "",
+
+      fechaIso:
+        new Date().toISOString(),
+
+      verificarUrl,
+
+      eventoUrl,
+
+      padLength,
+    });
+
+    emailEnviado = true;
+
+    console.log(
+      "Correo FREE de anulación enviado:",
+      {
+        participationId:
+          participationIdNumber,
+
+        email:
+          participacion.email,
+
+        codigoFree:
+          participacion.codigo_unico,
+
+        numeroTicket:
+          ticket?.numero_ticket ?? null,
+      }
+    );
+  } catch (errorCorreo) {
+    /*
+    |--------------------------------------------------------------------------
+    | IMPORTANTE
+    |--------------------------------------------------------------------------
+    |
+    | La participación YA fue anulada por el RPC.
+    | Un fallo del correo no debe revertir la anulación.
+    |
+    */
+
+    emailEnviado = false;
+
+    emailError =
+      errorCorreo?.message ||
+      "No se pudo enviar el correo de anulación";
+
+    console.error(
+      "La participación FREE fue anulada, pero el correo no pudo enviarse:",
+      {
+        participationId:
+          participationIdNumber,
+
+        rifaId,
+
+        error:
+          errorCorreo,
+      }
+    );
+  }
 }
 
     /*
@@ -1331,16 +1649,16 @@ return NextResponse.json({
   message,
   resultado,
 
-  email_enviado:
-    action === "aprobar"
-      ? emailEnviado
-      : null,
+email_enviado:
+  ["aprobar", "anular"].includes(action)
+    ? emailEnviado
+    : null,
 
-  email_error:
-    action === "aprobar" &&
-    emailEnviado === false
-      ? emailError
-      : null,
+email_error:
+  ["aprobar", "anular"].includes(action) &&
+  emailEnviado === false
+    ? emailError
+    : null,
 });
   } catch (error) {
     console.error(

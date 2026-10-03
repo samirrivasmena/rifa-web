@@ -77,7 +77,7 @@ export default function SiteLogo({
     alt ||
     `Logo ${
       config?.nombre_marca ||
-      "RIFAS LSD"
+      "Sorteos LSD"
     }`;
 
   /*

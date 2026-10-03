@@ -6,7 +6,7 @@ export default function PublicFooter({ texto, mostrarRedes }) {
   const { config } = useSiteConfig();
 
   const nombreMarca =
-    config?.footer_titulo || config?.nombre_marca || "RIFAS LSD";
+    config?.footer_titulo || config?.nombre_marca || "Sorteos LSD";
   const logoUrl = config?.footer_logo_url || config?.logo_url || "";
 
   const whatsapp = String(
@@ -33,7 +33,7 @@ export default function PublicFooter({ texto, mostrarRedes }) {
 
   const reviewText =
     config?.footer_reseña ||
-    "Rifas LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes.";
+    "Sorteos LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes.";
 
   const showNav = config?.footer_mostrar_navegacion !== false;
 

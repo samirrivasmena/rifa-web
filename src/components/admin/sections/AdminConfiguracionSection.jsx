@@ -197,7 +197,7 @@ function normalizarConfig(data) {
   return {
     ...data,
     logo_url: data?.logo_url || "",
-    nombre_marca: data?.nombre_marca || "RIFAS LSD",
+    nombre_marca: data?.nombre_marca || "Sorteos LSD",
     slogan: data?.slogan || "",
     descripcion_home: data?.descripcion_home || "",
     descripcion_principal: data?.descripcion_principal || "",
@@ -601,7 +601,7 @@ const res = await fetch("/api/admin-configuracion/logo", {
         metodos_pago: normalizarMetodosPago(config.metodos_pago),
 
         seo_titulo:
-          limpiarTextoBasico(config.seo_titulo) || "Rifas LSD | Compra tus tickets",
+          limpiarTextoBasico(config.seo_titulo) || "Sorteos LSD | Compra tus tickets",
         seo_descripcion:
           limpiarTextoMarketing(config.seo_descripcion) ||
           "Compra tus tickets, verifica tus números y consulta eventos disponibles.",
@@ -736,12 +736,12 @@ const res = await fetch("/api/admin-configuracion", {
     return {
       logo: logoPreviewUrl || config?.logo_url || "",
 
-      nombreMarca: limpiarTextoBasico(config?.nombre_marca) || "RIFAS LSD",
+      nombreMarca: limpiarTextoBasico(config?.nombre_marca) || "Sorteos LSD",
 
       tituloPrincipal:
         limpiarTextoBasico(config?.home_titulo) ||
         limpiarTextoBasico(config?.nombre_marca) ||
-        "RIFAS LSD",
+        "Sorteos LSD",
 
       descripcionPrincipal:
         limpiarTextoMarketing(config?.descripcion_principal) ||
@@ -952,7 +952,7 @@ const res = await fetch("/api/admin-configuracion", {
                     className="identidad-input"
                     value={config.nombre_marca || ""}
                     onChange={(e) => cambiarCampo("nombre_marca", e.target.value)}
-                    placeholder="RIFAS LSD"
+                    placeholder="Sorteos LSD"
                   />
                 </Field>
               </div>
@@ -1131,7 +1131,7 @@ RENDIRSE🛑.`}
                   <input
                     value={config.home_titulo || ""}
                     onChange={(e) => cambiarCampo("home_titulo", e.target.value)}
-                    placeholder="RIFAS LSD"
+                    placeholder="Sorteos LSD"
                   />
                 </Field>
 
@@ -1526,7 +1526,7 @@ RENDIRSE🛑.`}
                   <input
                     value={config.seo_titulo || ""}
                     onChange={(e) => cambiarCampo("seo_titulo", e.target.value)}
-                    placeholder="Rifas LSD | Compra tus tickets"
+                    placeholder="Sorteos LSD | Compra tus tickets"
                   />
                 </Field>
 
@@ -1627,7 +1627,7 @@ RENDIRSE🛑.`}
         <input
           value={config.footer_titulo || ""}
           onChange={(e) => cambiarCampo("footer_titulo", e.target.value)}
-          placeholder="RIFAS LSD"
+          placeholder="Sorteos LSD"
         />
       </Field>
 
@@ -1653,7 +1653,7 @@ RENDIRSE🛑.`}
         <textarea
           value={config.footer_reseña || ""}
           onChange={(e) => cambiarCampo("footer_reseña", e.target.value)}
-          placeholder="Rifas LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes."
+          placeholder="Sorteos LSD ofrece una experiencia seria, organizada y transparente para todos sus participantes."
           rows={3}
         />
       </Field>

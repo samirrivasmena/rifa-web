@@ -36,15 +36,15 @@ async function obtenerConfiguracion() {
 export async function generateMetadata() {
   const config = await obtenerConfiguracion();
 
-  const nombreMarca = config?.nombre_marca || "Rifas LSD";
+  const nombreMarca = config?.nombre_marca || "Sorteos LSD";
 
   const titulo =
     config?.seo_titulo ||
-    "Rifas LSD | Eventos disponibles y finalizados";
+    "Sorteos LSD | Eventos disponibles y finalizados";
 
   const descripcion =
     config?.seo_descripcion ||
-    "Explora los eventos disponibles y finalizados de Rifas LSD. Consulta cuentas de pago, contacto y verifica tus tickets.";
+    "Explora los eventos disponibles y finalizados de Sorteos LSD. Consulta cuentas de pago, contacto y verifica tus tickets.";
 
   const imagenCompartir =
     config?.seo_imagen ||

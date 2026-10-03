@@ -35,7 +35,7 @@ export default function PublicTopbar({
   const { config } = useSiteConfig();
 
   const logoUrl = config?.logo_url || "";
-  const nombreMarca = config?.nombre_marca || "Rifas LSD";
+  const nombreMarca = config?.nombre_marca || "Sorteos LSD";
 
   const menuLabels = {
     inicio: config?.menu_inicio || "INICIO",

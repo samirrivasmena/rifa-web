@@ -38,7 +38,7 @@ export async function generateMetadata() {
 
   const descripcion =
     config?.seo_descripcion ||
-    "Participa en la rifa activa de Rifas LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";
+    "Participa en la rifa activa de Sorteos LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";
 
   const imagenCompartir =
     config?.seo_imagen || config?.logo_url || "/og-image.png";
@@ -87,7 +87,7 @@ export async function generateMetadata() {
 export default async function Page() {
   const config = await obtenerConfiguracion();
 
-  const nombreMarca = config?.nombre_marca || "Rifas LSD";
+  const nombreMarca = config?.nombre_marca || "Sorteos LSD";
   const logoUrl = config?.logo_url || `${siteUrl}/icon`;
 
   const organizationSchema = {

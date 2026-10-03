@@ -50,7 +50,7 @@ export default function PrincipalPageClient() {
 
   const logoUrl = config?.logo_url || "";
 
-  const nombreMarca = config?.nombre_marca || "RIFAS LSD";
+  const nombreMarca = config?.nombre_marca || "Sorteos LSD";
 
   const whatsappNumber = config?.whatsapp || "17088865291";
 

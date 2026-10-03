@@ -24,16 +24,16 @@ export const metadata = {
   metadataBase: new URL(siteUrl),
 
   title: {
-    default: "Rifas LSD | Compra tus tickets",
-    template: "%s | Rifas LSD",
+    default: "Sorteos LSD | Compra tus tickets",
+    template: "%s | Sorteos LSD",
   },
 
   description:
     "Compra tus tickets, verifica tus números y consulta eventos disponibles.",
 
-  applicationName: "Rifas LSD",
+  applicationName: "Sorteos LSD",
 
-  authors: [{ name: "Rifas LSD" }],
+  authors: [{ name: "Sorteos LSD" }],
 
   icons: {
     icon: "/icon",

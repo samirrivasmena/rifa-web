@@ -85,7 +85,7 @@ export async function sendMisTicketsCodeEmail({
               letter-spacing:1px;
             "
           >
-            RIFAS LSD
+            SORTEOS LSD
           </div>
 
           <div
@@ -128,7 +128,7 @@ export async function sendMisTicketsCodeEmail({
           >
             Recibimos una solicitud para consultar
             tus tickets y participaciones en
-            <strong>Rifas LSD</strong>.
+            <strong>SORTEOS LSD</strong>.
           </p>
 
           <div
@@ -228,7 +228,7 @@ export async function sendMisTicketsCodeEmail({
   `;
 
   const text = `
-RIFAS LSD
+SORTEOS LSD
 
 Tu código para verificar Mis Tickets es:
 
@@ -244,7 +244,7 @@ Si tú no solicitaste este código, puedes ignorar este correo.
       from: process.env.EMAIL_FROM,
       to,
       subject:
-        "🔐 Tu código para ver Mis Tickets - Rifas LSD",
+        "🔐 Tu código para ver Mis Tickets - SORTEOS LSD",
       html,
       text,
     });

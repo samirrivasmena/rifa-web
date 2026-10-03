@@ -335,7 +335,7 @@ export default function Sidebar({
     <div className={mobile ? "adminpro-mobile-topbar-brand" : "adminpro-brand"}>
       <SiteLogo
         src={logoUrl}
-        alt="RIFAS LSD"
+        alt="Sorteos LSD"
         fallbackText={inicial}
         size="sidebar"
       />
