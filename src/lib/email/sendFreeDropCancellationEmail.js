@@ -43,19 +43,20 @@ function formatNumber(n, padLength = 4) {
   return `#${String(n).padStart(padLength, "0")}`;
 }
 
-export async function sendFreeDropConfirmationEmail({
+export async function sendFreeDropCancellationEmail({
   to,
   nombre = "cliente",
   eventoNombre = "Evento",
-  freeDropNombre = "FREE DROP #1",
+  freeDropNombre = "FREE DROP",
   numeroParticipacion = null,
   codigoFree = "",
-  estado = "VÁLIDO",
   fechaIso = "",
   verificarUrl = "",
   eventoUrl = "",
-  contactoWhatsApp = "https://wa.me/17088865291?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20free%20drop",
-  contactoInstagram = "https://www.instagram.com/sorteoslsd/",
+  contactoWhatsApp =
+    "https://wa.me/17088865291?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20mi%20participaci%C3%B3n%20FREE",
+  contactoInstagram =
+    "https://www.instagram.com/sorteoslsd/",
   padLength = 4,
 }) {
   if (!to) {
@@ -78,14 +79,16 @@ export async function sendFreeDropConfirmationEmail({
   const eventoNombreSafe = escapeHtml(eventoNombre);
   const freeDropNombreSafe = escapeHtml(freeDropNombre);
   const codigoFreeSafe = escapeHtml(codigoFree);
-  const estadoSafe = escapeHtml(estado);
+
+  const numeroFormateado = formatNumber(
+    numeroParticipacion,
+    padLength
+  );
+
+  const numeroSafe = escapeHtml(numeroFormateado);
 
   const fechaFormateada = formatDateSafe(fechaIso);
   const fechaSafe = escapeHtml(fechaFormateada);
-
-  const numeroSafe = escapeHtml(
-    formatNumber(numeroParticipacion, padLength)
-  );
 
   const verificarUrlSafe = safeUrl(verificarUrl);
   const eventoUrlSafe = safeUrl(eventoUrl);
@@ -118,9 +121,9 @@ export async function sendFreeDropConfirmationEmail({
           style="
             background:linear-gradient(
               180deg,
-              #22c55e 0%,
-              #16a34a 55%,
-              #166534 100%
+              #6b7280 0%,
+              #4b5563 55%,
+              #374151 100%
             );
             padding:30px 24px;
             text-align:center;
@@ -144,7 +147,7 @@ export async function sendFreeDropConfirmationEmail({
               margin-top:6px;
             "
           >
-            Tu participación gratis fue registrada correctamente
+            Tu participación FREE fue anulada
           </div>
         </div>
 
@@ -155,7 +158,6 @@ export async function sendFreeDropConfirmationEmail({
             color:#111827;
           "
         >
-
           <h2
             style="
               margin:0 0 12px;
@@ -177,14 +179,48 @@ export async function sendFreeDropConfirmationEmail({
           >
             Tu participación gratis en
             <strong>${eventoNombreSafe}</strong>
-            fue registrada correctamente.
+            ha sido anulada.
           </p>
 
-          <!-- RESUMEN FREE -->
+          <!-- AVISO -->
           <div
             style="
-              background:#f0fdf4;
-              border:1px solid #bbf7d0;
+              background:#f9fafb;
+              border:1px solid #d1d5db;
+              border-radius:18px;
+              padding:18px;
+              margin-bottom:18px;
+            "
+          >
+            <div
+              style="
+                font-size:14px;
+                font-weight:900;
+                color:#374151;
+                margin-bottom:8px;
+              "
+            >
+              ❌ PARTICIPACIÓN ANULADA
+            </div>
+
+            <div
+              style="
+                font-size:14px;
+                line-height:1.7;
+                color:#4b5563;
+              "
+            >
+              Esta participación ya no se encuentra activa.
+              El número que estaba asociado a esta participación
+              dejó de pertenecer a la misma después de la anulación.
+            </div>
+          </div>
+
+          <!-- RESUMEN -->
+          <div
+            style="
+              background:#f3f4f6;
+              border:1px solid #d1d5db;
               border-radius:18px;
               padding:18px;
               margin-bottom:22px;
@@ -194,15 +230,14 @@ export async function sendFreeDropConfirmationEmail({
               style="
                 font-size:14px;
                 font-weight:800;
-                color:#166534;
+                color:#374151;
                 margin-bottom:10px;
                 letter-spacing:.02em;
               "
             >
-              RESUMEN DE TU FREE DROP
+              RESUMEN DE LA PARTICIPACIÓN
             </div>
 
-            <!-- TABLA COMPATIBLE CON GMAIL -->
             <table
               role="presentation"
               width="100%"
@@ -224,7 +259,7 @@ export async function sendFreeDropConfirmationEmail({
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #d1fae5;
+                    border:1px solid #e5e7eb;
                     word-break:break-word;
                   "
                 >
@@ -258,7 +293,7 @@ export async function sendFreeDropConfirmationEmail({
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #d1fae5;
+                    border:1px solid #e5e7eb;
                     word-break:break-word;
                   "
                 >
@@ -294,7 +329,7 @@ export async function sendFreeDropConfirmationEmail({
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #d1fae5;
+                    border:1px solid #e5e7eb;
                     word-break:break-word;
                   "
                 >
@@ -305,7 +340,7 @@ export async function sendFreeDropConfirmationEmail({
                       font-weight:700;
                     "
                   >
-                    NÚMERO DE PARTICIPACIÓN
+                    NÚMERO QUE TENÍAS
                   </div>
 
                   <div
@@ -327,7 +362,7 @@ export async function sendFreeDropConfirmationEmail({
                     background:#ffffff;
                     border-radius:14px;
                     padding:14px;
-                    border:1px solid #d1fae5;
+                    border:1px solid #e5e7eb;
                     word-break:break-word;
                   "
                 >
@@ -344,13 +379,12 @@ export async function sendFreeDropConfirmationEmail({
                   <div
                     style="
                       font-size:15px;
-                      font-weight:800;
-                      color:#16a34a;
+                      font-weight:900;
+                      color:#4b5563;
                       margin-top:5px;
-                      line-height:1.4;
                     "
                   >
-                    ${estadoSafe}
+                    ❌ ANULADA
                   </div>
                 </td>
               </tr>
@@ -363,7 +397,7 @@ export async function sendFreeDropConfirmationEmail({
                 background:#ffffff;
                 border-radius:14px;
                 padding:14px;
-                border:1px solid #d1fae5;
+                border:1px solid #e5e7eb;
               "
             >
               <div
@@ -380,7 +414,7 @@ export async function sendFreeDropConfirmationEmail({
                 style="
                   font-size:20px;
                   font-weight:900;
-                  color:#16a34a;
+                  color:#4b5563;
                   margin-top:5px;
                   letter-spacing:1px;
                   word-break:break-word;
@@ -397,7 +431,7 @@ export async function sendFreeDropConfirmationEmail({
                 background:#ffffff;
                 border-radius:14px;
                 padding:14px;
-                border:1px solid #d1fae5;
+                border:1px solid #e5e7eb;
               "
             >
               <div
@@ -407,7 +441,7 @@ export async function sendFreeDropConfirmationEmail({
                   font-weight:700;
                 "
               >
-                FECHA Y HORA
+                FECHA Y HORA DE ANULACIÓN
               </div>
 
               <div
@@ -442,7 +476,7 @@ export async function sendFreeDropConfirmationEmail({
                 margin-bottom:10px;
               "
             >
-              CONTACTO
+              ¿TIENES ALGUNA PREGUNTA?
             </div>
 
             <p
@@ -456,7 +490,7 @@ export async function sendFreeDropConfirmationEmail({
               <a
                 href="${whatsappUrlSafe}"
                 style="
-                  color:#16a34a;
+                  color:#4b5563;
                   text-decoration:none;
                   font-weight:700;
                 "
@@ -476,7 +510,7 @@ export async function sendFreeDropConfirmationEmail({
               <a
                 href="${instagramUrlSafe}"
                 style="
-                  color:#16a34a;
+                  color:#4b5563;
                   text-decoration:none;
                   font-weight:700;
                 "
@@ -503,16 +537,16 @@ export async function sendFreeDropConfirmationEmail({
                       margin:5px;
                       background:linear-gradient(
                         180deg,
-                        #22c55e 0%,
-                        #16a34a 55%,
-                        #166534 100%
+                        #6b7280 0%,
+                        #4b5563 55%,
+                        #374151 100%
                       );
                       color:#ffffff;
                       text-decoration:none;
                       font-weight:800;
                       padding:14px 22px;
                       border-radius:999px;
-                      box-shadow:0 12px 24px rgba(22,163,74,.25);
+                      box-shadow:0 12px 24px rgba(75,85,99,.20);
                     "
                   >
                     VER EVENTO
@@ -538,7 +572,7 @@ export async function sendFreeDropConfirmationEmail({
                       box-shadow:0 12px 24px rgba(17,24,39,.15);
                     "
                   >
-                    VERIFICAR PARTICIPACIÓN
+                    MIS TICKETS
                   </a>
                 `
                 : ""
@@ -555,13 +589,11 @@ export async function sendFreeDropConfirmationEmail({
               text-align:center;
             "
           >
-            Gracias por participar en
-            <strong>SORTEOS LSD</strong>.
+            <strong>SORTEOS LSD</strong>
             <br />
-            Este correo fue enviado automáticamente al registrar
-            tu participación gratis.
+            Este correo fue enviado automáticamente
+            al anular tu participación gratis.
           </p>
-
         </div>
       </div>
     </div>
@@ -570,42 +602,39 @@ export async function sendFreeDropConfirmationEmail({
   const text = `
 SORTEOS LSD
 
-Tu participación gratis fue registrada correctamente.
+Tu participación FREE fue anulada.
 
 Evento: ${eventoNombre}
 Free Drop: ${freeDropNombre}
-Número de participación: ${formatNumber(
-    numeroParticipacion,
-    padLength
-  )}
+Número que tenías: ${numeroFormateado}
 Código FREE: ${codigoFree}
-Estado: ${estado}
-Fecha y hora: ${fechaFormateada}
+Estado: ANULADA
+Fecha y hora de anulación: ${fechaFormateada}
 
-Verificar participación: ${
-    verificarUrlSafe || "N/A"
-  }
-
+Ver participación: ${verificarUrlSafe || "N/A"}
 Ver evento: ${eventoUrlSafe || "N/A"}
 
-Gracias por participar en SORTEOS LSD.
+Si tienes alguna pregunta, puedes comunicarte con SORTEOS LSD.
   `.trim();
 
   const { data, error } = await resend.emails.send({
     from: process.env.EMAIL_FROM,
     to,
-    subject: `🎉 Tu participación FREE fue registrada - ${eventoNombreSafe}`,
+    subject: `❌ Participación FREE anulada - ${eventoNombreSafe}`,
     html,
     text,
   });
 
   if (error) {
     console.error(
-      "Error enviando correo FREE:",
+      "Error enviando correo de anulación FREE:",
       error
     );
 
-    throw error;
+    throw new Error(
+      error?.message ||
+        "No se pudo enviar el correo de anulación FREE"
+    );
   }
 
   return data;
