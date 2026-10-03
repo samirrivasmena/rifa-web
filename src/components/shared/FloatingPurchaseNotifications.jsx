@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { useSiteConfig } from "@/hooks/useSiteConfig";
 import "./floating-purchase-notifications.css";
 
 function ocultarNombre(nombre = "Cliente") {
@@ -14,6 +15,7 @@ function ocultarNombre(nombre = "Cliente") {
 }
 
 export default function FloatingPurchaseNotifications() {
+    const { config } = useSiteConfig();
   const [notificacion, setNotificacion] = useState(null);
   const [saliendo, setSaliendo] = useState(false);
 
@@ -250,9 +252,11 @@ const handleTouchEnd = () => {
    * Esto permite mantener separado el centrado
    * de la tarjeta de su movimiento horizontal.
    */
-  const estiloDeslizamiento = {
-    "--purchase-swipe-x": `${desplazamientoX}px`,
-  };
+const estiloDeslizamiento = {
+  "--purchase-swipe-x": `${desplazamientoX}px`,
+  "--purchase-accent":
+    config?.notificaciones_color_acento || "#dc2626",
+};
 
   return (
 <div

@@ -608,7 +608,7 @@ a.home-top-link,
   grid-template-columns: 90px 1fr 90px;
   align-items: center;
   padding: 0 18px;
-  background: rgba(255, 255, 255, 0.78);
+  background: rgba(255, 255, 255, 0.414);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
   border-bottom: 1px solid rgba(0, 0, 0, 0.05);
@@ -2578,18 +2578,18 @@ a.home-top-link,
     box-shadow 0.2s ease;
 }
 
-/* PUNTO ACTIVO ROJO */
+/* PUNTO ACTIVO - COLOR CONFIGURABLE DESDE ADMIN */
 .home-event-dot.active {
-  background: #ef2b2d;
+  background: var(--site-dots, #dc2626);
 
   transform: scale(1.18);
 
   box-shadow:
-    0 0 0 5px rgba(239, 43, 45, 0.10);
-}
-
-.small-btn {
-  min-width: 220px;
+    0 0 0 5px color-mix(
+      in srgb,
+      var(--site-dots, #dc2626) 10%,
+      transparent
+    );
 }
 
 /* =========================================================
@@ -6685,7 +6685,7 @@ svg,
 }
 
 .home-event-dot.active {
-  background: #dc2626;
+  background: var(--site-dots, #dc2626);
   transform: scale(1.25);
 }
 
@@ -7184,16 +7184,20 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     transition: transform 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
   }
 
-  .principal-pagination-dot.active {
-    background: #dc2626;
-    transform: scale(1.25);
-    box-shadow: 0 0 0 4px rgba(220, 38, 38, 0.12);
-  }
+.principal-pagination-dot.active {
+  background: var(--site-dots, #dc2626);
+  transform: scale(1.25);
+  box-shadow: 0 0 0 4px color-mix(
+    in srgb,
+    var(--site-dots, #dc2626) 12%,
+    transparent
+  );
+}
 
-  .principal-pagination-dot:hover {
-    transform: scale(1.1);
-    background: #ef4444;
-  }
+.principal-pagination-dot:hover {
+  transform: scale(1.1);
+  background: var(--site-dots, #dc2626);
+}
 }
 /* ==================================================
    PUNTICOS REUTILIZABLES
@@ -8466,4 +8470,26 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
   .promo-popup-close {
     transition: none;
   }
+}
+/* =========================================================
+   PRINCIPAL - PUNTICOS CONFIGURABLES
+========================================================= */
+
+.principal-page .principal-pagination-dot.active,
+.principal-page .principal-pagination-dot.carousel-dot.active {
+  background: var(--site-dots, #dc2626) !important;
+  background-color: var(--site-dots, #dc2626) !important;
+
+  box-shadow: 0 0 0 4px color-mix(
+    in srgb,
+    var(--site-dots, #dc2626) 12%,
+    transparent
+  ) !important;
+}
+
+/* Los no seleccionados siguen grises */
+.principal-page .principal-pagination-dot:not(.active),
+.principal-page .principal-pagination-dot.carousel-dot:not(.active) {
+  background: #d1d5db !important;
+  background-color: #d1d5db !important;
 }

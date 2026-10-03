@@ -310,6 +310,7 @@ export default function PrincipalPageClient() {
         "#dc2626",
 
       "--site-progress-bg": config.color_progreso_fondo || "#e5e7eb",
+      "--site-dots": config.color_punticos || "#dc2626",
 
     };
 

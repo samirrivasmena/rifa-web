@@ -10,7 +10,27 @@ async function obtenerConfiguracion() {
     const { data, error } = await supabaseAdmin
       .from("configuracion_sitio")
       .select(
-        "logo_url, nombre_marca, seo_titulo, seo_descripcion, seo_imagen"
+        `
+        logo_url,
+        nombre_marca,
+        seo_titulo,
+        seo_descripcion,
+        seo_imagen,
+        color_primario,
+        color_secundario,
+        color_fondo,
+        color_texto,
+        color_boton,
+        color_tarjeta,
+        color_borde,
+        color_alerta,
+        color_exito,
+        color_error,
+        color_hover,
+        color_progreso,
+        color_progreso_fondo,
+        color_punticos
+        `
       )
       .order("updated_at", { ascending: false })
       .limit(1)
@@ -98,6 +118,32 @@ export default async function Page() {
     logo: logoUrl,
   };
 
+  const coloresIniciales = {
+    "--site-primary": config?.color_primario || "#dc2626",
+    "--site-secondary": config?.color_secundario || "#111827",
+    "--site-background": config?.color_fondo || "#ffffff",
+    "--site-text": config?.color_texto || "#111827",
+    "--site-button": config?.color_boton || "#dc2626",
+    "--site-card": config?.color_tarjeta || "#ffffff",
+    "--site-border": config?.color_borde || "#e5e7eb",
+    "--site-alert": config?.color_alerta || "#f97316",
+    "--site-success": config?.color_exito || "#16a34a",
+    "--site-error": config?.color_error || "#dc2626",
+    "--site-hover": config?.color_hover || "#b91c1c",
+
+    "--site-progress":
+      config?.color_progreso ||
+      config?.color_boton ||
+      config?.color_primario ||
+      "#dc2626",
+
+    "--site-progress-bg":
+      config?.color_progreso_fondo || "#e5e7eb",
+
+    "--site-dots":
+      config?.color_punticos || "#dc2626",
+  };
+
   return (
     <>
       <script
@@ -107,9 +153,11 @@ export default async function Page() {
         }}
       />
 
-<Suspense fallback={null}>
-  <HomePageClient />
-</Suspense>
+      <div style={coloresIniciales}>
+        <Suspense fallback={null}>
+          <HomePageClient />
+        </Suspense>
+      </div>
     </>
   );
 }

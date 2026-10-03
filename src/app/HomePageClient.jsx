@@ -75,6 +75,25 @@ export default function HomePageClient() {
       "--site-progress-bg",
       config.color_progreso_fondo || "#e5e7eb"
     );
+    document.documentElement.style.setProperty(
+  "--site-dots",
+  config.color_punticos || "#dc2626"
+);
+
+document.documentElement.style.setProperty(
+  "--purchase-bg",
+  config.notificaciones_color_fondo || "#ffffff"
+);
+
+document.documentElement.style.setProperty(
+  "--purchase-text",
+  config.notificaciones_color_texto || "#111827"
+);
+
+document.documentElement.style.setProperty(
+  "--purchase-accent",
+  config.notificaciones_color_acento || "#dc2626"
+);
   }, [config]);
 
   const logoUrl = config?.logo_url || "";

@@ -35,10 +35,15 @@ const CAMPOS_CONFIGURACION = [
   "color_borde",
   "color_error",
   "color_hover",
-  "color_progreso",
-  "color_progreso_fondo",
+"color_progreso",
+"color_progreso_fondo",
 
-  "metodos_pago",
+"color_punticos",
+"notificaciones_color_fondo",
+"notificaciones_color_texto",
+"notificaciones_color_acento",
+
+"metodos_pago",
 
   "menu_inicio",
   "menu_eventos",

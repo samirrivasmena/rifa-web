@@ -30,6 +30,9 @@ const COLOR_FIELDS = [
   ["color_exito", "Éxito / aprobado"],
   ["color_error", "Error / peligro"],
   ["color_hover", "Hover botones"],
+
+["color_punticos", "Puntos del carrusel"],
+["notificaciones_color_acento", "Notificaciones / Letras destacadas"],
 ];
 
 const DEFAULT_METODOS = [
@@ -290,10 +293,9 @@ function normalizarConfig(data) {
     footer_color_acento: data?.footer_color_acento || "#fff4b8",
     footer_color_borde: data?.footer_color_borde || "rgba(255,255,255,0.18)",
     footer_color_hover: data?.footer_color_hover || "rgba(255,255,255,0.14)",
-    color_punticos: data?.color_punticos || "#dc2626",
-notificaciones_color_fondo: data?.notificaciones_color_fondo || "#111827",
-notificaciones_color_texto: data?.notificaciones_color_texto || "#ffffff",
-notificaciones_color_acento: data?.notificaciones_color_acento || "#dc2626",
+color_punticos: data?.color_punticos || "#dc2626",
+notificaciones_color_acento:
+  data?.notificaciones_color_acento || "#dc2626",
   };
 }
 
@@ -598,6 +600,10 @@ const res = await fetch("/api/admin-configuracion/logo", {
         color_hover: config.color_hover || "#b91c1c",
         color_progreso: config.color_progreso || null,
         color_progreso_fondo: config.color_progreso_fondo || null,
+
+color_punticos: config.color_punticos || "#dc2626",
+notificaciones_color_acento:
+  config.notificaciones_color_acento || "#dc2626",
 
         metodos_pago: normalizarMetodosPago(config.metodos_pago),
 

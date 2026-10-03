@@ -30,36 +30,64 @@ function construirDescripcion(data) {
 }
 
 /* =========================================================
-   OBTENER LOGO ACTUAL DEL SITIO
+   OBTENER CONFIGURACIÓN DEL SITIO
 ========================================================= */
 
-async function obtenerLogoActual() {
+async function obtenerConfiguracionSitio() {
   try {
     const { data, error } = await supabaseAdmin
       .from("configuracion_sitio")
-      .select("logo_url")
+      .select(
+        `
+        logo_url,
+        color_primario,
+        color_secundario,
+        color_fondo,
+        color_texto,
+        color_boton,
+        color_tarjeta,
+        color_borde,
+        color_alerta,
+        color_exito,
+        color_error,
+        color_hover,
+        color_progreso,
+        color_progreso_fondo,
+        color_punticos
+        `
+      )
       .order("updated_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (error) {
       console.error(
-        "Error obteniendo logo actual para metadata del evento:",
+        "Error obteniendo configuración del sitio:",
         error
       );
 
-      return `${SITE_URL}/icon`;
+      return null;
     }
 
-    return limpiarTexto(data?.logo_url) || `${SITE_URL}/icon`;
+    return data || null;
   } catch (error) {
     console.error(
-      "Error inesperado obteniendo logo actual para metadata del evento:",
+      "Error inesperado obteniendo configuración del sitio:",
       error
     );
 
-    return `${SITE_URL}/icon`;
+    return null;
   }
+}
+
+/* =========================================================
+   OBTENER LOGO ACTUAL DEL SITIO
+========================================================= */
+
+async function obtenerLogoActual() {
+  const config = await obtenerConfiguracionSitio();
+
+  return limpiarTexto(config?.logo_url) || `${SITE_URL}/icon`;
 }
 
 /* =========================================================
@@ -172,16 +200,6 @@ export async function generateMetadata({ params }) {
     const nombreEvento =
       limpiarTexto(data.nombre) || "Evento";
 
-    /*
-     * IMPORTANTE:
-     * Aquí usamos SOLAMENTE el nombre del evento.
-     *
-     * Ejemplo:
-     * X-PRESS LITE | Sorteos LSD
-     *
-     * NO:
-     * LA FRUTA - X-PRESS LITE
-     */
     const titulo =
       `${nombreEvento} | ${SITE_NAME}`;
 
@@ -201,70 +219,38 @@ export async function generateMetadata({ params }) {
     return {
       metadataBase: new URL(SITE_URL),
 
-      /* ===================================================
-         METADATA NORMAL
-      =================================================== */
-
       title: titulo,
 
       description: descripcion,
-
-      /* ===================================================
-         URL CANÓNICA
-      =================================================== */
 
       alternates: {
         canonical: urlEvento,
       },
 
-      /* ===================================================
-         OPEN GRAPH
-         WhatsApp / Facebook / Telegram / etc.
-      =================================================== */
-
       openGraph: {
         title: titulo,
-
         description: descripcion,
-
         url: urlEvento,
-
         siteName: SITE_NAME,
-
         locale: "es_US",
-
         type: "website",
 
         images: [
           {
             url: imagen,
-
             width: 1200,
-
             height: 630,
-
             alt: nombreEvento,
           },
         ],
       },
 
-      /* ===================================================
-         TWITTER / X
-      =================================================== */
-
       twitter: {
         card: "summary_large_image",
-
         title: titulo,
-
         description: descripcion,
-
         images: [imagen],
       },
-
-      /* ===================================================
-         INDEXACIÓN
-      =================================================== */
 
       robots: {
         index: true,
@@ -291,6 +277,38 @@ export async function generateMetadata({ params }) {
    PÁGINA
 ========================================================= */
 
-export default function Page() {
-  return <EventoDetallePageClient />;
+export default async function Page() {
+  const config = await obtenerConfiguracionSitio();
+
+  const coloresIniciales = {
+    "--site-primary": config?.color_primario || "#dc2626",
+    "--site-secondary": config?.color_secundario || "#111827",
+    "--site-background": config?.color_fondo || "#ffffff",
+    "--site-text": config?.color_texto || "#111827",
+    "--site-button": config?.color_boton || "#dc2626",
+    "--site-card": config?.color_tarjeta || "#ffffff",
+    "--site-border": config?.color_borde || "#e5e7eb",
+    "--site-alert": config?.color_alerta || "#f97316",
+    "--site-success": config?.color_exito || "#16a34a",
+    "--site-error": config?.color_error || "#dc2626",
+    "--site-hover": config?.color_hover || "#b91c1c",
+
+    "--site-progress":
+      config?.color_progreso ||
+      config?.color_boton ||
+      config?.color_primario ||
+      "#dc2626",
+
+    "--site-progress-bg":
+      config?.color_progreso_fondo || "#e5e7eb",
+
+    "--site-dots":
+      config?.color_punticos || "#dc2626",
+  };
+
+  return (
+    <div style={coloresIniciales}>
+      <EventoDetallePageClient />
+    </div>
+  );
 }
