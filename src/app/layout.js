@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://rifaslsd.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
 
 export const viewport = {
   width: "device-width",

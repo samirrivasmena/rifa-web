@@ -6,7 +6,7 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 ========================================================= */
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://rifaslsd.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
 
 const SITE_NAME = "Sorteos LSD";
 

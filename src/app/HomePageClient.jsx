@@ -97,6 +97,7 @@ export default function HomePageClient() {
 
   const [previewUrl, setPreviewUrl] = useState("");
   const [showAppPayModal, setShowAppPayModal] = useState(false);
+  const [showPromoPopup, setShowPromoPopup] = useState(false);
 
   const fileInputRef = useRef(null);
   
@@ -245,6 +246,94 @@ export default function HomePageClient() {
       cancelado = true;
     };
   }, [rifaDesdeQuery]);
+  useEffect(() => {
+  if (typeof window === "undefined") return;
+
+  if (!config?.popup_activo) {
+    setShowPromoPopup(false);
+    return;
+  }
+
+  const tieneContenido =
+    config?.popup_titulo ||
+    config?.popup_mensaje ||
+    config?.popup_imagen;
+
+  if (!tieneContenido) {
+    setShowPromoPopup(false);
+    return;
+  }
+
+  const popupKey = [
+    config?.popup_titulo || "",
+    config?.popup_mensaje || "",
+    config?.popup_boton || "",
+    config?.popup_imagen || "",
+    config?.popup_link || "",
+  ].join("|");
+
+  const storageKey = "sorteoslsd-popup-visto";
+
+  try {
+    const popupVisto = sessionStorage.getItem(storageKey);
+
+    if (popupVisto === popupKey) {
+      return;
+    }
+  } catch {}
+
+  const timer = window.setTimeout(() => {
+    setShowPromoPopup(true);
+  }, 1200);
+
+  return () => window.clearTimeout(timer);
+}, [
+  config?.popup_activo,
+  config?.popup_titulo,
+  config?.popup_mensaje,
+  config?.popup_boton,
+  config?.popup_imagen,
+  config?.popup_link,
+]);
+
+const cerrarPromoPopup = () => {
+  setShowPromoPopup(false);
+
+  const popupKey = [
+    config?.popup_titulo || "",
+    config?.popup_mensaje || "",
+    config?.popup_boton || "",
+    config?.popup_imagen || "",
+    config?.popup_link || "",
+  ].join("|");
+
+  try {
+    sessionStorage.setItem(
+      "sorteoslsd-popup-visto",
+      popupKey
+    );
+  } catch {}
+};
+
+const popupLink = (() => {
+  const link = String(config?.popup_link || "").trim();
+
+  if (!link) return "";
+
+  if (link.startsWith("/") || link.startsWith("#")) {
+    return link;
+  }
+
+  try {
+    const url = new URL(link);
+
+    if (url.protocol === "https:" || url.protocol === "http:") {
+      return link;
+    }
+  } catch {}
+
+  return "";
+})();
 
   useEffect(() => {
     if (!config?.metodos_pago) return;
@@ -1483,6 +1572,82 @@ export default function HomePageClient() {
       )}
 
       <FloatingPurchaseNotifications />
+
+      {showPromoPopup &&
+  !showVerifyModal &&
+  !showAppPayModal &&
+  config?.popup_activo && (
+    <div
+      className="promo-popup-overlay"
+      onClick={cerrarPromoPopup}
+    >
+      <div
+        className="promo-popup-card"
+        role="dialog"
+        aria-modal="true"
+        aria-label={config?.popup_titulo || "Promoción"}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          type="button"
+          className="promo-popup-close"
+          onClick={cerrarPromoPopup}
+          aria-label="Cerrar promoción"
+        >
+          ✕
+        </button>
+
+        {config?.popup_imagen && (
+          <div className="promo-popup-image-wrap">
+            <img
+              src={config.popup_imagen}
+              alt={config?.popup_titulo || "Promoción"}
+              className="promo-popup-image"
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        )}
+
+        <div className="promo-popup-content">
+          <div className="promo-popup-badge">
+            ✨ PROMOCIÓN ESPECIAL
+          </div>
+
+          {config?.popup_titulo && (
+            <h2 className="promo-popup-title">
+              {config.popup_titulo}
+            </h2>
+          )}
+
+          {config?.popup_mensaje && (
+            <p className="promo-popup-message">
+              {config.popup_mensaje}
+            </p>
+          )}
+
+          {config?.popup_boton && popupLink && (
+            <a
+              href={popupLink}
+              className="promo-popup-button"
+              onClick={cerrarPromoPopup}
+            >
+              {config.popup_boton}
+              <span>→</span>
+            </a>
+          )}
+
+          <button
+            type="button"
+            className="promo-popup-later"
+            onClick={cerrarPromoPopup}
+          >
+            Ahora no
+          </button>
+        </div>
+      </div>
+    </div>
+)}
 
       <VerifyTicketsModal
         open={showVerifyModal}

@@ -11142,3 +11142,369 @@ input[type="number"]::-webkit-outer-spin-button {
     flex-basis: 36px;
   }
 }
+/* =========================================================
+   PAYMENT METHODS - COMPACTO / FINAL
+   ========================================================= */
+
+.admin-payments-list {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  margin-top: 16px;
+  align-items: start;
+}
+
+.admin-payment-card {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 16px;
+
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.035),
+      rgba(255, 255, 255, 0.012)
+    );
+
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.12);
+
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    transform 0.2s ease;
+}
+
+.admin-payment-card:hover {
+  border-color: rgba(239, 68, 68, 0.18);
+  box-shadow: 0 14px 30px rgba(0, 0, 0, 0.2);
+  transform: translateY(-1px);
+}
+
+/* CABECERA DEL MÉTODO */
+
+.admin-payment-head {
+  width: 100%;
+  min-width: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  gap: 12px;
+
+  margin: 0 0 14px;
+  padding: 0 0 12px;
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-payment-head strong {
+  min-width: 0;
+  margin: 0;
+
+  color: #fff;
+
+  font-size: 13px;
+  line-height: 1.3;
+  font-weight: 900;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-payment-actions {
+  flex: 0 0 auto;
+
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+
+  gap: 8px;
+}
+
+/* FORMULARIO */
+
+.admin-payment-card .admin-config-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 11px 12px;
+}
+
+.admin-payment-card .admin-config-field {
+  min-width: 0;
+  gap: 6px;
+}
+
+.admin-payment-card .admin-config-field.full {
+  grid-column: 1 / -1;
+}
+
+.admin-payment-card .admin-config-field > span {
+  color: #b9bbc4;
+
+  font-size: 9px;
+  line-height: 1.2;
+  font-weight: 900;
+
+  letter-spacing: 0.65px;
+  text-transform: uppercase;
+}
+
+/* INPUTS MÁS PEQUEÑOS */
+
+.admin-payment-card
+  .admin-config-field
+  input:not([type="checkbox"]):not([type="color"]) {
+  width: 100%;
+  height: 38px;
+
+  padding: 0 11px;
+
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  outline: none;
+}
+
+.admin-payment-card .admin-config-field textarea {
+  width: 100%;
+  min-height: 70px;
+  max-height: 130px;
+
+  padding: 10px 11px;
+
+  border-radius: 9px;
+  border: 1px solid rgba(255, 255, 255, 0.075);
+
+  background: rgba(0, 0, 0, 0.28);
+  color: #fff;
+
+  font-size: 12px;
+  line-height: 1.45;
+
+  resize: vertical;
+  outline: none;
+}
+
+.admin-payment-card
+  .admin-config-field
+  input:not([type="checkbox"]):not([type="color"]):focus,
+.admin-payment-card .admin-config-field textarea:focus {
+  border-color: rgba(239, 68, 68, 0.5);
+
+  box-shadow:
+    0 0 0 2px rgba(239, 68, 68, 0.07),
+    0 6px 16px rgba(0, 0, 0, 0.14);
+}
+
+/* SWITCH COMPACTO */
+
+.admin-payment-card .admin-switch {
+  position: relative;
+
+  width: 42px;
+  height: 23px;
+
+  display: inline-flex;
+  flex: 0 0 42px;
+}
+
+.admin-payment-card .admin-switch input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.admin-payment-card .admin-switch span {
+  position: absolute;
+  inset: 0;
+
+  width: 42px;
+  height: 23px;
+
+  border-radius: 999px;
+
+  background: #29292e;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.admin-payment-card .admin-switch span::before,
+.admin-payment-card .admin-switch span::after {
+  content: "";
+
+  position: absolute;
+
+  width: 17px;
+  height: 17px;
+
+  top: 2px;
+  left: 3px;
+
+  border-radius: 50%;
+
+  background: #777;
+
+  transition: 0.2s ease;
+}
+
+.admin-payment-card .admin-switch input:checked + span {
+  background: rgba(22, 163, 74, 0.3);
+  border-color: rgba(34, 197, 94, 0.55);
+}
+
+.admin-payment-card .admin-switch input:checked + span::before,
+.admin-payment-card .admin-switch input:checked + span::after {
+  transform: translateX(18px);
+  background: #22c55e;
+}
+
+/* ELIMINAR */
+
+.admin-payment-card .btn-delete-method {
+  min-height: 28px;
+
+  padding: 0 9px;
+
+  border-radius: 8px;
+  border: 1px solid rgba(239, 68, 68, 0.2);
+
+  background: rgba(127, 29, 29, 0.14);
+  color: #f87171;
+
+  font-size: 8px;
+  line-height: 1;
+  font-weight: 900;
+
+  cursor: pointer;
+}
+
+.admin-payment-card .btn-delete-method:hover {
+  background: rgba(220, 38, 38, 0.22);
+  border-color: rgba(239, 68, 68, 0.4);
+}
+
+/* BOTÓN AGREGAR */
+
+.btn-add-method {
+  min-height: 36px;
+
+  padding: 0 13px;
+
+  border-radius: 9px;
+
+  font-size: 9px;
+  font-weight: 900;
+}
+
+/* =========================================================
+   TABLET
+   ========================================================= */
+
+@media (max-width: 1180px) {
+  .admin-payments-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* =========================================================
+   TELÉFONO
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .admin-payments-list {
+    grid-template-columns: 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .admin-payment-card {
+    padding: 13px;
+    border-radius: 14px;
+  }
+
+  .admin-payment-head {
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+
+    margin-bottom: 12px;
+    padding-bottom: 10px;
+  }
+
+  .admin-payment-head strong {
+    font-size: 12px;
+  }
+
+  .admin-payment-actions {
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .admin-payment-card .admin-config-form-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .admin-payment-card .admin-config-field.full {
+    grid-column: auto;
+  }
+
+  .admin-payment-card
+    .admin-config-field
+    input:not([type="checkbox"]):not([type="color"]) {
+    height: 38px;
+    font-size: 12px;
+  }
+
+  .admin-payment-card .admin-config-field textarea {
+    min-height: 68px;
+  }
+}
+
+/* =========================================================
+   TELÉFONOS PEQUEÑOS
+   ========================================================= */
+
+@media (max-width: 430px) {
+  .admin-payment-head {
+    align-items: flex-start;
+  }
+
+  .admin-payment-actions {
+    gap: 6px;
+  }
+
+  .admin-payment-card .admin-switch {
+    width: 40px;
+    flex-basis: 40px;
+  }
+
+  .admin-payment-card .admin-switch span {
+    width: 40px;
+  }
+
+  .admin-payment-card .admin-switch input:checked + span::before,
+  .admin-payment-card .admin-switch input:checked + span::after {
+    transform: translateX(16px);
+  }
+
+  .admin-payment-card .btn-delete-method {
+    padding: 0 7px;
+    font-size: 7px;
+  }
+}

@@ -2,7 +2,7 @@ import PrincipalPageClient from "./PrincipalPageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://rifaslsd.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
 
 async function obtenerConfiguracion() {
   try {

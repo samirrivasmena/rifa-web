@@ -8118,3 +8118,361 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     font-size: 8.5px !important;
   }
 }
+/* =========================================================
+   POPUP PROMOCIONAL PÚBLICO - SORTEOS LSD
+========================================================= */
+
+.promo-popup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483646;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 20px;
+
+  background: rgba(15, 23, 42, 0.62);
+
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+
+  animation: promoPopupOverlayIn 0.22s ease both;
+}
+
+
+/* TARJETA */
+
+.promo-popup-card {
+  position: relative;
+
+  width: min(430px, 100%);
+  max-height: calc(100dvh - 32px);
+
+  overflow-x: hidden;
+  overflow-y: auto;
+
+  background: var(--site-card, #ffffff);
+
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 26px;
+
+  box-shadow:
+    0 30px 80px rgba(15, 23, 42, 0.30),
+    0 8px 30px rgba(15, 23, 42, 0.16);
+
+  animation: promoPopupCardIn 0.32s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+
+/* BOTÓN CERRAR */
+
+.promo-popup-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+
+  z-index: 5;
+
+  width: 38px;
+  height: 38px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+
+  border: 0;
+  border-radius: 50%;
+
+  background: rgba(17, 24, 39, 0.82);
+  color: #ffffff;
+
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+
+  cursor: pointer;
+
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
+}
+
+.promo-popup-close:hover {
+  transform: scale(1.07);
+  background: #111827;
+}
+
+
+/* IMAGEN */
+
+.promo-popup-image-wrap {
+  width: 100%;
+  max-height: 255px;
+
+  overflow: hidden;
+
+  background: #f8fafc;
+}
+
+.promo-popup-image {
+  display: block;
+
+  width: 100%;
+  height: 255px;
+
+  object-fit: cover;
+}
+
+
+/* CONTENIDO */
+
+.promo-popup-content {
+  padding: 24px 24px 22px;
+
+  text-align: center;
+}
+
+
+/* ETIQUETA */
+
+.promo-popup-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 7px 12px;
+
+  border-radius: 999px;
+
+  background: var(--site-primary-soft, rgba(220, 38, 38, 0.12));
+  color: var(--site-primary, #dc2626);
+
+  font-size: 11px;
+  font-weight: 900;
+
+  letter-spacing: 0.08em;
+
+  text-transform: uppercase;
+}
+
+
+/* TÍTULO */
+
+.promo-popup-title {
+  margin: 14px 0 9px;
+
+  color: var(--site-secondary, #111827);
+
+  font-size: clamp(24px, 5vw, 32px);
+  font-weight: 900;
+
+  line-height: 1.08;
+  letter-spacing: -0.03em;
+}
+
+
+/* MENSAJE */
+
+.promo-popup-message {
+  margin: 0;
+
+  color: #64748b;
+
+  font-size: 15px;
+  font-weight: 500;
+
+  line-height: 1.6;
+
+  white-space: pre-line;
+}
+
+
+/* BOTÓN PRINCIPAL */
+
+.promo-popup-button {
+  width: 100%;
+  min-height: 52px;
+
+  margin-top: 21px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+
+  padding: 12px 22px;
+
+  border: none;
+  border-radius: 999px;
+
+  background: linear-gradient(
+    135deg,
+    var(--site-button, #dc2626),
+    var(--site-primary, #dc2626)
+  );
+
+  color: #ffffff !important;
+
+  font-size: 15px;
+  font-weight: 900;
+
+  text-decoration: none !important;
+
+  box-shadow: 0 12px 28px rgba(220, 38, 38, 0.25);
+
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease,
+    filter 0.18s ease;
+}
+
+.promo-popup-button:hover {
+  transform: translateY(-2px);
+
+  filter: brightness(0.96);
+
+  box-shadow: 0 16px 32px rgba(220, 38, 38, 0.30);
+}
+
+.promo-popup-button span {
+  font-size: 20px;
+  line-height: 1;
+}
+
+
+/* AHORA NO */
+
+.promo-popup-later {
+  margin-top: 12px;
+  padding: 6px 12px;
+
+  border: 0;
+  background: transparent;
+
+  color: #94a3b8;
+
+  font-size: 13px;
+  font-weight: 700;
+
+  cursor: pointer;
+}
+
+.promo-popup-later:hover {
+  color: #475569;
+}
+
+
+/* ANIMACIONES */
+
+@keyframes promoPopupOverlayIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes promoPopupCardIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+
+/* TELÉFONOS */
+
+@media (max-width: 560px) {
+  .promo-popup-overlay {
+    padding: 12px;
+  }
+
+  .promo-popup-card {
+    width: 100%;
+
+    max-height: calc(100dvh - 24px);
+
+    border-radius: 22px;
+  }
+
+  .promo-popup-image-wrap {
+    max-height: 210px;
+  }
+
+  .promo-popup-image {
+    height: 210px;
+  }
+
+  .promo-popup-content {
+    padding: 20px 18px 20px;
+  }
+
+  .promo-popup-title {
+    font-size: 25px;
+  }
+
+  .promo-popup-message {
+    font-size: 14px;
+  }
+
+  .promo-popup-button {
+    min-height: 50px;
+  }
+
+  .promo-popup-close {
+    top: 10px;
+    right: 10px;
+
+    width: 36px;
+    height: 36px;
+  }
+}
+
+
+/* TELÉFONOS PEQUEÑOS */
+
+@media (max-width: 390px) {
+  .promo-popup-image-wrap {
+    max-height: 185px;
+  }
+
+  .promo-popup-image {
+    height: 185px;
+  }
+
+  .promo-popup-content {
+    padding: 18px 16px;
+  }
+
+  .promo-popup-title {
+    font-size: 23px;
+  }
+}
+
+
+/* ACCESIBILIDAD */
+
+@media (prefers-reduced-motion: reduce) {
+  .promo-popup-overlay,
+  .promo-popup-card {
+    animation: none;
+  }
+
+  .promo-popup-button,
+  .promo-popup-close {
+    transition: none;
+  }
+}
