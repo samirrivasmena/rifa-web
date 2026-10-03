@@ -3,7 +3,7 @@ import HomePageClient from "./HomePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://rifaslsd.vercel.app";
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
 
 async function obtenerConfiguracion() {
   try {
@@ -107,9 +107,9 @@ export default async function Page() {
         }}
       />
 
-      <Suspense fallback={<div>Cargando...</div>}>
-        <HomePageClient />
-      </Suspense>
+<Suspense fallback={null}>
+  <HomePageClient />
+</Suspense>
     </>
   );
 }
