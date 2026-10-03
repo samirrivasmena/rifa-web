@@ -2021,7 +2021,7 @@ export default function PrincipalPageClient() {
 
                   <img
 
-                    src="/resultados/triple-tachira.png"
+                    src="/resultados/triple-gana.png"
 
                     alt="Triple Táchira"
 

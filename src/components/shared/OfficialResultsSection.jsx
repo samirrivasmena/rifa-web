@@ -31,7 +31,7 @@ export default function OfficialResultsSection({
         <div className="official-results-logos">
           <div className="official-results-logo-card">
             <img
-              src="/resultados/triple-tachira.png"
+              src="/resultados/triple-gana.png"
               alt="Triple Táchira"
               className="official-results-logo"
             />
