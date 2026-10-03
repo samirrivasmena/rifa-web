@@ -249,6 +249,7 @@ function normalizarConfig(data) {
     popup_boton: data?.popup_boton || "",
     popup_imagen: data?.popup_imagen || "",
     popup_link: data?.popup_link || "",
+    popup_color_boton: data?.popup_color_boton || "#dc2626",
     seo_titulo: data?.seo_titulo || "",
     seo_descripcion: data?.seo_descripcion || "",
     seo_imagen: data?.seo_imagen || "",
@@ -613,6 +614,7 @@ const res = await fetch("/api/admin-configuracion/logo", {
         popup_boton: limpiarTextoBasico(config.popup_boton) || null,
         popup_imagen: config.popup_imagen || null,
         popup_link: config.popup_link || null,
+        popup_color_boton: config.popup_color_boton || "#dc2626",
 
         notificaciones_activas: Boolean(config.notificaciones_activas),
         notificaciones_duracion: Number(config.notificaciones_duracion || 3),
@@ -1593,6 +1595,41 @@ RENDIRSE🛑.`}
                     placeholder="Comprar ahora"
                   />
                 </Field>
+                <Field label="Color del botón">
+  <div
+    style={{
+      display: "flex",
+      alignItems: "center",
+      gap: "10px",
+    }}
+  >
+    <input
+      type="color"
+      value={config.popup_color_boton || "#dc2626"}
+      onChange={(e) =>
+        cambiarCampo("popup_color_boton", e.target.value)
+      }
+      style={{
+        width: "52px",
+        height: "42px",
+        padding: "3px",
+        cursor: "pointer",
+      }}
+    />
+
+    <input
+      type="text"
+      value={config.popup_color_boton || "#dc2626"}
+      onChange={(e) =>
+        cambiarCampo("popup_color_boton", e.target.value)
+      }
+      placeholder="#dc2626"
+      style={{
+        flex: 1,
+      }}
+    />
+  </div>
+</Field>
 
                 <Field label="Imagen del popup">
                   <input

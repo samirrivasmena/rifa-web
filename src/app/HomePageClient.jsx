@@ -1627,14 +1627,17 @@ const popupLink = (() => {
           )}
 
           {config?.popup_boton && popupLink && (
-            <a
-              href={popupLink}
-              className="promo-popup-button"
-              onClick={cerrarPromoPopup}
-            >
-              {config.popup_boton}
-              <span>→</span>
-            </a>
+<a
+  href={popupLink}
+  className="promo-popup-button"
+  onClick={cerrarPromoPopup}
+  style={{
+    background: config?.popup_color_boton || "#dc2626",
+  }}
+>
+  {config.popup_boton}
+  <span>→</span>
+</a>
           )}
 
           <button
