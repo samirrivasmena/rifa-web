@@ -94,6 +94,18 @@ const CAMPOS_PUBLICOS_CONFIGURACION = `
   popup_link,
   popup_color_boton,
 
+  linea_anuncios_activa,
+  linea_anuncios_mensaje_1,
+  linea_anuncios_mensaje_2,
+  linea_anuncios_mensaje_3,
+  linea_anuncios_color_fondo,
+  linea_anuncios_color_texto,
+  linea_anuncios_color_separador,
+  linea_anuncios_velocidad,
+  linea_anuncios_negrita,
+  linea_anuncios_mostrar_movil,
+  linea_anuncios_mostrar_escritorio,
+
   color_punticos,
 
   notificaciones_activas,

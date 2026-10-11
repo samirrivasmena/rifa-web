@@ -8493,3 +8493,439 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
   background: #d1d5db !important;
   background-color: #d1d5db !important;
 }
+/* =========================================================
+   BOTONES DE COMPRA - MOVIMIENTO CONTINUO
+   SORTEOS LSD
+========================================================= */
+
+@keyframes sorteosBotonCompraMovimiento {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  20% {
+    transform: translateY(-6px) scale(1.04);
+  }
+
+  40% {
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    transform: translateY(-6px) scale(1.04);
+  }
+
+  80% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* COMPRAR AHORA + COMPRAR TICKETS */
+.principal-actions .principal-red-btn,
+.evento-actions .principal-red-btn,
+.evento-actions .btn-red-premium,
+.evento-detail-actions .principal-red-btn,
+.evento-detail-actions .btn-red-premium {
+  animation: sorteosBotonCompraMovimiento 1.8s ease-in-out infinite !important;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* NO detener la animación al poner el mouse */
+.principal-actions .principal-red-btn:hover,
+.evento-actions .principal-red-btn:hover,
+.evento-actions .btn-red-premium:hover,
+.evento-detail-actions .principal-red-btn:hover,
+.evento-detail-actions .btn-red-premium:hover {
+  animation-play-state: running !important;
+}
+
+/* Al hacer clic */
+.principal-actions .principal-red-btn:active,
+.evento-actions .principal-red-btn:active,
+.evento-actions .btn-red-premium:active,
+.evento-detail-actions .principal-red-btn:active,
+.evento-detail-actions .btn-red-premium:active {
+  filter: brightness(0.94);
+}
+/* =========================================================
+   ANIMACIÓN CONTINUA - BOTONES PRINCIPALES DE ACCIÓN
+   COMPRAR TICKETS + PARTICIPAR GRATIS
+========================================================= */
+
+@keyframes sorteosLsdActionMove {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  25% {
+    transform: translateY(-4px) scale(1.025);
+  }
+
+  50% {
+    transform: translateY(0) scale(1);
+  }
+
+  75% {
+    transform: translateY(3px) scale(1.02);
+  }
+}
+
+/* Comprar tickets */
+.evento-page .evento-actions .principal-red-btn,
+
+/* Participar gratis SOLO cuando está disponible */
+.evento-page .evento-free-drop-btn:not(:disabled):not(.is-disabled) {
+  animation: sorteosLsdActionMove 1.35s ease-in-out infinite !important;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* Al pasar el mouse: un poco más fuerte */
+.evento-page .evento-actions .principal-red-btn:hover,
+.evento-page .evento-free-drop-btn:not(:disabled):not(.is-disabled):hover {
+  animation-duration: 0.8s !important;
+}
+
+/* Los botones bloqueados NO se mueven */
+.evento-page .evento-free-drop-btn:disabled,
+.evento-page .evento-free-drop-btn.is-disabled {
+  animation: none !important;
+  transform: none !important;
+}
+
+/* Accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  .evento-page .evento-actions .principal-red-btn,
+  .evento-page .evento-free-drop-btn {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+/* =========================================================
+   ANIMACIÓN CONTINUA - VER EVENTO
+   CARDS DE EVENTOS FINALIZADOS
+========================================================= */
+
+.home-event-card-actions .home-event-card-btn {
+  animation: sorteosLsdActionMove 1.35s ease-in-out infinite !important;
+  transform-origin: center center;
+  will-change: transform;
+}
+
+/* Sigue moviéndose al pasar el mouse */
+.home-event-card-actions .home-event-card-btn:hover {
+  animation-duration: 0.8s !important;
+}
+
+/* Mantener sensación al hacer clic */
+.home-event-card-actions .home-event-card-btn:active {
+  filter: brightness(0.94);
+}
+
+/* Accesibilidad */
+@media (prefers-reduced-motion: reduce) {
+  .home-event-card-actions .home-event-card-btn {
+    animation: none !important;
+    transform: none !important;
+  }
+}
+/* =========================================================
+   VER EVENTO - EVENTOS DISPONIBLES
+   TELÉFONO + LAPTOP
+========================================================= */
+
+.principal-event-actions-mobile .principal-red-btn {
+  animation: sorteosBotonCompraMovimiento 1.8s ease-in-out infinite !important;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.principal-event-actions-mobile .principal-red-btn:hover {
+  animation-play-state: running !important;
+}
+
+.principal-event-actions-mobile .principal-red-btn:active {
+  filter: brightness(0.94);
+}
+/* =========================================================
+   BOTÓN + DE BOLETOS - MOVIMIENTO CONTINUO
+   LAPTOP + TELÉFONO
+========================================================= */
+
+@keyframes sorteosPlusMovimiento {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  20% {
+    transform: translateY(-6px) scale(1.06);
+  }
+
+  40% {
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    transform: translateY(-6px) scale(1.06);
+  }
+
+  80% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* BASE: LAPTOP + TELÉFONO */
+.ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+  animation: sorteosPlusMovimiento 1.8s ease-in-out infinite !important;
+  transform-origin: center center !important;
+  will-change: transform;
+}
+
+/* LAPTOP */
+@media (min-width: 769px) {
+  .ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+    animation: sorteosPlusMovimiento 1.8s ease-in-out infinite !important;
+  }
+}
+
+/* TELÉFONOS */
+@media (max-width: 768px) {
+  .ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+    animation: sorteosPlusMovimiento 1.8s ease-in-out infinite !important;
+    transform-origin: center center !important;
+    will-change: transform;
+  }
+}
+
+/* NO detener movimiento con mouse o toque */
+.ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled):hover,
+.ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled):focus {
+  animation-play-state: running !important;
+}
+
+/* RIFA AGOTADA = SIN MOVIMIENTO */
+.ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:disabled {
+  animation: none !important;
+  transform: none !important;
+}
+/* =========================================================
+   BOTÓN + - FORZAR MOVIMIENTO EN TELÉFONO + LAPTOP
+========================================================= */
+
+.ticket-controls .circle-btn.circle-btn-main:not(:disabled),
+.ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+  animation-name: sorteosPlusMovimiento !important;
+  animation-duration: 1.8s !important;
+  animation-timing-function: ease-in-out !important;
+  animation-iteration-count: infinite !important;
+  animation-play-state: running !important;
+
+  transform-origin: center center !important;
+  will-change: transform !important;
+}
+
+/* TELÉFONOS */
+@media screen and (max-width: 768px) {
+  .ticket-controls .circle-btn.circle-btn-main:not(:disabled),
+  .ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+    animation: sorteosPlusMovimiento 1.8s ease-in-out infinite !important;
+  }
+}
+
+/* INCLUSO SI EL TELÉFONO TIENE REDUCIR MOVIMIENTO ACTIVADO */
+@media (prefers-reduced-motion: reduce) {
+  .ticket-controls .circle-btn.circle-btn-main:not(:disabled),
+  .ticket-controls .ticket-tooltip-wrap .circle-btn.circle-btn-main:not(:disabled) {
+    animation: sorteosPlusMovimiento 1.8s ease-in-out infinite !important;
+    transform-origin: center center !important;
+  }
+}
+
+/* AGOTADO / BLOQUEADO = NO SE MUEVE */
+.ticket-controls .circle-btn.circle-btn-main:disabled {
+  animation: none !important;
+  transform: none !important;
+}
+/* =========================================================
+   CONFIRMAR - MOVIMIENTO CONTINUO
+   LAPTOP + TELÉFONO
+========================================================= */
+
+@keyframes sorteosConfirmarMovimiento {
+  0% {
+    transform: translateY(0) scale(1);
+  }
+
+  20% {
+    transform: translateY(-6px) scale(1.02);
+  }
+
+  40% {
+    transform: translateY(0) scale(1);
+  }
+
+  60% {
+    transform: translateY(-6px) scale(1.02);
+  }
+
+  80% {
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* LAPTOP + REGLA GENERAL */
+.confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled) {
+  animation: sorteosConfirmarMovimiento 1.8s ease-in-out infinite !important;
+  animation-play-state: running !important;
+  transform-origin: center center !important;
+  will-change: transform !important;
+}
+
+/* 📱 TELÉFONOS */
+@media screen and (max-width: 768px) {
+  .confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled) {
+    animation: sorteosConfirmarMovimiento 1.8s ease-in-out infinite !important;
+    animation-play-state: running !important;
+    transform-origin: center center !important;
+    will-change: transform !important;
+  }
+}
+
+/* 📱 TELÉFONO CON REDUCIR MOVIMIENTO ACTIVADO */
+@media screen and (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled) {
+    animation: sorteosConfirmarMovimiento 1.8s ease-in-out infinite !important;
+    transform-origin: center center !important;
+  }
+}
+
+/* 💻 LAPTOP CON REDUCIR MOVIMIENTO ACTIVADO */
+@media screen and (min-width: 769px) and (prefers-reduced-motion: reduce) {
+  .confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled) {
+    animation: sorteosConfirmarMovimiento 1.8s ease-in-out infinite !important;
+  }
+}
+
+/* NO detener al pasar mouse o tocar */
+.confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled):hover,
+.confirm-main-btn:not(:disabled):not(.confirm-main-btn-disabled):focus {
+  animation-play-state: running !important;
+}
+
+/* DESHABILITADO = NO SE MUEVE */
+.confirm-main-btn:disabled,
+.confirm-main-btn.confirm-main-btn-disabled {
+  animation: none !important;
+  transform: none !important;
+}
+/* =========================================================
+   SORTEOS LSD - LÍNEA DE ANUNCIOS
+========================================================= */
+
+.public-announcement-bar {
+  position: relative;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  background: var(--announcement-bg, #111111);
+  color: var(--announcement-text, #ffffff);
+  z-index: 30;
+}
+
+.public-announcement-viewport {
+  width: 100%;
+  overflow: hidden;
+}
+
+.public-announcement-track {
+  display: flex;
+  width: max-content;
+  flex-shrink: 0;
+  animation: sorteosAnnouncementScroll
+    var(--announcement-duration, 22s)
+    linear
+    infinite;
+  will-change: transform;
+}
+
+.public-announcement-group {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.public-announcement-item {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 30px;
+  padding: 11px 30px 11px 0;
+}
+
+.public-announcement-text {
+  white-space: nowrap;
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: 0.045em;
+  color: var(--announcement-text, #ffffff);
+}
+
+.public-announcement-bar.is-bold
+.public-announcement-text {
+  font-weight: 800;
+}
+
+.public-announcement-dot {
+  flex-shrink: 0;
+  color: var(--announcement-dot, #facc15);
+  font-size: 10px;
+}
+
+@keyframes sorteosAnnouncementScroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+/* TELÉFONOS */
+@media (max-width: 768px) {
+  .public-announcement-item {
+    gap: 22px;
+    padding-right: 22px;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+
+  .public-announcement-text {
+    font-size: 12px;
+  }
+
+  .public-announcement-bar.hide-mobile {
+    display: none !important;
+  }
+}
+
+/* LAPTOP / ESCRITORIO */
+@media (min-width: 769px) {
+  .public-announcement-bar.hide-desktop {
+    display: none !important;
+  }
+}

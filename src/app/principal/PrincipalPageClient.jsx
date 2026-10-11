@@ -13,6 +13,7 @@ import Link from "next/link";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 
 import PublicTopbar from "@/components/shared/PublicTopbar";
+import PublicAnnouncementBar from "@/components/shared/PublicAnnouncementBar";
 
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
 
@@ -952,6 +953,8 @@ export default function PrincipalPageClient() {
           contactoHref="/principal#contacto"
 
         />
+
+        <PublicAnnouncementBar config={config} />
 
 
 

@@ -13,6 +13,7 @@ const TABS = [
   { id: "pagos", label: "Métodos de pago", icon: "💳" },
   { id: "seo", label: "SEO", icon: "🌎" },
   { id: "popup", label: "Popup", icon: "📢" },
+  { id: "linea-anuncios", label: "Línea de anuncios", icon: "📣" },
   { id: "footer", label: "Footer", icon: "🦶" },
 ];
 
@@ -253,6 +254,38 @@ function normalizarConfig(data) {
     popup_imagen: data?.popup_imagen || "",
     popup_link: data?.popup_link || "",
     popup_color_boton: data?.popup_color_boton || "#dc2626",
+    // Línea de anuncios
+linea_anuncios_activa: esVerdadero(data?.linea_anuncios_activa),
+
+linea_anuncios_mensaje_1:
+  data?.linea_anuncios_mensaje_1 || "🎟️ COMPRA TUS TICKETS Y PARTICIPA",
+
+linea_anuncios_mensaje_2:
+  data?.linea_anuncios_mensaje_2 || "⚡ PARTICIPA RÁPIDO Y SEGURO",
+
+linea_anuncios_mensaje_3:
+  data?.linea_anuncios_mensaje_3 || "🔎 VERIFICA TUS TICKETS AL INSTANTE",
+
+linea_anuncios_color_fondo:
+  data?.linea_anuncios_color_fondo || "#111111",
+
+linea_anuncios_color_texto:
+  data?.linea_anuncios_color_texto || "#ffffff",
+
+linea_anuncios_color_separador:
+  data?.linea_anuncios_color_separador || "#facc15",
+
+linea_anuncios_velocidad:
+  Number(data?.linea_anuncios_velocidad ?? 22),
+
+linea_anuncios_negrita:
+  data?.linea_anuncios_negrita !== false,
+
+linea_anuncios_mostrar_movil:
+  data?.linea_anuncios_mostrar_movil !== false,
+
+linea_anuncios_mostrar_escritorio:
+  data?.linea_anuncios_mostrar_escritorio !== false,
     seo_titulo: data?.seo_titulo || "",
     seo_descripcion: data?.seo_descripcion || "",
     seo_imagen: data?.seo_imagen || "",
@@ -621,6 +654,41 @@ notificaciones_color_acento:
         popup_imagen: config.popup_imagen || null,
         popup_link: config.popup_link || null,
         popup_color_boton: config.popup_color_boton || "#dc2626",
+        // Línea de anuncios
+linea_anuncios_activa: Boolean(config.linea_anuncios_activa),
+
+linea_anuncios_mensaje_1:
+  limpiarTextoMarketing(config.linea_anuncios_mensaje_1) || null,
+
+linea_anuncios_mensaje_2:
+  limpiarTextoMarketing(config.linea_anuncios_mensaje_2) || null,
+
+linea_anuncios_mensaje_3:
+  limpiarTextoMarketing(config.linea_anuncios_mensaje_3) || null,
+
+linea_anuncios_color_fondo:
+  config.linea_anuncios_color_fondo || "#111111",
+
+linea_anuncios_color_texto:
+  config.linea_anuncios_color_texto || "#ffffff",
+
+linea_anuncios_color_separador:
+  config.linea_anuncios_color_separador || "#facc15",
+
+linea_anuncios_velocidad:
+  Math.max(
+    5,
+    Math.min(60, Number(config.linea_anuncios_velocidad || 22))
+  ),
+
+linea_anuncios_negrita:
+  Boolean(config.linea_anuncios_negrita),
+
+linea_anuncios_mostrar_movil:
+  Boolean(config.linea_anuncios_mostrar_movil),
+
+linea_anuncios_mostrar_escritorio:
+  Boolean(config.linea_anuncios_mostrar_escritorio),
 
         notificaciones_activas: Boolean(config.notificaciones_activas),
         notificaciones_duracion: Number(config.notificaciones_duracion || 3),
@@ -1556,6 +1624,358 @@ RENDIRSE🛑.`}
               </div>
             </ConfigCard>
           )}
+          {/* =====================================================
+    LÍNEA DE ANUNCIOS
+===================================================== */}
+{tab === "linea-anuncios" && (
+  <ConfigCard
+    icon="📣"
+    title="Línea de anuncios"
+    description="Controla la franja de mensajes en movimiento que verá el público."
+  >
+    <div className="admin-config-form-grid">
+
+      {/* ACTIVAR / DESACTIVAR */}
+      <Field label="Activar línea de anuncios" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={Boolean(config.linea_anuncios_activa)}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_activa", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* NEGRITA */}
+      <Field label="Texto en negrita" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={Boolean(config.linea_anuncios_negrita)}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_negrita", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* MENSAJE 1 */}
+      <Field label="Mensaje 1" full>
+        <input
+          value={config.linea_anuncios_mensaje_1 || ""}
+          onChange={(e) =>
+            cambiarCampo("linea_anuncios_mensaje_1", e.target.value)
+          }
+          placeholder="🎟️ COMPRA TUS TICKETS Y PARTICIPA"
+        />
+      </Field>
+
+      {/* MENSAJE 2 */}
+      <Field label="Mensaje 2" full>
+        <input
+          value={config.linea_anuncios_mensaje_2 || ""}
+          onChange={(e) =>
+            cambiarCampo("linea_anuncios_mensaje_2", e.target.value)
+          }
+          placeholder="⚡ PARTICIPA RÁPIDO Y SEGURO"
+        />
+      </Field>
+
+      {/* MENSAJE 3 */}
+      <Field label="Mensaje 3" full>
+        <input
+          value={config.linea_anuncios_mensaje_3 || ""}
+          onChange={(e) =>
+            cambiarCampo("linea_anuncios_mensaje_3", e.target.value)
+          }
+          placeholder="🔎 VERIFICA TUS TICKETS AL INSTANTE"
+        />
+      </Field>
+
+      {/* COLOR FONDO */}
+      <Field label="Color de fondo">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "56px 1fr",
+            gap: "10px",
+            alignItems: "center",
+          }}
+        >
+          <input
+            type="color"
+            value={colorSeguro(
+              config.linea_anuncios_color_fondo,
+              "#111111"
+            )}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_color_fondo", e.target.value)
+            }
+            style={{
+              width: "56px",
+              height: "44px",
+              padding: "3px",
+              cursor: "pointer",
+            }}
+          />
+
+          <input
+            value={config.linea_anuncios_color_fondo || ""}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_color_fondo", e.target.value)
+            }
+            placeholder="#111111"
+          />
+        </div>
+      </Field>
+
+      {/* COLOR TEXTO */}
+      <Field label="Color del texto">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "56px 1fr",
+            gap: "10px",
+            alignItems: "center",
+          }}
+        >
+          <input
+            type="color"
+            value={colorSeguro(
+              config.linea_anuncios_color_texto,
+              "#ffffff"
+            )}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_color_texto", e.target.value)
+            }
+            style={{
+              width: "56px",
+              height: "44px",
+              padding: "3px",
+              cursor: "pointer",
+            }}
+          />
+
+          <input
+            value={config.linea_anuncios_color_texto || ""}
+            onChange={(e) =>
+              cambiarCampo("linea_anuncios_color_texto", e.target.value)
+            }
+            placeholder="#FFFFFF"
+          />
+        </div>
+      </Field>
+
+      {/* COLOR SEPARADOR */}
+      <Field label="Color de los separadores">
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "56px 1fr",
+            gap: "10px",
+            alignItems: "center",
+          }}
+        >
+          <input
+            type="color"
+            value={colorSeguro(
+              config.linea_anuncios_color_separador,
+              "#facc15"
+            )}
+            onChange={(e) =>
+              cambiarCampo(
+                "linea_anuncios_color_separador",
+                e.target.value
+              )
+            }
+            style={{
+              width: "56px",
+              height: "44px",
+              padding: "3px",
+              cursor: "pointer",
+            }}
+          />
+
+          <input
+            value={config.linea_anuncios_color_separador || ""}
+            onChange={(e) =>
+              cambiarCampo(
+                "linea_anuncios_color_separador",
+                e.target.value
+              )
+            }
+            placeholder="#FACC15"
+          />
+        </div>
+      </Field>
+
+      {/* VELOCIDAD */}
+      <Field label={`Velocidad: ${config.linea_anuncios_velocidad || 22}s`} full>
+        <input
+          type="range"
+          min="5"
+          max="60"
+          step="1"
+          value={Number(config.linea_anuncios_velocidad || 22)}
+          onChange={(e) =>
+            cambiarCampo(
+              "linea_anuncios_velocidad",
+              Number(e.target.value)
+            )
+          }
+          style={{
+            width: "100%",
+            cursor: "pointer",
+          }}
+        />
+      </Field>
+
+      {/* MÓVIL */}
+      <Field label="Mostrar en teléfonos" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={Boolean(config.linea_anuncios_mostrar_movil)}
+            onChange={(e) =>
+              cambiarCampo(
+                "linea_anuncios_mostrar_movil",
+                e.target.checked
+              )
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* LAPTOP */}
+      <Field label="Mostrar en laptops / computadoras" asLabel={false}>
+        <label className="admin-switch large">
+          <input
+            type="checkbox"
+            checked={Boolean(config.linea_anuncios_mostrar_escritorio)}
+            onChange={(e) =>
+              cambiarCampo(
+                "linea_anuncios_mostrar_escritorio",
+                e.target.checked
+              )
+            }
+          />
+          <span />
+        </label>
+      </Field>
+    </div>
+
+    {/* VISTA PREVIA */}
+    <div
+      style={{
+        marginTop: "26px",
+        borderRadius: "14px",
+        overflow: "hidden",
+        border: "1px solid rgba(255,255,255,0.10)",
+      }}
+    >
+      <div
+        style={{
+          padding: "11px 0",
+          background:
+            config.linea_anuncios_color_fondo || "#111111",
+          color:
+            config.linea_anuncios_color_texto || "#ffffff",
+          overflow: "hidden",
+          whiteSpace: "nowrap",
+        }}
+      >
+        <div
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: "28px",
+            paddingLeft: "20px",
+            fontWeight: config.linea_anuncios_negrita ? 800 : 500,
+            fontSize: "13px",
+            letterSpacing: "0.04em",
+          }}
+        >
+          <span>
+            {config.linea_anuncios_mensaje_1 ||
+              "🎟️ COMPRA TUS TICKETS Y PARTICIPA"}
+          </span>
+
+          <span
+            style={{
+              color:
+                config.linea_anuncios_color_separador || "#facc15",
+            }}
+          >
+            ●
+          </span>
+
+          <span>
+            {config.linea_anuncios_mensaje_2 ||
+              "⚡ PARTICIPA RÁPIDO Y SEGURO"}
+          </span>
+
+          <span
+            style={{
+              color:
+                config.linea_anuncios_color_separador || "#facc15",
+            }}
+          >
+            ●
+          </span>
+
+          <span>
+            {config.linea_anuncios_mensaje_3 ||
+              "🔎 VERIFICA TUS TICKETS AL INSTANTE"}
+          </span>
+
+          <span
+            style={{
+              color:
+                config.linea_anuncios_color_separador || "#facc15",
+            }}
+          >
+            ●
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <div
+      style={{
+        marginTop: "12px",
+        fontSize: "12px",
+        opacity: 0.65,
+      }}
+    >
+      👁️ Vista previa de la línea de anuncios
+    </div>
+
+    {/* GUARDAR */}
+    <div
+      style={{
+        marginTop: "24px",
+        display: "flex",
+        justifyContent: "flex-end",
+      }}
+    >
+      <button
+        type="button"
+        className="admin-config-primary-btn"
+        onClick={guardarCambios}
+        disabled={guardando}
+      >
+        {guardando
+          ? "⏳ GUARDANDO..."
+          : "💾 GUARDAR LÍNEA DE ANUNCIOS"}
+      </button>
+    </div>
+  </ConfigCard>
+)}
 
           {/* =====================================================
               POPUP

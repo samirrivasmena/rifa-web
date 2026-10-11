@@ -8,6 +8,7 @@ import Swal from "sweetalert2";
 import HomeEventosPreview from "@/components/home/HomeEventosPreview";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
 import PublicTopbar from "@/components/shared/PublicTopbar";
+import PublicAnnouncementBar from "@/components/shared/PublicAnnouncementBar";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
 import SiteLogo from "@/components/shared/SiteLogo";
 import {
@@ -1010,6 +1011,9 @@ const popupLink = (() => {
           pagosHref="/#pagos"
           contactoHref="/#contacto"
         />
+
+        <PublicAnnouncementBar config={config} />
+
 
 <header
   className={`floating-header ${
