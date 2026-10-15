@@ -73,6 +73,44 @@ async function obtenerConfiguracion() {
 }
 
 /* =========================================================
+   OBTENER RIFAS PÚBLICAS INICIALES
+========================================================= */
+
+async function obtenerRifasIniciales() {
+  try {
+    const response = await fetch(
+      `${siteUrl}/api/rifas-publicas`,
+      {
+        method: "GET",
+        cache: "no-store",
+      }
+    );
+
+    if (!response.ok) {
+      console.error(
+        "Error cargando rifas iniciales:",
+        response.status
+      );
+
+      return [];
+    }
+
+    const data = await response.json();
+
+    return Array.isArray(data?.rifas)
+      ? data.rifas
+      : [];
+  } catch (error) {
+    console.error(
+      "Error cargando rifas iniciales:",
+      error
+    );
+
+    return [];
+  }
+}
+
+/* =========================================================
    METADATA
 ========================================================= */
 
@@ -144,7 +182,10 @@ export async function generateMetadata() {
 ========================================================= */
 
 export default async function Page() {
-  const config = await obtenerConfiguracion();
+  const [config, rifasIniciales] = await Promise.all([
+    obtenerConfiguracion(),
+    obtenerRifasIniciales(),
+  ]);
 
   const nombreMarca =
     config?.nombre_marca || "Sorteos LSD";
@@ -235,7 +276,10 @@ export default async function Page() {
 
       <div style={coloresIniciales}>
         <Suspense fallback={null}>
-          <HomePageClient />
+          <HomePageClient
+            initialConfig={config}
+            initialRifas={rifasIniciales}
+          />
         </Suspense>
       </div>
     </>

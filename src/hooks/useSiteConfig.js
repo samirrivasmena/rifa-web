@@ -24,6 +24,22 @@ let broadcastChannel = null;
 const subscribers = new Set();
 
 // ============================================================
+// APLICAR CONFIGURACIÓN INICIAL DEL SERVIDOR
+// ============================================================
+
+function aplicarConfigInicial(initialConfig) {
+  if (!initialConfig) {
+    return;
+  }
+
+  if (!sharedConfig) {
+    sharedConfig = initialConfig;
+    sharedLoading = false;
+    sharedError = null;
+  }
+}
+
+// ============================================================
 // NOTIFICAR A TODOS LOS COMPONENTES
 // ============================================================
 
@@ -50,6 +66,9 @@ function notifySubscribers() {
 
 function setSharedConfig(value) {
   sharedConfig = value;
+  sharedLoading = false;
+  sharedError = null;
+
   notifySubscribers();
 }
 
@@ -160,16 +179,16 @@ function instalarListenersGlobales() {
   // VOLVER A LA PESTAÑA
   // ----------------------------------------------------------
 
-const handleVisibilityChange = () => {
-  // No recargamos la configuración simplemente
-  // por volver a esta pestaña.
-  //
-  // Los cambios reales del Admin ya se sincronizan
-  // mediante:
-  // - site-config-updated
-  // - storage
-  // - BroadcastChannel
-};
+  const handleVisibilityChange = () => {
+    // No recargamos la configuración simplemente
+    // por volver a esta pestaña.
+    //
+    // Los cambios reales del Admin ya se sincronizan
+    // mediante:
+    // - site-config-updated
+    // - storage
+    // - BroadcastChannel
+  };
 
   // ----------------------------------------------------------
   // EVENTO INTERNO DEL ADMIN
@@ -227,10 +246,22 @@ const handleVisibilityChange = () => {
 // HOOK
 // ============================================================
 
-export function useSiteConfig() {
+export function useSiteConfig(initialConfig = null) {
+  // Si esta página recibió configuración directamente
+  // desde el servidor, la usamos desde el primer render.
+  aplicarConfigInicial(initialConfig);
+
   const [state, setState] = useState(() => ({
-    config: sharedConfig,
-    loadingConfig: sharedLoading,
+    config:
+      sharedConfig ||
+      initialConfig ||
+      null,
+
+    loadingConfig:
+      sharedConfig || initialConfig
+        ? false
+        : sharedLoading,
+
     errorConfig: sharedError,
   }));
 
@@ -239,6 +270,10 @@ export function useSiteConfig() {
   // ==========================================================
 
   useEffect(() => {
+    // Por seguridad, volvemos a aplicar la configuración
+    // inicial si todavía no existe una compartida.
+    aplicarConfigInicial(initialConfig);
+
     const actualizar = (nuevoEstado) => {
       setState(nuevoEstado);
     };
@@ -250,19 +285,28 @@ export function useSiteConfig() {
     // Sincronizamos inmediatamente esta instancia
     // con el estado compartido actual.
     actualizar({
-      config: sharedConfig,
-      loadingConfig: sharedLoading,
+      config:
+        sharedConfig ||
+        initialConfig ||
+        null,
+
+      loadingConfig:
+        sharedConfig || initialConfig
+          ? false
+          : sharedLoading,
+
       errorConfig: sharedError,
     });
 
-    // Solamente la primera instancia provocará el fetch.
-    // Las demás reutilizarán requestPromise o sharedConfig.
+    // Si ya recibimos configuración del servidor,
+    // cargarConfigCompartida() reutiliza sharedConfig
+    // y NO provoca una petición duplicada.
     cargarConfigCompartida();
 
     return () => {
       subscribers.delete(actualizar);
     };
-  }, []);
+  }, [initialConfig]);
 
   // ==========================================================
   // SET CONFIG

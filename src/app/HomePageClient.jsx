@@ -27,8 +27,11 @@ import FloatingPurchaseNotifications from "@/components/shared/FloatingPurchaseN
 import PublicFooter from "@/components/shared/PublicFooter";
 import FloatingWhatsAppButton from "@/components/shared/FloatingWhatsAppButton";
 
-export default function HomePageClient() {
-  const { config } = useSiteConfig();
+export default function HomePageClient({
+  initialConfig = null,
+  initialRifas = [],
+}) {
+const { config } = useSiteConfig(initialConfig);
 
   useEffect(() => {
     if (!config) return;
@@ -111,9 +114,34 @@ document.documentElement.style.setProperty(
   const [loadingCompra, setLoadingCompra] = useState(false);
   const [capturaInmediata, setCapturaInmediata] = useState(false);
 
-  const [rifaActiva, setRifaActiva] = useState(null);
-  const [loadingRifa, setLoadingRifa] = useState(true);
-  const [rifas, setRifas] = useState([]);
+const rifasInicialesSeguras = Array.isArray(initialRifas)
+  ? initialRifas
+  : [];
+
+const rifaInicial =
+  rifasInicialesSeguras.find(
+    (r) =>
+      (r.publicada === true ||
+        r.publicada === 1 ||
+        r.publicada === "1" ||
+        r.publicada === "true") &&
+      String(r.estado || "").toLowerCase() === "activa"
+  ) ||
+  rifasInicialesSeguras.find(
+    (r) =>
+      (r.publicada === true ||
+        r.publicada === 1 ||
+        r.publicada === "1" ||
+        r.publicada === "true") &&
+      String(r.estado || "").toLowerCase() === "agotada"
+  ) ||
+  null;
+
+const [rifaActiva, setRifaActiva] = useState(rifaInicial);
+const [loadingRifa, setLoadingRifa] = useState(
+  rifasInicialesSeguras.length === 0
+);
+const [rifas, setRifas] = useState(rifasInicialesSeguras);
 
   const [previewUrl, setPreviewUrl] = useState("");
   const [showAppPayModal, setShowAppPayModal] = useState(false);
