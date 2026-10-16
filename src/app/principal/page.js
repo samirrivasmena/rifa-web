@@ -1,9 +1,9 @@
 import PrincipalPageClient from "./PrincipalPageClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
+import { obtenerConfiguracionPublica } from "@/lib/configuracion/obtenerConfiguracionPublica";
 
 /* =========================================================
    RENDER DINÁMICO
-   Evita que Vercel conserve configuración/colores anteriores
 ========================================================= */
 
 export const dynamic = "force-dynamic";
@@ -14,56 +14,19 @@ export const revalidate = 0;
 ========================================================= */
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://www.sorteoslsd.com";
 
 /* =========================================================
-   OBTENER CONFIGURACIÓN
+   OBTENER CONFIGURACIÓN SEGURA
 ========================================================= */
 
 async function obtenerConfiguracion() {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("configuracion_sitio")
-      .select(
-        `
-        logo_url,
-        nombre_marca,
-        seo_titulo,
-        seo_descripcion,
-        seo_imagen,
-        color_primario,
-        color_secundario,
-        color_fondo,
-        color_texto,
-        color_boton,
-        color_tarjeta,
-        color_borde,
-        color_alerta,
-        color_exito,
-        color_error,
-        color_hover,
-        color_progreso,
-        color_progreso_fondo,
-        color_punticos
-        `
-      )
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error(
-        "Error obteniendo configuración de /principal:",
-        error
-      );
-
-      return null;
-    }
-
-    return data || null;
+    return await obtenerConfiguracionPublica();
   } catch (error) {
     console.error(
-      "Error inesperado obteniendo configuración de /principal:",
+      "Error obteniendo configuración de /principal:",
       error
     );
 
@@ -98,7 +61,6 @@ export async function generateMetadata() {
     metadataBase: new URL(siteUrl),
 
     title: titulo,
-
     description: descripcion,
 
     openGraph: {
@@ -132,11 +94,20 @@ export async function generateMetadata() {
 ========================================================= */
 
 export default async function Page() {
-  const config = await obtenerConfiguracion();
+  const [config, rifasIniciales] = await Promise.all([
+    obtenerConfiguracion(),
+    obtenerRifasPublicas().catch((error) => {
+      console.error(
+        "Error cargando rifas iniciales de /principal:",
+        error
+      );
+
+      return [];
+    }),
+  ]);
 
   /* =======================================================
      COLORES INICIALES
-     Se cargan desde Supabase en el servidor
   ======================================================= */
 
   const coloresIniciales = {
@@ -194,7 +165,10 @@ export default async function Page() {
 
   return (
     <div style={coloresIniciales}>
-      <PrincipalPageClient />
+      <PrincipalPageClient
+  initialConfig={config}
+  initialRifas={rifasIniciales}
+/>
     </div>
   );
 }

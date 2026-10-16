@@ -43,9 +43,13 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 
 
 
-export default function PrincipalPageClient() {
+export default function PrincipalPageClient({
+  initialConfig = null,
+  initialRifas = [],
+}) {
 
-  const { config, loadingConfig } = useSiteConfig();
+  const { config, loadingConfig } =
+  useSiteConfig(initialConfig);
 
 
 
@@ -157,9 +161,15 @@ export default function PrincipalPageClient() {
 
 
 
-  const [rifas, setRifas] = useState([]);
+const [rifas, setRifas] = useState(() =>
+  Array.isArray(initialRifas) ? initialRifas : []
+);
 
-  const [loadingRifas, setLoadingRifas] = useState(true);
+const [loadingRifas, setLoadingRifas] = useState(
+  () =>
+    !Array.isArray(initialRifas) ||
+    initialRifas.length === 0
+);
 
   const [errorRed, setErrorRed] = useState(false);
 
@@ -170,7 +180,19 @@ export default function PrincipalPageClient() {
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyModalMode, setVerifyModalMode] = useState("tickets");
 
-  const [rifaActiva, setRifaActiva] = useState(null);
+  const [rifaActiva, setRifaActiva] = useState(() => {
+  const lista = Array.isArray(initialRifas)
+    ? initialRifas
+    : [];
+
+  return (
+    lista.find(
+      (r) =>
+        String(r?.estado || "").toLowerCase() ===
+        "activa"
+    ) || null
+  );
+});
 
 
 
