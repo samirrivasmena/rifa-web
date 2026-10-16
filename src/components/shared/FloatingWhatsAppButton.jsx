@@ -16,7 +16,7 @@ export default function FloatingWhatsAppButton({ whatsappNumber }) {
 
   const button = (
     <a
-      href={`https://wa.me/${number}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
+      href={`https://wa.me/${number}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20sorteo`}
       target="_blank"
       rel="noreferrer"
       aria-label="Abrir WhatsApp"

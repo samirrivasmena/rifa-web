@@ -19,7 +19,7 @@ export default function OfficialResultsSection({
           <p>{description}</p>
 
           <a
-            href="https://supergana.com.ve/resultados.php"
+            href="https://supergana.com.ve/historico.php"
             target="_blank"
             rel="noreferrer"
             className="principal-red-btn"

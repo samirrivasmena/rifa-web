@@ -2001,7 +2001,7 @@ export default function PrincipalPageClient() {
 
                 <a
 
-                  href="https://supergana.com.ve/resultados.php"
+                  href="https://supergana.com.ve/historico.php"
 
                   target="_blank"
 
@@ -2087,7 +2087,7 @@ export default function PrincipalPageClient() {
 
                     ""
 
-                  )}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
+                  )}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20sorteo`}
 
                   target="_blank"
 

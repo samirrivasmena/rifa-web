@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import HomePageClient from "./HomePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
 
 /* =========================================================
    RENDER DINÁMICO
@@ -74,32 +75,12 @@ async function obtenerConfiguracion() {
 
 /* =========================================================
    OBTENER RIFAS PÚBLICAS INICIALES
+   DIRECTAMENTE DESDE SUPABASE
 ========================================================= */
 
 async function obtenerRifasIniciales() {
   try {
-    const response = await fetch(
-      `${siteUrl}/api/rifas-publicas`,
-      {
-        method: "GET",
-        cache: "no-store",
-      }
-    );
-
-    if (!response.ok) {
-      console.error(
-        "Error cargando rifas iniciales:",
-        response.status
-      );
-
-      return [];
-    }
-
-    const data = await response.json();
-
-    return Array.isArray(data?.rifas)
-      ? data.rifas
-      : [];
+    return await obtenerRifasPublicas();
   } catch (error) {
     console.error(
       "Error cargando rifas iniciales:",
@@ -207,7 +188,6 @@ export default async function Page() {
 
   /* =======================================================
      COLORES INICIALES
-     Se aplican desde el servidor antes de cargar React
   ======================================================= */
 
   const coloresIniciales = {

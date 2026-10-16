@@ -146,7 +146,7 @@ export default function PublicFooter({ texto, mostrarRedes }) {
           )}
 
           <a
-            href={`https://wa.me/${whatsapp}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20la%20rifa`}
+            href={`https://wa.me/${whatsapp}?text=Hola%20quiero%20informaci%C3%B3n%20sobre%20el%20sorteo`}
             target="_blank"
             rel="noreferrer"
             className="public-footer-link"
