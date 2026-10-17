@@ -100,9 +100,7 @@ export default function PrincipalPageClient({
 
     config?.principal_titulo_eventos || "EVENTOS DISPONIBLES";
 
-  const textoEventos =
-
-    config?.principal_texto_eventos || "Participa en nuestros sorteos activos.";
+const textoEventos = "Participa en nuestros sorteos activos.";
 
 
 
@@ -1174,7 +1172,7 @@ const [loadingRifas, setLoadingRifas] = useState(
 
                 <p>
 
-                  En este momento no hay rifas activas publicadas. Vuelve pronto
+                  En este momento no hay sorteos activos publicados. Vuelve pronto
 
                   para ver nuevos eventos.
 

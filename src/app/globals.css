@@ -8929,3 +8929,38 @@ filter: drop-shadow(0 24px 45px rgba(15, 23, 42, 0.06));
     display: none !important;
   }
 }
+/* =========================================================
+   PRINCIPAL — ELIMINAR ESPACIO BLANCO DEBAJO DEL FOOTER
+========================================================= */
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+.principal-page {
+  min-height: 100vh;
+  margin-bottom: 0 !important;
+  padding-bottom: 0 !important;
+}
+
+.principal-page footer,
+.principal-page .public-footer {
+  margin-bottom: 0 !important;
+}
+
+body:has(.principal-page) {
+  padding-bottom: 0 !important;
+}
+/* =========================================================
+   PRINCIPAL - QUITAR ESPACIO BLANCO DEBAJO DEL FOOTER
+========================================================= */
+
+.principal-page .principal-shell {
+  padding-bottom: 0 !important;
+}
+
+.principal-page .public-footer {
+  margin-bottom: 0 !important;
+}
