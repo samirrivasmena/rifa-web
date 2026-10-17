@@ -700,7 +700,7 @@ linea_anuncios_mostrar_escritorio:
 
         principal_texto_eventos:
           limpiarTextoMarketing(config.principal_texto_eventos) ||
-          "Participa en nuestras rifas activas.",
+          "Participa en nuestros sorteos activos.",
 
         principal_titulo_resultados:
           limpiarTextoBasico(config.principal_titulo_resultados) ||

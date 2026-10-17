@@ -107,7 +107,7 @@ export async function generateMetadata() {
 
   const descripcion =
     config?.seo_descripcion ||
-    "Participa en la rifa activa de Sorteos LSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";
+    "Participa en el evento activo de SorteosLSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";
 
   const imagenCompartir =
     config?.seo_imagen ||

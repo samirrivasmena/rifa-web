@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
+import {
+  formatearFechaPublica,
+  formatearHoraPublica,
+} from "@/lib/admin/formatearFecha";
 
 export default function HistorialGanadores() {
   const [ganadores, setGanadores] = useState([]);
@@ -89,7 +93,10 @@ export default function HistorialGanadores() {
     const contenedor = scrollRef.current;
     if (!contenedor) return;
 
-    const slide = contenedor.querySelector(`[data-winner-slide="${index}"]`);
+    const slide = contenedor.querySelector(
+      `[data-winner-slide="${index}"]`
+    );
+
     if (!slide) return;
 
     contenedor.scrollTo({
@@ -107,13 +114,16 @@ export default function HistorialGanadores() {
     const slides = contenedor.querySelectorAll("[data-winner-slide]");
     if (!slides.length) return;
 
-    const center = contenedor.scrollLeft + contenedor.clientWidth / 2;
+    const center =
+      contenedor.scrollLeft + contenedor.clientWidth / 2;
 
     let closestIndex = 0;
     let closestDistance = Infinity;
 
     slides.forEach((slide, index) => {
-      const slideCenter = slide.offsetLeft + slide.offsetWidth / 2;
+      const slideCenter =
+        slide.offsetLeft + slide.offsetWidth / 2;
+
       const distance = Math.abs(center - slideCenter);
 
       if (distance < closestDistance) {
@@ -202,11 +212,16 @@ export default function HistorialGanadores() {
                     <span className="winner-badge-green">
                       🟢 GANADOR OFICIAL
                     </span>
-                    <span className="winner-badge-gold">🥇 RESULTADO</span>
+
+                    <span className="winner-badge-gold">
+                      🥇 RESULTADO
+                    </span>
                   </div>
 
                   <div className="winner-image-wrapper">
-                    <div className="winner-ribbon">🏆 GANADOR</div>
+                    <div className="winner-ribbon">
+                      🏆 GANADOR
+                    </div>
 
                     <RaffleDualImage
                       principalSrc={fotoPrincipal}
@@ -221,24 +236,32 @@ export default function HistorialGanadores() {
 
                     <div className="winner-result-details">
                       <p className="principal-event-meta-mobile">
-                        🏆 Número ganador: <strong>{numero}</strong>
+                        🏆 Número ganador:{" "}
+                        <strong>{numero}</strong>
                       </p>
 
                       {rifa.premio ? (
                         <p className="principal-event-meta-mobile">
-                          🎁 Premio: <strong>{rifa.premio}</strong>
+                          🎁 Premio:{" "}
+                          <strong>{rifa.premio}</strong>
                         </p>
                       ) : null}
 
                       {ganador.ciudad_ganador ? (
                         <p className="principal-event-meta-mobile">
-                          📍 Ciudad: <strong>{ganador.ciudad_ganador}</strong>
+                          📍 Ciudad:{" "}
+                          <strong>
+                            {ganador.ciudad_ganador}
+                          </strong>
                         </p>
                       ) : null}
 
                       {ganador.instagram_ganador ? (
                         <p className="principal-event-meta-mobile">
-                          📸 Instagram: <strong>{ganador.instagram_ganador}</strong>
+                          📸 Instagram:{" "}
+                          <strong>
+                            {ganador.instagram_ganador}
+                          </strong>
                         </p>
                       ) : null}
 
@@ -258,19 +281,23 @@ export default function HistorialGanadores() {
                         </p>
                       ) : null}
 
-                      {ganador.fecha_sorteo ? (
+                      {rifa.fecha_sorteo ? (
                         <p className="principal-event-meta-mobile">
-                          📅 Resultado:{" "}
-                          {new Date(ganador.fecha_sorteo).toLocaleDateString()}
+                          📅 Sorteo:{" "}
+                          {formatearFechaPublica(
+                            rifa.fecha_sorteo
+                          )}
                         </p>
                       ) : null}
 
-                      {(rifa.fecha_sorteo || rifa.hora_sorteo) && (
+                      {rifa.hora_sorteo ? (
                         <p className="principal-event-meta-mobile">
-                          🎯 Sorteo: {rifa.fecha_sorteo || "Sin fecha"}{" "}
-                          {rifa.hora_sorteo || ""}
+                          🕐{" "}
+                          {formatearHoraPublica(
+                            rifa.hora_sorteo
+                          )}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                 </div>
@@ -294,7 +321,9 @@ export default function HistorialGanadores() {
               }`}
               onClick={() => moverAGanador(index)}
               aria-label={`Ir al ganador ${index + 1}`}
-              aria-current={activeIndex === index ? "true" : undefined}
+              aria-current={
+                activeIndex === index ? "true" : undefined
+              }
             />
           ))}
         </div>

@@ -26,6 +26,10 @@ import PurchaseGuideFloating from "@/components/shared/PurchaseGuideFloating";
 import FloatingPurchaseNotifications from "@/components/shared/FloatingPurchaseNotifications";
 import PublicFooter from "@/components/shared/PublicFooter";
 import FloatingWhatsAppButton from "@/components/shared/FloatingWhatsAppButton";
+import {
+  formatearFechaPublica,
+  formatearHoraPublica,
+} from "@/lib/admin/formatearFecha";
 
 export default function HomePageClient({
   initialConfig = null,
@@ -1110,11 +1114,12 @@ const popupLink = (() => {
                   <p className="hero-subtitle-dark">{descripcionRifa}</p>
                 )}
 
-                {(fechaRifa || horaRifa) && (
-                  <p className="hero-date-line">
-                    {fechaRifa && `📅 ${fechaRifa}`} {horaRifa && `⏰ ${horaRifa}`}
-                  </p>
-                )}
+{(fechaRifa || horaRifa) && (
+  <p className="hero-date-line">
+    {fechaRifa && `📅 ${formatearFechaPublica(fechaRifa)}`}{" "}
+    {horaRifa && `🕐 ${formatearHoraPublica(horaRifa)}`}
+  </p>
+)}
 
                 {(premios.length > 0 || precioPorTicket > 0) && (
                   <div className="hero-prize-box">

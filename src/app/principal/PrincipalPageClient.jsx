@@ -41,6 +41,11 @@ import PublicFooter from "@/components/shared/PublicFooter";
 
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 
+import {
+  formatearFechaPublica,
+  formatearHoraPublica,
+} from "@/lib/admin/formatearFecha";
+
 
 
 export default function PrincipalPageClient({
@@ -97,7 +102,7 @@ export default function PrincipalPageClient({
 
   const textoEventos =
 
-    config?.principal_texto_eventos || "Participa en nuestras rifas activas.";
+    config?.principal_texto_eventos || "Participa en nuestros sorteos activos.";
 
 
 
@@ -1257,23 +1262,17 @@ const [loadingRifas, setLoadingRifas] = useState(
 
 
 
-                        {fecha && (
+{fecha && (
+  <p className="principal-event-meta-mobile">
+    📅 {formatearFechaPublica(fecha)}
+  </p>
+)}
 
-                          <p className="principal-event-meta-mobile">
-
-                            📅 {fecha}
-
-                          </p>
-
-                        )}
-
-
-
-                        {hora && (
-
-                          <p className="principal-event-meta-mobile">⏰ {hora}</p>
-
-                        )}
+{hora && (
+  <p className="principal-event-meta-mobile">
+    🕐 {formatearHoraPublica(hora)}
+  </p>
+)}
 
 
 
@@ -1611,7 +1610,7 @@ const [loadingRifas, setLoadingRifas] = useState(
 
                             <p className="principal-event-meta-mobile">
 
-                              📅 {evento.fecha_sorteo}
+                              📅 {formatearFechaPublica(evento.fecha_sorteo)}
 
                             </p>
 

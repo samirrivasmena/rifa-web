@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import RaffleDualImage from "@/components/shared/RaffleDualImage";
 import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
 import { getRifaProgress } from "@/lib/getRifaProgress";
+import { formatearFechaPublica } from "@/lib/admin/formatearFecha";
 
 export default function HomeEventosPreview({ rifas = [] }) {
   const router = useRouter();
@@ -367,13 +368,12 @@ export default function HomeEventosPreview({ rifas = [] }) {
                           "Evento finalizado"}
                       </h3>
 
-                      {/* FECHA */}
-                      {fecha && (
-                        <p className="home-event-card-date">
-                          📅 {fecha}
-                        </p>
-                      )}
-
+{/* FECHA */}
+{fecha && (
+  <p className="home-event-card-date">
+    📅 {formatearFechaPublica(fecha)}
+  </p>
+)}
                       {/* PRECIO */}
                       {evento?.precio_ticket !== null &&
                         evento?.precio_ticket !==

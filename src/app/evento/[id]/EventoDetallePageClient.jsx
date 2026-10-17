@@ -15,6 +15,11 @@ import ProgressVentaBar from "@/components/shared/ProgressVentaBar";
 import SiteLogo from "@/components/shared/SiteLogo";
 import { getRifaProgress } from "@/lib/getRifaProgress";
 import { enriquecerRifaConResumen } from "@/lib/rifas/enriquecerRifaConResumen";
+import PublicAnnouncementBar from "@/components/shared/PublicAnnouncementBar";
+import {
+  formatearFechaPublica,
+  formatearHoraPublica,
+} from "@/lib/admin/formatearFecha";
 
 const PAISES_TELEFONO = [
   { codigo: "US", bandera: "🇺🇸", nombre: "Estados Unidos", prefijo: "+1" },
@@ -339,7 +344,9 @@ function calcularCuentaRegresiva(fechaObjetivo, ahoraMs) {
   )}m ${String(segundos).padStart(2, "0")}s`;
 }
 
-export default function EventoDetallePageClient() {
+export default function EventoDetallePageClient({
+  initialConfig = null,
+}) {
   const params = useParams();
   const eventoId = Array.isArray(params?.id) ? params.id[0] : params?.id;
 
@@ -1564,6 +1571,9 @@ if (!res.ok) {
           contactoHref="/principal#contacto"
         />
 
+        <PublicAnnouncementBar config={initialConfig} />
+        
+
         {loading ? (
           <section className="evento-loading-wrap">
             <div className="evento-loading-grid">
@@ -1757,7 +1767,7 @@ if (!res.ok) {
                           padding: "14px",
                         }}
                       >
-                        <strong>⏰ PRÓXIMO FREE DROP</strong>
+                        <strong>🕐 PRÓXIMO FREE DROP</strong>
 
                         <span>
                           {freeDropProgramadoVisible.nombre || "FREE DROP"}
@@ -1911,17 +1921,23 @@ if (!res.ok) {
                       <span>VALOR TICKET</span>
                       <strong className="text-red">${precio.toFixed(2)}</strong>
                     </div>
+<div className="evento-mini-box">
+  <span>FECHA</span>
+  <strong>
+    {fecha
+      ? formatearFechaPublica(fecha)
+      : "Sin fecha"}
+  </strong>
+</div>
 
-                    <div className="evento-mini-box">
-                      <span>FECHA</span>
-                      <strong>{fecha || "Por confirmar"}</strong>
-                    </div>
-
-                    <div className="evento-mini-box">
-                      <span>HORA</span>
-                      <strong>{hora || "Por confirmar"}</strong>
-                    </div>
-
+<div className="evento-mini-box">
+  <span>HORA</span>
+  <strong>
+    {hora
+      ? formatearHoraPublica(hora)
+      : "Sin hora"}
+  </strong>
+</div>
                     <div className="evento-mini-box">
                       <span>PROGRESO</span>
                       <strong>{porcentajeVendido.toFixed(1)}%</strong>

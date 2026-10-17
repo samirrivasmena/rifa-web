@@ -61,7 +61,18 @@ async function obtenerConfiguracionSitio() {
         color_hover,
         color_progreso,
         color_progreso_fondo,
-        color_punticos
+        color_punticos,
+        linea_anuncios_activa,
+        linea_anuncios_mensaje_1,
+        linea_anuncios_mensaje_2,
+        linea_anuncios_mensaje_3,
+        linea_anuncios_color_fondo,
+        linea_anuncios_color_texto,
+        linea_anuncios_color_separador,
+        linea_anuncios_velocidad,
+        linea_anuncios_negrita,
+        linea_anuncios_mostrar_movil,
+        linea_anuncios_mostrar_escritorio
         `
       )
       .order("updated_at", { ascending: false })
@@ -348,7 +359,7 @@ export default async function Page() {
 
   return (
     <div style={coloresIniciales}>
-      <EventoDetallePageClient />
+      <EventoDetallePageClient initialConfig={config} />
     </div>
   );
 }
