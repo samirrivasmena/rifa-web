@@ -31,8 +31,65 @@ export default function AdminRankingSection({
   totalPaginasRanking,
   resumenPaginacionRanking,
 }) {
+  // =========================================================
+  // TOOLTIP PROFESIONAL DEL GRÁFICO
+  // =========================================================
+
+  const RankingTooltip = ({ active, payload }) => {
+    if (!active || !payload?.length) return null;
+
+    const persona = payload[0]?.payload;
+
+    if (!persona) return null;
+
+    const totalTickets = Number(
+      resumenRanking?.totalTicketsAprobados || 0
+    );
+
+    const porcentaje =
+      totalTickets > 0
+        ? (
+            (Number(persona.cantidad || 0) / totalTickets) *
+            100
+          ).toFixed(2)
+        : "0.00";
+
+    return (
+      <div className="adminpro-ranking-tooltip">
+        <strong className="adminpro-ranking-tooltip-name">
+          👤 {persona.nombre || "Sin nombre"}
+        </strong>
+
+        {persona.email ? (
+          <span>📧 {persona.email}</span>
+        ) : null}
+
+        <span>
+          🎟️ Tickets: <b>{Number(persona.cantidad || 0)}</b>
+        </span>
+
+        <span>
+          🛒 Compras: <b>{Number(persona.compras || 0)}</b>
+        </span>
+
+        <span>
+          💰 Monto:{" "}
+          <b>${Number(persona.montoTotal || 0).toFixed(2)}</b>
+        </span>
+
+        <span>
+          📊 Participación: <b>{porcentaje}%</b>
+        </span>
+      </div>
+    );
+  };
+
   return (
     <div className="adminpro-page-stack" ref={rankingRef}>
+      {/* =====================================================
+          KPIS DEL RANKING
+      ====================================================== */}
+
       <div className="adminpro-ranking-kpis adminpro-ranking-kpis-premium">
         <button
           type="button"
@@ -65,10 +122,18 @@ export default function AdminRankingSection({
           }
         >
           <span className="adminpro-ranking-kpi-arrow">↗</span>
+
           <span>Líder actual</span>
-          <strong title={resumenRanking.topParticipante?.nombre || "Sin datos"}>
+
+          <strong
+            title={
+              resumenRanking.topParticipante?.nombre ||
+              "Sin datos"
+            }
+          >
             {resumenRanking.topParticipante?.nombre || "Sin datos"}
           </strong>
+
           <small>Participante con más tickets aprobados</small>
         </button>
 
@@ -102,9 +167,13 @@ export default function AdminRankingSection({
           className="adminpro-ranking-kpi adminpro-ranking-kpi-slate clickable"
           onClick={() => {
             if (rankingFiltradoYOrdenado.length > 1) {
-              abrirDetalleParticipante(rankingFiltradoYOrdenado[1]);
+              abrirDetalleParticipante(
+                rankingFiltradoYOrdenado[1]
+              );
             } else if (rankingFiltradoYOrdenado.length > 0) {
-              abrirDetalleParticipante(rankingFiltradoYOrdenado[0]);
+              abrirDetalleParticipante(
+                rankingFiltradoYOrdenado[0]
+              );
             }
           }}
         >
@@ -115,11 +184,18 @@ export default function AdminRankingSection({
         </button>
       </div>
 
+      {/* =====================================================
+          FILTROS
+      ====================================================== */}
+
       <div className="adminpro-card adminpro-ranking-panel">
         <div className="adminpro-section-head">
           <div>
             <h2>Filtro y control del ranking</h2>
-            <p>Busca participantes, cambia el orden y exporta resultados</p>
+            <p>
+              Busca participantes, cambia el orden y exporta
+              resultados
+            </p>
           </div>
 
           <button
@@ -134,21 +210,27 @@ export default function AdminRankingSection({
         <div className="adminpro-ranking-toolbar">
           <div className="adminpro-ranking-field">
             <label>Buscar participante</label>
+
             <input
               type="text"
               className="adminpro-input"
               placeholder="Nombre, email o teléfono"
               value={busquedaRanking}
-              onChange={(e) => setBusquedaRanking(e.target.value)}
+              onChange={(e) =>
+                setBusquedaRanking(e.target.value)
+              }
             />
           </div>
 
           <div className="adminpro-ranking-field">
             <label>Ordenar ranking</label>
+
             <select
               className="adminpro-input"
               value={ordenRanking}
-              onChange={(e) => setOrdenRanking(e.target.value)}
+              onChange={(e) =>
+                setOrdenRanking(e.target.value)
+              }
             >
               <option value="tickets_desc">Más tickets</option>
               <option value="tickets_asc">Menos tickets</option>
@@ -163,11 +245,14 @@ export default function AdminRankingSection({
 
           <div className="adminpro-ranking-field">
             <label>Items por página</label>
+
             <select
               className="adminpro-input"
               value={itemsPorPaginaRanking}
               onChange={(e) => {
-                setItemsPorPaginaRanking(Number(e.target.value));
+                setItemsPorPaginaRanking(
+                  Number(e.target.value)
+                );
                 setPaginaRanking(1);
               }}
             >
@@ -178,6 +263,10 @@ export default function AdminRankingSection({
           </div>
         </div>
       </div>
+
+      {/* =====================================================
+          GRÁFICO HORIZONTAL - TOP 10
+      ====================================================== */}
 
       <div className="adminpro-card adminpro-ranking-panel">
         <div className="adminpro-section-head">
@@ -195,39 +284,61 @@ export default function AdminRankingSection({
               <BarChart
                 data={ranking}
                 layout="vertical"
-                margin={{ top: 10, right: 30, left: 20, bottom: 10 }}
+                margin={{
+                  top: 10,
+                  right: 30,
+                  left: 20,
+                  bottom: 10,
+                }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.16)" />
-                <XAxis type="number" stroke="#94a3b8" />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="rgba(148,163,184,0.16)"
+                />
+
+                <XAxis
+                  type="number"
+                  stroke="#94a3b8"
+                />
+
                 <YAxis
                   type="category"
                   dataKey="nombre"
                   width={180}
-                  tick={{ fontSize: 13, fill: "#cbd5e1" }}
+                  tick={{
+                    fontSize: 13,
+                    fill: "#cbd5e1",
+                  }}
                   stroke="#94a3b8"
                 />
+
                 <Tooltip
-                  contentStyle={{
-                    background: "#0f172a",
-                    border: "1px solid rgba(148,163,184,0.18)",
-                    borderRadius: "14px",
-                    color: "#fff",
+                  content={<RankingTooltip />}
+                  cursor={{
+                    fill: "rgba(148,163,184,0.06)",
                   }}
-                  formatter={(value) => [value, "Tickets"]}
-                  labelFormatter={(label) => `Participante: ${label}`}
                 />
+
                 <Bar
                   dataKey="cantidad"
                   fill="#6366f1"
                   radius={[0, 8, 8, 0]}
-                  onClick={(data) => abrirDetalleParticipante(data)}
-                  style={{ cursor: "pointer" }}
+                  onClick={(data) =>
+                    abrirDetalleParticipante(data)
+                  }
+                  style={{
+                    cursor: "pointer",
+                  }}
                 />
               </BarChart>
             </ResponsiveContainer>
           </div>
         )}
       </div>
+
+      {/* =====================================================
+          TOP 3
+      ====================================================== */}
 
       <div className="adminpro-card adminpro-ranking-panel">
         <div className="adminpro-section-head">
@@ -241,53 +352,97 @@ export default function AdminRankingSection({
           <p>No hay datos todavía.</p>
         ) : (
           <div className="adminpro-ranking-top3-premium">
-            {rankingFiltradoYOrdenado.slice(0, 3).map((persona, index) => {
-              const porcentaje =
-                resumenRanking.totalTicketsAprobados > 0
-                  ? ((persona.cantidad / resumenRanking.totalTicketsAprobados) * 100).toFixed(2)
-                  : "0.00";
+            {rankingFiltradoYOrdenado
+              .slice(0, 3)
+              .map((persona, index) => {
+                const porcentaje =
+                  resumenRanking.totalTicketsAprobados > 0
+                    ? (
+                        (persona.cantidad /
+                          resumenRanking.totalTicketsAprobados) *
+                        100
+                      ).toFixed(2)
+                    : "0.00";
 
-              return (
-                <button
-                  type="button"
-                  key={`${persona.nombre}-${index}`}
-                  className={`adminpro-ranking-top3-premium-card pos-${index + 1}`}
-                  onClick={() => abrirDetalleParticipante(persona)}
-                >
-                  <span className="adminpro-ranking-top3-arrow">↗</span>
+                return (
+                  <button
+                    type="button"
+                    key={`${persona.nombre}-${index}`}
+                    className={`adminpro-ranking-top3-premium-card pos-${
+                      index + 1
+                    }`}
+                    onClick={() =>
+                      abrirDetalleParticipante(persona)
+                    }
+                  >
+                    <span className="adminpro-ranking-top3-arrow">
+                      ↗
+                    </span>
 
-                  <div className="adminpro-ranking-top3-head">
-                    <div className="adminpro-ranking-top3-badge">#{index + 1}</div>
-                    <div className="adminpro-ranking-top3-avatar">
-                      {String(persona.nombre || "?").charAt(0).toUpperCase()}
+                    <div className="adminpro-ranking-top3-head">
+                      <div className="adminpro-ranking-top3-badge">
+                        #{index + 1}
+                      </div>
+
+                      <div className="adminpro-ranking-top3-avatar">
+                        {String(
+                          persona.nombre || "?"
+                        )
+                          .charAt(0)
+                          .toUpperCase()}
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="adminpro-ranking-top3-content">
-                    <h3 title={persona.nombre}>{persona.nombre}</h3>
-                    <strong>{persona.cantidad} tickets aprobados</strong>
-                    <p>{porcentaje}% del total aprobado</p>
+                    <div className="adminpro-ranking-top3-content">
+                      <h3 title={persona.nombre}>
+                        {persona.nombre}
+                      </h3>
 
-                    <div className="adminpro-ranking-top3-meta">
-                      <span>{persona.compras} compras</span>
-                      <span>${Number(persona.montoTotal || 0).toFixed(2)}</span>
+                      <strong>
+                        {persona.cantidad} tickets aprobados
+                      </strong>
+
+                      <p>{porcentaje}% del total aprobado</p>
+
+                      <div className="adminpro-ranking-top3-meta">
+                        <span>
+                          {persona.compras} compras
+                        </span>
+
+                        <span>
+                          $
+                          {Number(
+                            persona.montoTotal || 0
+                          ).toFixed(2)}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                </button>
-              );
-            })}
+                  </button>
+                );
+              })}
           </div>
         )}
       </div>
 
-      <div className="adminpro-card adminpro-ranking-panel" ref={rankingDetalleRef}>
+      {/* =====================================================
+          RANKING DETALLADO
+      ====================================================== */}
+
+      <div
+        className="adminpro-card adminpro-ranking-panel"
+        ref={rankingDetalleRef}
+      >
         <div className="adminpro-section-head">
           <div>
             <h2>Ranking detallado</h2>
+
             <p>
-              Mostrando {resumenPaginacionRanking.desde} a {resumenPaginacionRanking.hasta} de{" "}
+              Mostrando {resumenPaginacionRanking.desde} a{" "}
+              {resumenPaginacionRanking.hasta} de{" "}
               {resumenPaginacionRanking.total} participante
-              {resumenPaginacionRanking.total !== 1 ? "s" : ""}
+              {resumenPaginacionRanking.total !== 1
+                ? "s"
+                : ""}
             </p>
           </div>
         </div>
@@ -304,86 +459,146 @@ export default function AdminRankingSection({
             </div>
 
             <div className="adminpro-ranking-list-v3">
-              {rankingPaginado.map((persona, index) => {
-                const posicionReal = (paginaRanking - 1) * itemsPorPaginaRanking + index + 1;
-                const porcentajeNumerico =
-                  resumenRanking.totalTicketsAprobados > 0
-                    ? (persona.cantidad / resumenRanking.totalTicketsAprobados) * 100
-                    : 0;
+              {rankingPaginado.map(
+                (persona, index) => {
+                  const posicionReal =
+                    (paginaRanking - 1) *
+                      itemsPorPaginaRanking +
+                    index +
+                    1;
 
-                const porcentaje = porcentajeNumerico.toFixed(2);
+                  const porcentajeNumerico =
+                    resumenRanking.totalTicketsAprobados > 0
+                      ? (persona.cantidad /
+                          resumenRanking.totalTicketsAprobados) *
+                        100
+                      : 0;
 
-                return (
-                  <button
-                    type="button"
-                    key={`${persona.nombre}-${index}`}
-                    className="adminpro-ranking-row-pro clickable"
-                    onClick={() => abrirDetalleParticipante(persona)}
-                  >
-                    <div className="adminpro-ranking-rank-pro">
-                      <span className="adminpro-ranking-rank-badge">#{posicionReal}</span>
-                    </div>
+                  const porcentaje =
+                    porcentajeNumerico.toFixed(2);
 
-                    <div className="adminpro-ranking-participant-pro">
-                      <div className="adminpro-ranking-avatar-pro">
-                        {String(persona.nombre || "?").charAt(0).toUpperCase()}
+                  return (
+                    <button
+                      type="button"
+                      key={`${persona.nombre}-${index}`}
+                      className="adminpro-ranking-row-pro clickable"
+                      onClick={() =>
+                        abrirDetalleParticipante(persona)
+                      }
+                    >
+                      <div className="adminpro-ranking-rank-pro">
+                        <span className="adminpro-ranking-rank-badge">
+                          #{posicionReal}
+                        </span>
                       </div>
 
-                      <div className="adminpro-ranking-participant-info-pro">
-                        <strong title={persona.nombre}>{persona.nombre}</strong>
-                        {persona.email ? <small>{persona.email}</small> : <small>Sin email</small>}
-                        {persona.telefono ? <small>{persona.telefono}</small> : null}
-                      </div>
-                    </div>
+                      <div className="adminpro-ranking-participant-pro">
+                        <div className="adminpro-ranking-avatar-pro">
+                          {String(
+                            persona.nombre || "?"
+                          )
+                            .charAt(0)
+                            .toUpperCase()}
+                        </div>
 
-                    <div className="adminpro-ranking-participation-pro">
-                      <div className="adminpro-ranking-participation-top-pro">
-                        <span>Participación</span>
-                        <strong>{porcentaje}%</strong>
-                      </div>
+                        <div className="adminpro-ranking-participant-info-pro">
+                          <strong title={persona.nombre}>
+                            {persona.nombre}
+                          </strong>
 
-                      <div className="adminpro-ranking-progress-bar-pro">
-                        <div
-                          className="adminpro-ranking-progress-fill-pro"
-                          style={{ width: `${Math.min(porcentajeNumerico, 100)}%` }}
-                        />
-                      </div>
+                          {persona.email ? (
+                            <small>{persona.email}</small>
+                          ) : (
+                            <small>Sin email</small>
+                          )}
 
-                      <div className="adminpro-ranking-participation-sub-pro">
-                        {persona.cantidad} ticket{persona.cantidad !== 1 ? "s" : ""} de{" "}
-                        {resumenRanking.totalTicketsAprobados}
-                      </div>
-                    </div>
-
-                    <div className="adminpro-ranking-metrics-pro">
-                      <div className="adminpro-ranking-metric-pro">
-                        <span>Tickets</span>
-                        <strong>{persona.cantidad}</strong>
+                          {persona.telefono ? (
+                            <small>
+                              {persona.telefono}
+                            </small>
+                          ) : null}
+                        </div>
                       </div>
 
-                      <div className="adminpro-ranking-metric-pro">
-                        <span>Compras</span>
-                        <strong>{persona.compras}</strong>
+                      <div className="adminpro-ranking-participation-pro">
+                        <div className="adminpro-ranking-participation-top-pro">
+                          <span>Participación</span>
+                          <strong>
+                            {porcentaje}%
+                          </strong>
+                        </div>
+
+                        <div className="adminpro-ranking-progress-bar-pro">
+                          <div
+                            className="adminpro-ranking-progress-fill-pro"
+                            style={{
+                              width: `${Math.min(
+                                porcentajeNumerico,
+                                100
+                              )}%`,
+                            }}
+                          />
+                        </div>
+
+                        <div className="adminpro-ranking-participation-sub-pro">
+                          {persona.cantidad} ticket
+                          {persona.cantidad !== 1
+                            ? "s"
+                            : ""}{" "}
+                          de{" "}
+                          {
+                            resumenRanking.totalTicketsAprobados
+                          }
+                        </div>
                       </div>
 
-                      <div className="adminpro-ranking-metric-pro">
-                        <span>Monto</span>
-                        <strong>${Number(persona.montoTotal || 0).toFixed(2)}</strong>
+                      <div className="adminpro-ranking-metrics-pro">
+                        <div className="adminpro-ranking-metric-pro">
+                          <span>Tickets</span>
+                          <strong>
+                            {persona.cantidad}
+                          </strong>
+                        </div>
+
+                        <div className="adminpro-ranking-metric-pro">
+                          <span>Compras</span>
+                          <strong>
+                            {persona.compras}
+                          </strong>
+                        </div>
+
+                        <div className="adminpro-ranking-metric-pro">
+                          <span>Monto</span>
+
+                          <strong>
+                            $
+                            {Number(
+                              persona.montoTotal || 0
+                            ).toFixed(2)}
+                          </strong>
+                        </div>
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                    </button>
+                  );
+                }
+              )}
             </div>
+
+            {/* =================================================
+                PAGINACIÓN
+            ================================================= */}
 
             <div className="adminpro-pagination-wrap">
               <div className="adminpro-pagination-info">
                 <label>Items por página</label>
+
                 <select
                   className="adminpro-input"
                   value={itemsPorPaginaRanking}
                   onChange={(e) => {
-                    setItemsPorPaginaRanking(Number(e.target.value));
+                    setItemsPorPaginaRanking(
+                      Number(e.target.value)
+                    );
                     setPaginaRanking(1);
                   }}
                 >
@@ -397,23 +612,35 @@ export default function AdminRankingSection({
                 <button
                   type="button"
                   className="adminpro-soft-btn dark"
-                  onClick={() => setPaginaRanking((prev) => Math.max(prev - 1, 1))}
+                  onClick={() =>
+                    setPaginaRanking((prev) =>
+                      Math.max(prev - 1, 1)
+                    )
+                  }
                   disabled={paginaRanking === 1}
                 >
                   Anterior
                 </button>
 
                 <div className="adminpro-pagination-page">
-                  Página {paginaRanking} de {totalPaginasRanking}
+                  Página {paginaRanking} de{" "}
+                  {totalPaginasRanking}
                 </div>
 
                 <button
                   type="button"
                   className="adminpro-soft-btn dark"
                   onClick={() =>
-                    setPaginaRanking((prev) => Math.min(prev + 1, totalPaginasRanking))
+                    setPaginaRanking((prev) =>
+                      Math.min(
+                        prev + 1,
+                        totalPaginasRanking
+                      )
+                    )
                   }
-                  disabled={paginaRanking === totalPaginasRanking}
+                  disabled={
+                    paginaRanking === totalPaginasRanking
+                  }
                 >
                   Siguiente
                 </button>

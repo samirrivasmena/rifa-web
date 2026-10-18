@@ -398,7 +398,9 @@ export default function AdminFreeDropParticipationsSection({
           reservado: 0,
           valida: 1,
           activo: 1,
-          aprobad: 1,
+          aprobado: 1,
+          aprobada: 1,
+          approved: 1, 
           rechazada: 2,
           anulada: 3,
         };

@@ -11508,3 +11508,46 @@ input[type="number"]::-webkit-outer-spin-button {
     font-size: 7px;
   }
 }
+/* =========================================================
+   RANKING - TOOLTIP PROFESIONAL
+========================================================= */
+
+.adminpro-ranking-tooltip {
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  padding: 14px 16px;
+
+  background: #0f172a;
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 14px;
+
+  color: #e2e8f0;
+  font-size: 13px;
+  line-height: 1.35;
+
+  box-shadow: 0 16px 35px rgba(0, 0, 0, 0.28);
+}
+
+.adminpro-ranking-tooltip-name {
+  display: block;
+  padding-bottom: 8px;
+  margin-bottom: 2px;
+
+  border-bottom: 1px solid rgba(148, 163, 184, 0.16);
+
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.adminpro-ranking-tooltip span {
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.adminpro-ranking-tooltip b {
+  color: #ffffff;
+  font-weight: 800;
+}

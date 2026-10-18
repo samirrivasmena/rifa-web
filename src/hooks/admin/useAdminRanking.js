@@ -47,6 +47,23 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
     };
 
     // ---------------------------------------------------------
+    // Obtener fecha comparable de una compra
+    // ---------------------------------------------------------
+
+    const obtenerFechaCompra = (compra) => {
+      const fecha =
+        compra?.fecha_compra ||
+        compra?.created_at ||
+        "";
+
+      const timestamp = new Date(fecha).getTime();
+
+      return Number.isFinite(timestamp)
+        ? timestamp
+        : 0;
+    };
+
+    // ---------------------------------------------------------
     // Solo procesamos compras aprobadas
     // ---------------------------------------------------------
 
@@ -96,6 +113,9 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
             ""
         ).trim();
 
+        const fechaCompraTimestamp =
+          obtenerFechaCompra(compra);
+
         // =====================================================
         // IDENTIDAD REAL DEL PARTICIPANTE
         // =====================================================
@@ -106,17 +126,8 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
         // 2. usuario_id
         // 3. nombre
         //
-        // Ejemplo:
-        //
-        // Juan       -> correo@gmail.com
-        // Pedro      -> correo@gmail.com
-        // jugador77  -> correo@gmail.com
-        //
-        // Resultado:
-        //
-        // UNA SOLA PERSONA EN EL RANKING
-        //
-        // Todas sus compras y tickets se acumulan.
+        // Varias compras con el mismo email pertenecen
+        // al mismo participante dentro del ranking.
         // =====================================================
 
         const claveParticipante = email
@@ -140,11 +151,42 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
             montoTotal: 0,
 
             comprasDetalle: [],
+
+            // Fecha utilizada únicamente para saber cuáles
+            // datos personales son los más recientes.
+            ultimaFechaDatos: fechaCompraTimestamp,
           };
         }
 
         const participante =
           acumulado[claveParticipante];
+
+        // =====================================================
+        // USAR LOS DATOS DE LA COMPRA MÁS RECIENTE
+        // =====================================================
+        //
+        // Esto NO cambia la identidad del participante.
+        // El email sigue siendo la clave principal.
+        //
+        // Solo determina qué nombre y teléfono se muestran
+        // como datos representativos en el ranking.
+        // =====================================================
+
+        if (
+          fechaCompraTimestamp >
+          Number(participante.ultimaFechaDatos || 0)
+        ) {
+          participante.nombre = nombre;
+
+          if (email) {
+            participante.email = email;
+          }
+
+          participante.telefono = telefono;
+
+          participante.ultimaFechaDatos =
+            fechaCompraTimestamp;
+        }
 
         // =====================================================
         // ACUMULAR TICKETS
@@ -174,16 +216,15 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
         // GUARDAR COMPRA INDIVIDUAL
         // =====================================================
         //
-        // Aquí conservamos la compra completa.
+        // Conservamos la compra completa.
         //
-        // Eso significa que el detalle del ranking puede
-        // seguir diferenciando:
+        // Gestión y detalle pueden seguir diferenciando:
         //
         // Compra 1 -> Juan
         // Compra 2 -> Pedro
         // Compra 3 -> jugador77
         //
-        // aunque las tres pertenezcan al mismo participante.
+        // aunque pertenezcan al mismo participante.
         // =====================================================
 
         participante.comprasDetalle.push(compra);
@@ -209,7 +250,11 @@ export function useAdminRanking(comprasFiltradasPorRifa) {
         }
       });
 
-    return Object.values(acumulado);
+    // Quitamos el campo interno antes de entregar el ranking.
+    return Object.values(acumulado).map(
+      ({ ultimaFechaDatos, ...participante }) =>
+        participante
+    );
   }, [comprasFiltradasPorRifa]);
 
   // =========================================================

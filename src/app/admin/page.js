@@ -1494,31 +1494,97 @@ const nombre =
               </div>
             </div>
 
-            <div className="adminpro-ranking-modal-compras">
-              <h4>Compras aprobadas del participante</h4>
+<div className="adminpro-ranking-modal-compras">
+  <h4>Compras aprobadas del participante</h4>
 
-              {participanteSeleccionado.comprasDetalle?.length ? (
-                <div className="adminpro-ranking-modal-compras-list">
-                  {participanteSeleccionado.comprasDetalle.map((compra) => (
-                    <div key={compra.id} className="adminpro-ranking-modal-compra-item">
-                      <div>
-                        <strong>Compra #{compra.id}</strong>
-                        <p>{formatearFecha(compra.fecha_compra || compra.created_at)}</p>
-                      </div>
+  {participanteSeleccionado.comprasDetalle?.length ? (
+    <div className="adminpro-ranking-modal-compras-list">
+      {[...participanteSeleccionado.comprasDetalle]
+        .sort((a, b) => {
+          const fechaA = new Date(
+            a?.fecha_compra || a?.created_at || 0
+          ).getTime();
 
-                      <div>
-                        <strong>{compra.cantidad_tickets} tickets</strong>
-                        <p>
-                          ${Number(compra.monto_total ?? compra.total ?? 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p>No hay compras para mostrar.</p>
-              )}
+          const fechaB = new Date(
+            b?.fecha_compra || b?.created_at || 0
+          ).getTime();
+
+          return fechaB - fechaA;
+        })
+        .map((compra) => {
+          const nombreCompra =
+            compra?.nombre_cliente ||
+            compra?.usuarios?.nombre ||
+            "Sin nombre";
+
+          const emailCompra =
+            compra?.email_cliente ||
+            compra?.usuarios?.email ||
+            "Sin email";
+
+          const telefonoCompra =
+            compra?.telefono_cliente ||
+            compra?.usuarios?.telefono ||
+            "Sin teléfono";
+
+          return (
+            <div
+              key={compra.id}
+              className="adminpro-ranking-modal-compra-item"
+            >
+              <div className="adminpro-ranking-modal-compra-info">
+                <strong>Compra #{compra.id}</strong>
+
+                <p>
+                  📅{" "}
+                  {formatearFecha(
+                    compra.fecha_compra ||
+                      compra.created_at
+                  )}
+                </p>
+
+                <p>
+                  👤 <b>Nombre usado:</b>{" "}
+                  {nombreCompra}
+                </p>
+
+                <p>
+                  📧 <b>Email:</b>{" "}
+                  {emailCompra}
+                </p>
+
+                <p>
+                  📱 <b>Teléfono:</b>{" "}
+                  {telefonoCompra}
+                </p>
+              </div>
+
+              <div className="adminpro-ranking-modal-compra-metricas">
+                <strong>
+                  🎟️ {Number(compra.cantidad_tickets || 0)}{" "}
+                  ticket
+                  {Number(compra.cantidad_tickets || 0) !== 1
+                    ? "s"
+                    : ""}
+                </strong>
+
+                <p>
+                  💰 $
+                  {Number(
+                    compra.monto_total ??
+                      compra.total ??
+                      0
+                  ).toFixed(2)}
+                </p>
+              </div>
             </div>
+          );
+        })}
+    </div>
+  ) : (
+    <p>No hay compras para mostrar.</p>
+  )}
+</div>
           </div>
         </div>
       )}
