@@ -996,6 +996,7 @@ const popupLink = (() => {
           pagosHref="/#pagos"
           contactoHref="/#contacto"
         />
+        <PublicAnnouncementBar config={config} />
 
         <header className="floating-header">
           <SiteLogo

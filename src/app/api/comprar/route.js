@@ -1385,34 +1385,49 @@ export async function POST(req) {
      * está aprobada.
      */
 
-    const payloadCompra = {
-      usuario_id:
-        usuarioId,
+const payloadCompra = {
+  usuario_id:
+    usuarioId,
 
-      rifa_id:
-        rifaIdLimpio,
+  rifa_id:
+    rifaIdLimpio,
 
-      cantidad_tickets:
-        cantidadTickets,
+  // =====================================================
+  // DATOS HISTÓRICOS DE ESTA COMPRA
+  // =====================================================
+  // Estos datos quedan guardados específicamente en esta
+  // compra aunque el mismo correo vuelva a comprar después
+  // utilizando otro nombre o teléfono.
+  nombre_cliente:
+    nombreLimpio,
 
-      monto_total:
-        totalEsperado,
+  email_cliente:
+    emailLimpio,
 
-      metodo_pago:
-        metodoPago,
+  telefono_cliente:
+    telefonoLimpio,
 
-      referencia:
-        referenciaFinal,
+  cantidad_tickets:
+    cantidadTickets,
 
-      comprobante_url:
-        comprobanteFinal,
+  monto_total:
+    totalEsperado,
 
-      estado_pago:
-        "pendiente",
+  metodo_pago:
+    metodoPago,
 
-      fecha_compra:
-        new Date().toISOString(),
-    };
+  referencia:
+    referenciaFinal,
+
+  comprobante_url:
+    comprobanteFinal,
+
+  estado_pago:
+    "pendiente",
+
+  fecha_compra:
+    new Date().toISOString(),
+};
 
     const {
       data:
@@ -1424,18 +1439,21 @@ export async function POST(req) {
       .insert([
         payloadCompra,
       ])
-      .select(`
-        id,
-        usuario_id,
-        rifa_id,
-        cantidad_tickets,
-        monto_total,
-        metodo_pago,
-        referencia,
-        comprobante_url,
-        estado_pago,
-        fecha_compra
-      `)
+.select(`
+  id,
+  usuario_id,
+  rifa_id,
+  nombre_cliente,
+  email_cliente,
+  telefono_cliente,
+  cantidad_tickets,
+  monto_total,
+  metodo_pago,
+  referencia,
+  comprobante_url,
+  estado_pago,
+  fecha_compra
+`)
       .single();
 
     if (

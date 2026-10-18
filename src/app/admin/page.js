@@ -571,9 +571,9 @@ const porcentajeVendido =
       return [
         compra.id,
         compra.estado_pago || "",
-        compra.usuarios?.nombre || "",
-        compra.usuarios?.email || "",
-        compra.usuarios?.telefono || "",
+compra.nombre_cliente || compra.usuarios?.nombre || "",
+compra.email_cliente || compra.usuarios?.email || "",
+compra.telefono_cliente || compra.usuarios?.telefono || "",
         compra.cantidad_tickets || 0,
         ticketsAsignadosTexto,
         monto,
@@ -816,11 +816,13 @@ const porcentajeVendido =
     }
 
     const opciones = comprasPendientes.reduce((acc, compra) => {
-      const nombre =
-        compra.usuarios?.nombre ||
-        compra.usuarios?.email ||
-        compra.usuario_id ||
-        "Sin nombre";
+const nombre =
+  compra.nombre_cliente ||
+  compra.usuarios?.nombre ||
+  compra.email_cliente ||
+  compra.usuarios?.email ||
+  compra.usuario_id ||
+  "Sin nombre";
 
       acc[compra.id] = `${nombre} - ${compra.cantidad_tickets} ticket(s) - Ref: ${compra.referencia}`;
       return acc;

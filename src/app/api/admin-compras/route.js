@@ -70,13 +70,16 @@ const rifaId = searchParams.get("rifaId");
 try {
 const [comprasResult, tickets] = await Promise.all([
   supabaseAdmin
-    .from("compras")
-    .select(`
-      id,
-      rifa_id,
-      usuario_id,
-      cantidad_tickets,
-      monto_total,
+.from("compras")
+.select(`
+  id,
+  rifa_id,
+  usuario_id,
+  nombre_cliente,
+  email_cliente,
+  telefono_cliente,
+  cantidad_tickets,
+  monto_total,
       referencia,
       metodo_pago,
       estado_pago,

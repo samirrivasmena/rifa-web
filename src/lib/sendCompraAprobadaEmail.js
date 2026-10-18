@@ -109,7 +109,30 @@ const fechaEventoFormateada = (() => {
 })();
 
 const fechaEventoSafe = escapeHtml(fechaEventoFormateada);
-const horaEventoSafe = escapeHtml(horaEvento);
+
+const horaEventoFormateada = (() => {
+  if (!horaEvento) return "";
+
+  const match = String(horaEvento)
+    .trim()
+    .match(/^(\d{1,2}):(\d{2})(?::\d{2})?$/);
+
+  if (!match) return String(horaEvento);
+
+  const horas = Number(match[1]);
+  const minutos = match[2];
+
+  if (horas < 0 || horas > 23) {
+    return String(horaEvento);
+  }
+
+  const periodo = horas >= 12 ? "PM" : "AM";
+  const hora12 = horas % 12 || 12;
+
+  return `${hora12}:${minutos} ${periodo}`;
+})();
+
+const horaEventoSafe = escapeHtml(horaEventoFormateada);
 
   const portadaSafe = safeUrl(portadaUrl);
   const eventoSafe = safeUrl(eventoUrl);
@@ -402,7 +425,7 @@ const portadaHtml = portadaSafe
                           letter-spacing:.7px;
                         "
                       >
-                        🕐 HORA
+                        🕐 HORA DEL EVENTO
                       </div>
 
                       <div
