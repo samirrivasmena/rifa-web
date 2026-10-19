@@ -25,10 +25,15 @@ function configurarVapid() {
     process.env.VAPID_SUBJECT || ""
   ).trim();
 
-  if (!publicKey || !privateKey || !subject) {
-    console.error(
-      "Admin Push: faltan variables VAPID."
-    );
+if (!publicKey || !privateKey || !subject) {
+  console.error("Admin Push: variables VAPID incompletas", {
+    publicKey: Boolean(publicKey),
+    privateKey: Boolean(privateKey),
+    subject: Boolean(subject),
+  });
+
+  return false;
+}
 
     return false;
   }
