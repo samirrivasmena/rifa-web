@@ -8,6 +8,10 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 let vapidConfigurado = false;
 
+/* =========================================================
+   CONFIGURAR VAPID
+========================================================= */
+
 function configurarVapid() {
   if (vapidConfigurado) {
     return true;
@@ -25,15 +29,23 @@ function configurarVapid() {
     process.env.VAPID_SUBJECT || ""
   ).trim();
 
-if (!publicKey || !privateKey || !subject) {
-  console.error("Admin Push: variables VAPID incompletas", {
-    publicKey: Boolean(publicKey),
-    privateKey: Boolean(privateKey),
-    subject: Boolean(subject),
-  });
+  /* -------------------------------------------------------
+     COMPROBAR VARIABLES
 
-  return false;
-}
+     IMPORTANTE:
+     Solo mostramos true/false.
+     Nunca mostramos las claves en los logs.
+  ------------------------------------------------------- */
+
+  if (!publicKey || !privateKey || !subject) {
+    console.error(
+      "Admin Push: variables VAPID incompletas",
+      {
+        publicKey: Boolean(publicKey),
+        privateKey: Boolean(privateKey),
+        subject: Boolean(subject),
+      }
+    );
 
     return false;
   }
@@ -64,10 +76,17 @@ if (!publicKey || !privateKey || !subject) {
 
 async function eliminarSuscripcion(endpoint) {
   try {
-    await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("admin_push_subscriptions")
       .delete()
       .eq("endpoint", endpoint);
+
+    if (error) {
+      console.error(
+        "Admin Push: no se pudo eliminar una suscripción expirada:",
+        error
+      );
+    }
   } catch (error) {
     console.error(
       "Admin Push: no se pudo eliminar una suscripción expirada:",
@@ -87,6 +106,10 @@ export async function enviarPushAdmins({
   tag = "sorteos-admin",
 } = {}) {
   try {
+    /* -----------------------------------------------------
+       CONFIGURAR VAPID
+    ----------------------------------------------------- */
+
     if (!configurarVapid()) {
       return {
         ok: false,
@@ -95,12 +118,18 @@ export async function enviarPushAdmins({
       };
     }
 
-    const { data: subscriptions, error } =
-      await supabaseAdmin
-        .from("admin_push_subscriptions")
-        .select(
-          "id, endpoint, p256dh, auth"
-        );
+    /* -----------------------------------------------------
+       OBTENER DISPOSITIVOS REGISTRADOS
+    ----------------------------------------------------- */
+
+    const {
+      data: subscriptions,
+      error,
+    } = await supabaseAdmin
+      .from("admin_push_subscriptions")
+      .select(
+        "id, endpoint, p256dh, auth"
+      );
 
     if (error) {
       console.error(
@@ -116,6 +145,10 @@ export async function enviarPushAdmins({
       };
     }
 
+    /* -----------------------------------------------------
+       NO HAY DISPOSITIVOS
+    ----------------------------------------------------- */
+
     if (
       !Array.isArray(subscriptions) ||
       subscriptions.length === 0
@@ -123,8 +156,14 @@ export async function enviarPushAdmins({
       return {
         ok: true,
         enviados: 0,
+        fallidos: 0,
+        total: 0,
       };
     }
+
+    /* -----------------------------------------------------
+       PREPARAR NOTIFICACIÓN
+    ----------------------------------------------------- */
 
     const payload = JSON.stringify({
       title,
@@ -133,78 +172,99 @@ export async function enviarPushAdmins({
       tag,
     });
 
-    let enviados = 0;
+    /* -----------------------------------------------------
+       ENVIAR A TODOS LOS DISPOSITIVOS
+    ----------------------------------------------------- */
 
-    const resultados = await Promise.allSettled(
-      subscriptions.map(async (item) => {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: item.endpoint,
+    const resultados =
+      await Promise.allSettled(
+        subscriptions.map(
+          async (item) => {
+            try {
+              await webpush.sendNotification(
+                {
+                  endpoint: item.endpoint,
 
-              keys: {
-                p256dh: item.p256dh,
-                auth: item.auth,
-              },
-            },
-            payload,
-            {
-              TTL: 60,
+                  keys: {
+                    p256dh: item.p256dh,
+                    auth: item.auth,
+                  },
+                },
+                payload,
+                {
+                  TTL: 60,
+                }
+              );
+
+              return {
+                ok: true,
+                id: item.id,
+              };
+            } catch (errorPush) {
+              const statusCode =
+                Number(
+                  errorPush?.statusCode ||
+                    errorPush?.status
+                ) || 0;
+
+              /*
+               * 404 / 410:
+               * La suscripción ya no existe
+               * o expiró.
+               *
+               * La eliminamos de Supabase.
+               */
+
+              if (
+                statusCode === 404 ||
+                statusCode === 410
+              ) {
+                await eliminarSuscripcion(
+                  item.endpoint
+                );
+
+                return {
+                  ok: false,
+                  eliminada: true,
+                  id: item.id,
+                  statusCode,
+                };
+              }
+
+              console.error(
+                "Admin Push: error enviando notificación:",
+                statusCode || errorPush
+              );
+
+              return {
+                ok: false,
+                id: item.id,
+                statusCode,
+              };
             }
-          );
-
-          enviados += 1;
-
-          return {
-            ok: true,
-            id: item.id,
-          };
-        } catch (errorPush) {
-          const statusCode =
-            Number(
-              errorPush?.statusCode ||
-                errorPush?.status
-            ) || 0;
-
-          /*
-           * 404 / 410:
-           * la suscripción ya no existe o expiró.
-           * La limpiamos de nuestra base de datos.
-           */
-          if (
-            statusCode === 404 ||
-            statusCode === 410
-          ) {
-            await eliminarSuscripcion(
-              item.endpoint
-            );
-
-            return {
-              ok: false,
-              eliminada: true,
-              id: item.id,
-            };
           }
+        )
+      );
 
-          console.error(
-            "Admin Push: error enviando notificación:",
-            statusCode || errorPush
-          );
+    /* -----------------------------------------------------
+       CONTAR RESULTADOS
+    ----------------------------------------------------- */
 
-          return {
-            ok: false,
-            id: item.id,
-            statusCode,
-          };
-        }
-      })
-    );
+    const enviados = resultados.filter(
+      (resultado) =>
+        resultado.status === "fulfilled" &&
+        resultado.value?.ok === true
+    ).length;
 
     const fallidos = resultados.filter(
       (resultado) =>
         resultado.status === "rejected" ||
         resultado.value?.ok === false
     ).length;
+
+    /* -----------------------------------------------------
+       RESULTADO
+    ----------------------------------------------------- */
 
     return {
       ok: true,
@@ -219,14 +279,15 @@ export async function enviarPushAdmins({
     );
 
     /*
-     * Nunca lanzamos el error hacia la lógica
-     * de compras. Una falla de Push jamás debe
-     * afectar una compra.
+     * Una falla en Push nunca debe romper
+     * posteriormente la lógica de una compra.
      */
+
     return {
       ok: false,
       enviados: 0,
-      error: "Error enviando notificaciones",
+      error:
+        "Error enviando notificaciones",
     };
   }
 }
