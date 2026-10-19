@@ -1,11 +1,4 @@
 export const paymentMethodsConfig = {
-  Binance: {
-    key: "Binance",
-    logo: "/payment/binance.png",
-    bgClass: "binance-bg",
-    type: "standard",
-  },
-
   Zelle: {
     key: "Zelle",
     logo: "/payment/zelle.png",
@@ -36,7 +29,6 @@ export const paymentMethodsConfig = {
 };
 
 export const paymentMethodsList = [
-  "Binance",
   "Zelle",
   "App Pay",
   "PayPal",

@@ -111,7 +111,7 @@ document.documentElement.style.setProperty(
   const rifaDesdeQuery = searchParams.get("rifa");
 
   const [tickets, setTickets] = useState(1);
-  const [paymentMethod, setPaymentMethod] = useState("Binance");
+  const [paymentMethod, setPaymentMethod] = useState("");
   const [showSecondImage, setShowSecondImage] = useState(false);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState("");
@@ -508,8 +508,8 @@ const popupLink = (() => {
   const metodoAdmin =
     metodosPagoAdmin.find((metodo) => metodo.nombre === paymentMethod) || null;
 
-  const metodoVisual =
-    paymentMethodsConfig[paymentMethod] || paymentMethodsConfig.Binance || {};
+const metodoVisual =
+  paymentMethodsConfig[paymentMethod] || {};
 
   const metodoSeleccionado = {
     ...metodoVisual,
