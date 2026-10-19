@@ -1155,7 +1155,7 @@ const nombre =
       .catch(() => ({}));
 
     console.log(
-      "🔔 Resultado prueba Push:",
+      "🔔 Resultado notificación Admin:",
       data
     );
 
@@ -1173,7 +1173,7 @@ const nombre =
 
 await Swal.fire({
   icon: "success",
-  title: "🔔 Prueba completada",
+  title: "🔔 Sistema verificado",
   text: `La notificación fue enviada correctamente a ${
     data?.resultado?.enviados ?? 0
   } dispositivo${
@@ -1189,7 +1189,7 @@ await Swal.fire({
     await Swal.fire({
       icon: "error",
       title: "Error",
-      text: "No se pudo realizar la prueba Push.",
+      text: "No se pudo verificar el sistema de notificaciones.",
     });
   }
 };
