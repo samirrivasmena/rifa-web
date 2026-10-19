@@ -51,12 +51,12 @@ export async function POST(req) {
        ENVIAR PUSH
     ----------------------------------------------------- */
 
-    const resultado = await enviarPushAdmins({
-title: "🔔 Notificación de prueba",
-body: "¡Todo listo! Las notificaciones del Admin están funcionando correctamente.",
-      url: "/admin",
-      tag: `admin-push-test-${Date.now()}`,
-    });
+const resultado = await enviarPushAdmins({
+  title: "🔔 Sistema de notificaciones activo",
+  body: "Las alertas del panel administrativo están funcionando correctamente.",
+  url: "/admin",
+  tag: `admin-push-test-${Date.now()}`,
+});
 
     /* -----------------------------------------------------
        RESPUESTA
