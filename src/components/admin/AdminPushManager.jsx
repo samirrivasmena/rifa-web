@@ -213,27 +213,55 @@ useEffect(() => {
            BUSCAR SUSCRIPCIÓN EXISTENTE
         ================================================= */
 
-        let subscription =
-          await registration.pushManager
-            .getSubscription();
+let subscription =
+  await registration.pushManager
+    .getSubscription();
 
-        /* =================================================
-           CREAR SUSCRIPCIÓN SI NO EXISTE
-        ================================================= */
+/* =================================================
+   RENOVAR SUSCRIPCIÓN SI CAMBIÓ LA CLAVE VAPID
+================================================= */
 
-        if (!subscription) {
-          subscription =
-            await registration.pushManager.subscribe(
-              {
-                userVisibleOnly: true,
+if (subscription) {
+  const claveActual =
+    subscription.options?.applicationServerKey;
 
-                applicationServerKey:
-                  convertirVapidKey(
-                    publicKey
-                  ),
-              }
-            );
-        }
+  const claveNueva =
+    convertirVapidKey(publicKey);
+
+  const actualBytes = claveActual
+    ? new Uint8Array(claveActual)
+    : null;
+
+  const mismaClave =
+    actualBytes &&
+    actualBytes.length === claveNueva.length &&
+    actualBytes.every(
+      (byte, index) =>
+        byte === claveNueva[index]
+    );
+
+  if (!mismaClave) {
+    console.log(
+      "🔄 Clave VAPID cambió. Renovando suscripción Push..."
+    );
+
+    await subscription.unsubscribe();
+    subscription = null;
+  }
+}
+
+/* =================================================
+   CREAR SUSCRIPCIÓN
+================================================= */
+
+if (!subscription) {
+  subscription =
+    await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey:
+        convertirVapidKey(publicKey),
+  });
+}
 
         if (cancelado) return;
 
