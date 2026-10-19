@@ -156,9 +156,9 @@ const cargarDashboard = useCallback(
   [accesoPermitido]
 );
 
-const cargarRifasGlobal = useCallback(async () => {
+const cargarRifasGlobal = useCallback(async (headersParam = null) => {
   try {
-    const headers = await getAdminAuthHeaders();
+    const headers = headersParam || (await getAdminAuthHeaders());
 
     if (!headers.Authorization) {
       console.warn("No hay token admin listo todavía para listar rifas");
@@ -240,7 +240,7 @@ const recargarTodo = useCallback(async () => {
       };
     }
 
-    const rifaId = await cargarRifasGlobal();
+    const rifaId = await cargarRifasGlobal(headers);
 
     if (!rifaId) {
       setCompras([]);
@@ -278,6 +278,12 @@ const recargarTodo = useCallback(async () => {
     setDataLoading(false);
   }
 }, [cargarDashboard, cargarRifasGlobal]);
+
+useEffect(() => {
+  if (!accesoPermitido) return;
+
+  recargarTodo();
+}, [accesoPermitido, recargarTodo]);
 
 
   useEffect(() => {
@@ -1165,13 +1171,15 @@ const nombre =
       return;
     }
 
-    await Swal.fire({
-      icon: "success",
-      title: "🔔 Push enviado",
-      text: `Notificación procesada. Enviadas: ${
-        data?.resultado?.enviados ?? 0
-      }`,
-    });
+await Swal.fire({
+  icon: "success",
+  title: "🔔 Prueba completada",
+  text: `La notificación fue enviada correctamente a ${
+    data?.resultado?.enviados ?? 0
+  } dispositivo${
+    Number(data?.resultado?.enviados ?? 0) === 1 ? "" : "s"
+  }.`,
+});
   } catch (error) {
     console.error(
       "Error probando Admin Push:",
@@ -1288,23 +1296,23 @@ return (
     />
 
     <div className="adminpro-layout" ref={topRef}>
-        <Sidebar
-          activa={seccionActiva}
-          onNavigate={handleSidebarNavigate}
-          onLogout={cerrarSesion}
-          adminEmail={adminEmail}
-          logoUrl={logoUrl}
-        />
-
-        <main className="adminpro-main">
-<HeaderPanel
-  rifas={rifas}
-  rifaSeleccionadaId={rifaSeleccionadaId}
-  setRifaSeleccionadaId={cambiarRifaSeleccionada}
-  onRecargar={recargarTodo}
+<Sidebar
+  activa={seccionActiva}
+  onNavigate={handleSidebarNavigate}
+  onLogout={cerrarSesion}
   onProbarNotificacion={probarNotificacionPush}
-  dataLoading={dataLoading}
+  adminEmail={adminEmail}
+  logoUrl={logoUrl}
 />
+
+<main className="adminpro-main">
+  <HeaderPanel
+    rifas={rifas}
+    rifaSeleccionadaId={rifaSeleccionadaId}
+    setRifaSeleccionadaId={cambiarRifaSeleccionada}
+    onRecargar={recargarTodo}
+    dataLoading={dataLoading}
+  />
 
           {dataLoading && (
             <div className="adminpro-top-info">Cargando datos del panel...</div>

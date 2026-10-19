@@ -8,9 +8,10 @@ import { supabase } from "../../lib/supabase";
 export function useAdminAuth() {
   const router = useRouter();
 
-  const [authLoading, setAuthLoading] = useState(true);
-  const [accesoPermitido, setAccesoPermitido] = useState(false);
-  const [adminEmail, setAdminEmail] = useState("");
+const [authLoading, setAuthLoading] = useState(true);
+const [accesoPermitido, setAccesoPermitido] = useState(false);
+const [adminEmail, setAdminEmail] = useState("");
+const [adminToken, setAdminToken] = useState("");
 
   useEffect(() => {
     let mounted = true;
@@ -67,8 +68,9 @@ export function useAdminAuth() {
 
         if (!mounted) return;
 
-        setAdminEmail(user.email || "");
-        setAccesoPermitido(true);
+setAdminEmail(user.email || "");
+setAdminToken(token);
+setAccesoPermitido(true);
       } catch (error) {
         console.error("Error verificando acceso:", error);
 
@@ -106,10 +108,11 @@ export function useAdminAuth() {
     router.replace("/admin-login");
   };
 
-  return {
-    authLoading,
-    accesoPermitido,
-    adminEmail,
-    cerrarSesion,
-  };
+return {
+  authLoading,
+  accesoPermitido,
+  adminEmail,
+  adminToken,
+  cerrarSesion,
+};
 }

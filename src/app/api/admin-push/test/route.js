@@ -52,9 +52,8 @@ export async function POST(req) {
     ----------------------------------------------------- */
 
     const resultado = await enviarPushAdmins({
-      title: "🔔 Sorteos LSD Admin",
-      body:
-        "Notificación de prueba funcionando correctamente.",
+title: "🔔 Notificación de prueba",
+body: "¡Todo listo! Las notificaciones del Admin están funcionando correctamente.",
       url: "/admin",
       tag: `admin-push-test-${Date.now()}`,
     });

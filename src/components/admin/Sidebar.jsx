@@ -208,6 +208,7 @@ function IconConfig() {
     </svg>
   );
 }
+
 function IconFreeDrop() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
@@ -244,6 +245,7 @@ export default function Sidebar({
   activa,
   onNavigate,
   onLogout,
+  onProbarNotificacion,
   adminEmail,
   logoUrl = "",
 }) {
@@ -340,9 +342,38 @@ export default function Sidebar({
         size="sidebar"
       />
 
-      <div className={mobile ? "adminpro-mobile-brand-text" : "adminpro-brand-text"}>
+      <div
+        className={
+          mobile ? "adminpro-mobile-brand-text" : "adminpro-brand-text"
+        }
+      >
         <strong>ADMIN PANEL</strong>
       </div>
+
+      <button
+        type="button"
+        onClick={onProbarNotificacion}
+        title="Probar notificación"
+        aria-label="Probar notificación"
+        style={{
+          width: "34px",
+          height: "34px",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: "10px",
+          background: "rgba(255,255,255,0.05)",
+          color: "#ffffff",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: "0",
+          fontSize: "15px",
+          flexShrink: 0,
+          marginLeft: "8px",
+        }}
+      >
+        🔔
+      </button>
     </div>
   );
 
