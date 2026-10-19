@@ -58,10 +58,15 @@ export default function Admin() {
     scrollToRef,
   } = useAdminNavigation();
 
-  const [dataLoading, setDataLoading] = useState(false);
-  const [showSecondImage, setShowSecondImage] = useState(false);
+const [dataLoading, setDataLoading] = useState(false);
+const [showSecondImage, setShowSecondImage] = useState(false);
 
-  const [compras, setCompras] = useState([]);
+const [notificacionesPushActivas, setNotificacionesPushActivas] =
+  useState(false);
+
+const adminPushControlRef = useRef(null);
+
+const [compras, setCompras] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [rifas, setRifas] = useState([]);
 
@@ -1127,6 +1132,26 @@ const nombre =
       setLoadingEliminacion(null);
     }
   };
+  const alternarNotificacionesPush = async () => {
+  try {
+    if (!adminPushControlRef.current) {
+      await Swal.fire({
+        icon: "warning",
+        title: "Notificaciones no disponibles",
+        text: "El sistema de notificaciones todavía se está iniciando.",
+      });
+
+      return;
+    }
+
+    await adminPushControlRef.current.alternar();
+  } catch (error) {
+    console.error(
+      "Error cambiando las notificaciones Push:",
+      error
+    );
+  }
+};
   const probarNotificacionPush = async () => {
   try {
     const headers = await getAdminAuthHeaders();
@@ -1291,16 +1316,19 @@ await Swal.fire({
 
 return (
   <>
-    <AdminPushManager
-      accesoPermitido={accesoPermitido}
-    />
+<AdminPushManager
+  accesoPermitido={accesoPermitido}
+  onEstadoChange={setNotificacionesPushActivas}
+  controlRef={adminPushControlRef}
+/>
 
     <div className="adminpro-layout" ref={topRef}>
 <Sidebar
   activa={seccionActiva}
   onNavigate={handleSidebarNavigate}
   onLogout={cerrarSesion}
-  onProbarNotificacion={probarNotificacionPush}
+  onProbarNotificacion={alternarNotificacionesPush}
+  notificacionesPushActivas={notificacionesPushActivas}
   adminEmail={adminEmail}
   logoUrl={logoUrl}
 />

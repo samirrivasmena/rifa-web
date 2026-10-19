@@ -1,50 +1,9 @@
-import { NextResponse } from "next/server";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
-import { requireAdmin } from "@/lib/requireAdmin";
-
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-export const revalidate = 0;
-
 /* =========================================================
-   RESPUESTA SIN CACHÉ
+   DELETE
+   Desactiva las notificaciones Push de este dispositivo.
 ========================================================= */
 
-function json(data, status = 200) {
-  return NextResponse.json(data, {
-    status,
-    headers: {
-      "Cache-Control": "no-store, no-cache, must-revalidate",
-    },
-  });
-}
-
-/* =========================================================
-   VALIDACIONES
-========================================================= */
-
-function textoSeguro(valor, max = 500) {
-  return String(valor || "")
-    .trim()
-    .slice(0, max);
-}
-
-function endpointValido(endpoint) {
-  try {
-    const url = new URL(endpoint);
-
-    return url.protocol === "https:";
-  } catch {
-    return false;
-  }
-}
-
-/* =========================================================
-   POST
-   Registra o actualiza este dispositivo del administrador.
-========================================================= */
-
-export async function POST(req) {
+export async function DELETE(req) {
   try {
     // -------------------------------------------------------
     // AUTENTICACIÓN ADMIN
@@ -80,82 +39,34 @@ export async function POST(req) {
       );
     }
 
-    const subscription = body?.subscription;
-
     const endpoint = textoSeguro(
-      subscription?.endpoint,
+      body?.endpoint,
       4000
     );
 
-    const p256dh = textoSeguro(
-      subscription?.keys?.p256dh,
-      1000
-    );
-
-    const auth = textoSeguro(
-      subscription?.keys?.auth,
-      1000
-    );
-
-    // -------------------------------------------------------
-    // VALIDACIÓN DE LA SUSCRIPCIÓN
-    // -------------------------------------------------------
-
-    if (
-      !endpoint ||
-      !p256dh ||
-      !auth ||
-      !endpointValido(endpoint)
-    ) {
+    if (!endpoint || !endpointValido(endpoint)) {
       return json(
         {
           ok: false,
-          error: "Suscripción push inválida",
+          error: "Endpoint push inválido",
         },
         400
       );
     }
 
     // -------------------------------------------------------
-    // USER AGENT
+    // ELIMINAR ÚNICAMENTE ESTE DISPOSITIVO
     // -------------------------------------------------------
 
-    const userAgent = textoSeguro(
-      req.headers.get("user-agent"),
-      1000
-    );
-
-    const ahora = new Date().toISOString();
-
-    // -------------------------------------------------------
-    // UPSERT
-    //
-    // endpoint tiene UNIQUE en Supabase.
-    // Si este teléfono ya estaba registrado, simplemente
-    // actualizamos sus datos en lugar de duplicarlo.
-    // -------------------------------------------------------
-
-    const { data, error } = await supabaseAdmin
+    const { error } = await supabaseAdmin
       .from("admin_push_subscriptions")
-      .upsert(
-        {
-          admin_user_id: admin.user.id,
-          endpoint,
-          p256dh,
-          auth,
-          user_agent: userAgent || null,
-          updated_at: ahora,
-        },
-        {
-          onConflict: "endpoint",
-        }
-      )
-      .select("id, created_at, updated_at")
-      .single();
+      .delete()
+      .eq("endpoint", endpoint)
+      .eq("admin_user_id", admin.user.id);
 
     if (error) {
       console.error(
-        "Error guardando suscripción push:",
+        "Error desactivando suscripción push:",
         error
       );
 
@@ -163,7 +74,7 @@ export async function POST(req) {
         {
           ok: false,
           error:
-            "No se pudo registrar este dispositivo para notificaciones",
+            "No se pudieron desactivar las notificaciones de este dispositivo",
         },
         500
       );
@@ -172,16 +83,11 @@ export async function POST(req) {
     return json({
       ok: true,
       message:
-        "Dispositivo registrado correctamente",
-      subscription: {
-        id: data.id,
-        created_at: data.created_at,
-        updated_at: data.updated_at,
-      },
+        "Notificaciones desactivadas en este dispositivo",
     });
   } catch (error) {
     console.error(
-      "admin push subscribe error:",
+      "admin push unsubscribe error:",
       error
     );
 
@@ -189,7 +95,7 @@ export async function POST(req) {
       {
         ok: false,
         error:
-          "No se pudo configurar las notificaciones",
+          "No se pudieron desactivar las notificaciones",
       },
       500
     );

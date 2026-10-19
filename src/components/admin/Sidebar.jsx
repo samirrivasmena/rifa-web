@@ -246,6 +246,7 @@ export default function Sidebar({
   onNavigate,
   onLogout,
   onProbarNotificacion,
+  notificacionesPushActivas = false,
   adminEmail,
   logoUrl = "",
 }) {
@@ -350,30 +351,47 @@ export default function Sidebar({
         <strong>ADMIN PANEL</strong>
       </div>
 
-      <button
-        type="button"
-        onClick={onProbarNotificacion}
-        title="Probar notificación"
-        aria-label="Probar notificación"
-        style={{
-          width: "34px",
-          height: "34px",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: "10px",
-          background: "rgba(255,255,255,0.05)",
-          color: "#ffffff",
-          cursor: "pointer",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: "0",
-          fontSize: "15px",
-          flexShrink: 0,
-          marginLeft: "8px",
-        }}
-      >
-        🔔
-      </button>
+<button
+  type="button"
+  onClick={onProbarNotificacion}
+  title={
+    notificacionesPushActivas
+      ? "Notificaciones activas"
+      : "Notificaciones desactivadas"
+  }
+  aria-label={
+    notificacionesPushActivas
+      ? "Notificaciones activas"
+      : "Notificaciones desactivadas"
+  }
+  style={{
+    minWidth: "64px",
+    height: "34px",
+    border: notificacionesPushActivas
+      ? "1px solid rgba(34,197,94,0.45)"
+      : "1px solid rgba(255,255,255,0.10)",
+    borderRadius: "10px",
+    background: notificacionesPushActivas
+      ? "rgba(34,197,94,0.14)"
+      : "rgba(255,255,255,0.05)",
+    color: notificacionesPushActivas
+      ? "#22c55e"
+      : "#94a3b8",
+    cursor: "pointer",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "5px",
+    padding: "0 8px",
+    fontSize: "12px",
+    fontWeight: "800",
+    flexShrink: 0,
+    marginLeft: "8px",
+  }}
+>
+  <span>{notificacionesPushActivas ? "🔔" : "🔕"}</span>
+  <span>{notificacionesPushActivas ? "ON" : "OFF"}</span>
+</button>
     </div>
   );
 
