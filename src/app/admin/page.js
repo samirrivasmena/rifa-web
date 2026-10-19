@@ -279,10 +279,6 @@ const recargarTodo = useCallback(async () => {
   }
 }, [cargarDashboard, cargarRifasGlobal]);
 
-  useEffect(() => {
-    if (!accesoPermitido) return;
-    recargarTodo();
-  }, [accesoPermitido, recargarTodo]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -388,6 +384,40 @@ const cambiarRifaSeleccionada = useCallback(
     eliminarFiltroIndividual,
     resetComprasState,
   } = useAdminCompras(comprasDeRifaSeleccionada);
+
+  useEffect(() => {
+  if (!accesoPermitido) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const abrir = params.get("abrir");
+
+  if (abrir !== "compras-pendientes") return;
+
+  setSeccionActiva("compras");
+
+  setFiltrosCompras((prev) => ({
+    ...prev,
+    estado: "pendiente",
+  }));
+
+  setPaginaCompras(1);
+
+  const timer = setTimeout(() => {
+    scrollToRef(comprasSectionRef, 180);
+  }, 500);
+
+  window.history.replaceState({}, "", "/admin");
+
+  return () => clearTimeout(timer);
+}, [
+  accesoPermitido,
+  comprasSectionRef,
+  scrollToRef,
+  setFiltrosCompras,
+  setPaginaCompras,
+  setSeccionActiva,
+]);
+  
 
   const {
     busquedaRanking,

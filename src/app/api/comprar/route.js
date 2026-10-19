@@ -1490,7 +1490,7 @@ try {
       `${cantidad} ticket${cantidad === 1 ? "" : "s"} · ` +
       `$${monto.toFixed(2)}`,
 
-    url: "/admin",
+    url: "/admin?abrir=compras-pendientes",
 
     tag:
       `compra-pendiente-${compraCreada.id}`,
