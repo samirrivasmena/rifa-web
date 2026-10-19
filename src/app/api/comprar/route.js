@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
+import { enviarPushAdmins } from "@/lib/adminPush";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -1470,6 +1471,36 @@ const payloadCompra = {
         500
       );
     }
+    // -------------------------------------------------------
+// PUSH ADMIN - NUEVA COMPRA PENDIENTE
+// -------------------------------------------------------
+
+try {
+  const cantidad =
+    Number(compraCreada.cantidad_tickets) || 0;
+
+  const monto =
+    Number(compraCreada.monto_total) || 0;
+
+  await enviarPushAdmins({
+    title: "🔔 Nueva compra pendiente",
+
+    body:
+      `${nombreLimpio} compró ` +
+      `${cantidad} ticket${cantidad === 1 ? "" : "s"} · ` +
+      `$${monto.toFixed(2)}`,
+
+    url: "/admin",
+
+    tag:
+      `compra-pendiente-${compraCreada.id}`,
+  });
+} catch (pushError) {
+  console.error(
+    "Admin Push: error notificando nueva compra:",
+    pushError
+  );
+}
 
     // -------------------------------------------------------
     // ESTADÍSTICAS DE RESPUESTA
