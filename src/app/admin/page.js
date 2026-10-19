@@ -11,7 +11,7 @@ import { getRifaProgress } from "@/lib/getRifaProgress";
 import Sidebar from "../../components/admin/Sidebar";
 import HeaderPanel from "../../components/admin/HeaderPanel";
 import ManualApprovalModal from "../../components/admin/ManualApprovalModal";
-
+import AdminPushManager from "../../components/admin/AdminPushManager";
 import AdminDashboardSection from "../../components/admin/sections/AdminDashboardSection";
 import AdminNumerosSection from "../../components/admin/sections/AdminNumerosSection";
 import AdminComprasSection from "../../components/admin/sections/AdminComprasSection";
@@ -1187,9 +1187,13 @@ const nombre =
     );
   }
 
-  return (
-    <>
-      <div className="adminpro-layout" ref={topRef}>
+return (
+  <>
+    <AdminPushManager
+      accesoPermitido={accesoPermitido}
+    />
+
+    <div className="adminpro-layout" ref={topRef}>
         <Sidebar
           activa={seccionActiva}
           onNavigate={handleSidebarNavigate}
