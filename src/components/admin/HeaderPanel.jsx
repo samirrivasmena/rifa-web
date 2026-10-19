@@ -28,6 +28,7 @@ export default function HeaderPanel({
   rifaSeleccionadaId,
   setRifaSeleccionadaId,
   onRecargar,
+  onProbarNotificacion,
   dataLoading,
 }) {
   const rifaSeleccionada =
@@ -73,6 +74,30 @@ export default function HeaderPanel({
       </div>
 
       <div className="adminpro-header-right">
+        <button
+          type="button"
+          onClick={onProbarNotificacion}
+          title="Probar notificación"
+          aria-label="Probar notificación"
+          style={{
+            width: "36px",
+            height: "36px",
+            border: "1px solid rgba(255,255,255,0.08)",
+            borderRadius: "10px",
+            background: "rgba(255,255,255,0.05)",
+            color: "#ffffff",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "0",
+            fontSize: "15px",
+            flexShrink: 0,
+          }}
+        >
+          🔔
+        </button>
+
         <button
           className="adminpro-header-refresh"
           onClick={onRecargar}

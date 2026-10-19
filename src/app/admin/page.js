@@ -1091,6 +1091,70 @@ const nombre =
       setLoadingEliminacion(null);
     }
   };
+  const probarNotificacionPush = async () => {
+  try {
+    const headers = await getAdminAuthHeaders();
+
+    if (!headers.Authorization) {
+      await Swal.fire({
+        icon: "error",
+        title: "Sin sesión",
+        text: "No se encontró una sesión válida del administrador.",
+      });
+
+      return;
+    }
+
+    const response = await fetch(
+      "/api/admin-push/test",
+      {
+        method: "POST",
+        headers,
+        cache: "no-store",
+      }
+    );
+
+    const data = await response
+      .json()
+      .catch(() => ({}));
+
+    console.log(
+      "🔔 Resultado prueba Push:",
+      data
+    );
+
+    if (!response.ok || !data?.ok) {
+      await Swal.fire({
+        icon: "error",
+        title: "Error de notificación",
+        text:
+          data?.error ||
+          "No se pudo enviar la notificación.",
+      });
+
+      return;
+    }
+
+    await Swal.fire({
+      icon: "success",
+      title: "🔔 Push enviado",
+      text: `Notificación procesada. Enviadas: ${
+        data?.resultado?.enviados ?? 0
+      }`,
+    });
+  } catch (error) {
+    console.error(
+      "Error probando Admin Push:",
+      error
+    );
+
+    await Swal.fire({
+      icon: "error",
+      title: "Error",
+      text: "No se pudo realizar la prueba Push.",
+    });
+  }
+};
 
   const irADashboardTotal = () => {
     setSeccionActiva("dashboard");
@@ -1203,13 +1267,14 @@ return (
         />
 
         <main className="adminpro-main">
-          <HeaderPanel
-            rifas={rifas}
-            rifaSeleccionadaId={rifaSeleccionadaId}
-            setRifaSeleccionadaId={cambiarRifaSeleccionada}
-            onRecargar={recargarTodo}
-            dataLoading={dataLoading}
-          />
+<HeaderPanel
+  rifas={rifas}
+  rifaSeleccionadaId={rifaSeleccionadaId}
+  setRifaSeleccionadaId={cambiarRifaSeleccionada}
+  onRecargar={recargarTodo}
+  onProbarNotificacion={probarNotificacionPush}
+  dataLoading={dataLoading}
+/>
 
           {dataLoading && (
             <div className="adminpro-top-info">Cargando datos del panel...</div>
