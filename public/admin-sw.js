@@ -1,10 +1,13 @@
 /* =========================================================
    SORTEOS LSD ADMIN - SERVICE WORKER
-   WEB PUSH
+   WEB PUSH + BADGE DE NOTIFICACIONES
 
    IMPORTANTE:
    Este Service Worker NO cachea páginas, APIs,
    compras, tickets ni información del Admin.
+
+   Solo guarda localmente el número del badge
+   de notificaciones del icono de la aplicación.
 ========================================================= */
 
 self.addEventListener("install", () => {
@@ -59,10 +62,56 @@ self.addEventListener("push", (event) => {
   };
 
   event.waitUntil(
-    self.registration.showNotification(
-      title,
-      options
-    )
+    (async () => {
+      /* =====================================================
+         1. MOSTRAR NOTIFICACIÓN
+         Se mantiene la notificación que ya funcionaba.
+      ===================================================== */
+
+      await self.registration.showNotification(
+        title,
+        options
+      );
+
+      /* =====================================================
+         2. SUMAR CONTADOR AL ICONO DE LA APP
+      ===================================================== */
+
+      if ("setAppBadge" in self.navigator) {
+        try {
+          const cache = await caches.open(
+            "sorteos-admin-badge"
+          );
+
+          const response = await cache.match(
+            "/admin-badge-count"
+          );
+
+          let count = 0;
+
+          if (response) {
+            count =
+              Number(await response.text()) || 0;
+          }
+
+          count += 1;
+
+          await cache.put(
+            "/admin-badge-count",
+            new Response(String(count))
+          );
+
+          await self.navigator.setAppBadge(
+            count
+          );
+        } catch (error) {
+          console.error(
+            "No se pudo actualizar el badge:",
+            error
+          );
+        }
+      }
+    })()
   );
 });
 
