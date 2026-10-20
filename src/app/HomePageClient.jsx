@@ -487,6 +487,24 @@ const popupLink = (() => {
 
   const imagenRifaPrincipal = rifaActiva?.portada_url || "";
   const imagenRifaScroll = rifaActiva?.portada_scroll_url || imagenRifaPrincipal;
+  useEffect(() => {
+  if (
+    !imagenRifaPrincipal ||
+    !imagenRifaScroll ||
+    imagenRifaPrincipal === imagenRifaScroll
+  ) {
+    setHomeImageIndex(0);
+    return;
+  }
+
+  const interval = window.setInterval(() => {
+    setHomeImageIndex((prev) => (prev === 0 ? 1 : 0));
+  }, 3000);
+
+  return () => {
+    window.clearInterval(interval);
+  };
+}, [imagenRifaPrincipal, imagenRifaScroll]);
 
   const fechaRifa =
     rifaActiva?.fecha_sorteo ||
