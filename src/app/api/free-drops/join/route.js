@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
+import { enviarPushAdmins } from "@/lib/adminPush";
 
 
 // ============================================================
@@ -828,6 +829,38 @@ if (fueAprobadaAutomaticamente) {
     );
   }
 }
+    // ========================================================
+    // NOTIFICACIÓN PUSH ADMIN - NUEVO FREE DROP
+    //
+    // IMPORTANTE:
+    // Un fallo del Push NUNCA afecta la participación FREE.
+    // ========================================================
+
+    try {
+      const nombreCompletoPush = [
+        nombre,
+        apellido,
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .trim();
+
+      const estadoPush = requiresReview
+        ? "Pendiente de revisión"
+        : "Participación registrada";
+
+      await enviarPushAdmins({
+        title: "🎁 Nuevo Free Drop",
+        body: `${nombreCompletoPush || "Nuevo participante"} — ${freeDropNombre} — ${estadoPush}`,
+        url: "/admin?abrir=free-drops",
+        tag: `free-drop-${resultado.participation_id || Date.now()}`,
+      });
+    } catch (errorPush) {
+      console.error(
+        "La participación FREE se registró correctamente, pero el Push Admin no pudo enviarse:",
+        errorPush
+      );
+    }
 
     // ========================================================
     // 11. RESPUESTA COMPATIBLE CON TU FRONTEND ACTUAL
