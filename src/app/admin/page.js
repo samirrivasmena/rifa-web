@@ -396,33 +396,54 @@ const cambiarRifaSeleccionada = useCallback(
     resetComprasState,
   } = useAdminCompras(comprasDeRifaSeleccionada);
 
-  useEffect(() => {
+useEffect(() => {
   if (!accesoPermitido) return;
 
   const params = new URLSearchParams(window.location.search);
   const abrir = params.get("abrir");
 
-  if (abrir !== "compras-pendientes") return;
+  // ========================================================
+  // NOTIFICACIÓN → COMPRAS PENDIENTES
+  // ========================================================
 
-  setSeccionActiva("compras");
+  if (abrir === "compras-pendientes") {
+    setSeccionActiva("compras");
 
-  setFiltrosCompras((prev) => ({
-    ...prev,
-    estado: "pendiente",
-  }));
+    setFiltrosCompras((prev) => ({
+      ...prev,
+      estado: "pendiente",
+    }));
 
-  setPaginaCompras(1);
+    setPaginaCompras(1);
 
-  const timer = setTimeout(() => {
-    scrollToRef(comprasSectionRef, 180);
-  }, 500);
+    const timer = setTimeout(() => {
+      scrollToRef(comprasSectionRef, 180);
+    }, 500);
 
-  window.history.replaceState({}, "", "/admin");
+    window.history.replaceState({}, "", "/admin");
 
-  return () => clearTimeout(timer);
+    return () => clearTimeout(timer);
+  }
+
+  // ========================================================
+  // NOTIFICACIÓN → FREE DROPS
+  // ========================================================
+
+  if (abrir === "free-drops") {
+    setSeccionActiva("freeDrops");
+
+    const timer = setTimeout(() => {
+      scrollToRef(topRef, 120);
+    }, 500);
+
+    window.history.replaceState({}, "", "/admin");
+
+    return () => clearTimeout(timer);
+  }
 }, [
   accesoPermitido,
   comprasSectionRef,
+  topRef,
   scrollToRef,
   setFiltrosCompras,
   setPaginaCompras,
