@@ -542,6 +542,50 @@ const porcentajeVendido =
     };
   }, [comprasFiltradasPorRifa, rifaSeleccionada, progresoRifa]);
 
+    /* =========================================================
+     BADGE DEL ICONO ADMIN
+     Muestra la cantidad REAL de compras pendientes
+  ========================================================= */
+
+  useEffect(() => {
+    if (!accesoPermitido) return;
+
+    const pendientes = Number(
+      dashboardCompactSummary?.comprasPendientesCount || 0
+    );
+
+    const actualizarBadge = async () => {
+      try {
+        if ("setAppBadge" in navigator) {
+          if (pendientes > 0) {
+            await navigator.setAppBadge(pendientes);
+          } else if ("clearAppBadge" in navigator) {
+            await navigator.clearAppBadge();
+          }
+        }
+
+        const cache = await caches.open(
+          "sorteos-admin-badge"
+        );
+
+        await cache.put(
+          "/admin-badge-count",
+          new Response(String(pendientes))
+        );
+      } catch (error) {
+        console.error(
+          "No se pudo sincronizar el badge del Admin:",
+          error
+        );
+      }
+    };
+
+    actualizarBadge();
+  }, [
+    accesoPermitido,
+    dashboardCompactSummary?.comprasPendientesCount,
+  ]);
+
   useEffect(() => {
     setFiltroDashboard(null);
     setModalManualOpen(false);
