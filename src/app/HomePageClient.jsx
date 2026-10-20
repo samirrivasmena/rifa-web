@@ -113,6 +113,7 @@ document.documentElement.style.setProperty(
   const [tickets, setTickets] = useState(1);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [showSecondImage, setShowSecondImage] = useState(false);
+  const [homeImageIndex, setHomeImageIndex] = useState(0);
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyEmail, setVerifyEmail] = useState("");
   const [loadingCompra, setLoadingCompra] = useState(false);
@@ -1079,35 +1080,62 @@ const metodoVisual =
         ) : (
           <>
             <section className="hero-showcase reveal-fade-up">
-              <div className="hero-showcase-image-wrap">
-                {imagenRifaPrincipal && (
-<img
-  src={imagenRifaPrincipal}
-  alt={nombreRifa || "Rifa"}
-  loading="eager"
-  fetchPriority="high"
-  decoding="async"
-  className={`hero-showcase-image fade-image ${
-    showSecondImage ? "hide" : "show"
-  }`}
-/>
-                )}
+<div className="hero-showcase-image-wrap">
+  {imagenRifaPrincipal && (
+    <img
+      src={imagenRifaPrincipal}
+      alt={nombreRifa || "Rifa"}
+      loading="eager"
+      fetchPriority="high"
+      decoding="async"
+      className={`hero-showcase-image fade-image ${
+        homeImageIndex === 1 ? "hide" : "show"
+      }`}
+    />
+  )}
 
-                {imagenRifaScroll && (
-<img
-  src={imagenRifaScroll}
-  alt={`${nombreRifa || "Rifa"} scroll`}
-  loading="lazy"
-  fetchPriority="low"
-  decoding="async"
-  className={`hero-showcase-image fade-image ${
-    showSecondImage ? "show" : "hide"
-  }`}
-/>
-                )}
+  {imagenRifaScroll && imagenRifaScroll !== imagenRifaPrincipal && (
+    <img
+      src={imagenRifaScroll}
+      alt={`${nombreRifa || "Rifa"} secundaria`}
+      loading="lazy"
+      fetchPriority="low"
+      decoding="async"
+      className={`hero-showcase-image fade-image ${
+        homeImageIndex === 1 ? "show" : "hide"
+      }`}
+    />
+  )}
 
-                <div className="hero-showcase-fade"></div>
-              </div>
+  {imagenRifaScroll && imagenRifaScroll !== imagenRifaPrincipal && (
+    <>
+      <button
+        type="button"
+        className="home-hero-image-arrow home-hero-image-arrow-left"
+        onClick={() => setHomeImageIndex(0)}
+        aria-label="Ver imagen anterior"
+      >
+        ‹
+      </button>
+
+      <button
+        type="button"
+        className="home-hero-image-arrow home-hero-image-arrow-right"
+        onClick={() => setHomeImageIndex(1)}
+        aria-label="Ver siguiente imagen"
+      >
+        ›
+      </button>
+
+      <div className="home-hero-image-dots" aria-hidden="true">
+        <span className={homeImageIndex === 0 ? "active" : ""} />
+        <span className={homeImageIndex === 1 ? "active" : ""} />
+      </div>
+    </>
+  )}
+
+  <div className="hero-showcase-fade"></div>
+</div>
 
               <div className="hero-title-block">
                 {nombreRifa && <h1>{nombreRifa}</h1>}

@@ -42,12 +42,14 @@ const CAMPOS_PUBLICOS = [
   "color_progreso",
   "color_progreso_fondo",
 
-  "color_punticos",
-  "notificaciones_color_fondo",
-  "notificaciones_color_texto",
-  "notificaciones_color_acento",
+"color_punticos",
+"notificaciones_color_fondo",
+"notificaciones_color_texto",
+"notificaciones_color_acento",
 
-  "metodos_pago",
+"color_reglas_politicas",
+
+"metodos_pago",
 
   "menu_inicio",
   "menu_eventos",

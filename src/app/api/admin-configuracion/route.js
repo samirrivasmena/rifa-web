@@ -43,6 +43,8 @@ const CAMPOS_CONFIGURACION = [
 "notificaciones_color_texto",
 "notificaciones_color_acento",
 
+"color_reglas_politicas",
+
 "metodos_pago",
 
   "menu_inicio",

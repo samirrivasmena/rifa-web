@@ -8999,7 +8999,7 @@ body:has(.principal-page) {
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--site-button, #dc2626);
+  background: var(--site-rules, #dc2626);
 }
 
 .principal-reglas-access-icon {
@@ -9023,7 +9023,7 @@ body:has(.principal-page) {
 .principal-reglas-access-kicker {
   display: block;
   margin-bottom: 3px;
-  color: var(--site-button, #dc2626);
+  color: var(--site-rules, #dc2626);
   font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
@@ -9053,7 +9053,7 @@ body:has(.principal-page) {
   padding: 0 20px;
   border: 0;
   border-radius: 14px;
-  background: var(--site-button, #dc2626);
+background: var(--site-rules, #dc2626);
   color: #ffffff;
   box-shadow: 0 8px 20px rgba(17, 24, 39, 0.12);
   cursor: pointer;
@@ -9189,13 +9189,13 @@ body:has(.principal-page) {
   left: 0;
   right: 0;
   height: 4px;
-  background: var(--site-button, #dc2626);
+background: var(--site-rules, #dc2626);
 }
 
 .principal-reglas-modal-kicker {
   display: block;
   margin-bottom: 6px;
-  color: var(--site-button, #dc2626);
+  color: var(--site-rules, #dc2626);
   font-size: 11px;
   font-weight: 900;
   line-height: 1.2;
@@ -9351,7 +9351,7 @@ body:has(.principal-page) {
   position: absolute;
   top: 8px;
   left: 0;
-  color: var(--site-button, #dc2626);
+  color: var(--site-rules, #dc2626);
   font-size: 13px;
   font-weight: 950;
 }
@@ -9406,7 +9406,7 @@ body:has(.principal-page) {
   padding: 0 20px;
   border: 0;
   border-radius: 14px;
-  background: var(--site-button, #dc2626);
+  background: var(--site-rules, #dc2626);
   color: #ffffff;
   box-shadow: 0 8px 20px rgba(17, 24, 39, 0.12);
   cursor: pointer;
@@ -9568,4 +9568,245 @@ body > .principal-reglas-modal-overlay {
 
   margin: 0 !important;
   z-index: 2147483647 !important;
+}
+/* =========================================================
+   FLECHAS DISCRETAS - FOTOS DE CARDS
+========================================================= */
+
+.raffle-dual-image-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+.raffle-dual-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 8;
+
+  width: 34px;
+  height: 34px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+
+  font-size: 25px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transform: translateY(-50%);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  opacity: 0.72;
+
+  transition:
+    opacity 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.raffle-dual-arrow-left {
+  left: 10px;
+}
+
+.raffle-dual-arrow-right {
+  right: 10px;
+}
+
+.raffle-dual-arrow:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.raffle-dual-arrow:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+
+/* INDICADOR PEQUEÑO DE 2 FOTOS */
+
+.raffle-dual-dots {
+  position: absolute;
+  z-index: 8;
+  left: 50%;
+  bottom: 10px;
+
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  transform: translateX(-50%);
+}
+
+.raffle-dual-dots span {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.48);
+
+  transition:
+    width 180ms ease,
+    background 180ms ease;
+}
+
+.raffle-dual-dots span.active {
+  width: 15px;
+  background: #ffffff;
+}
+
+
+/* TELÉFONOS */
+
+@media (max-width: 768px) {
+  .raffle-dual-arrow {
+    width: 30px;
+    height: 30px;
+
+    font-size: 22px;
+
+    opacity: 0.68;
+  }
+
+  .raffle-dual-arrow-left {
+    left: 8px;
+  }
+
+  .raffle-dual-arrow-right {
+    right: 8px;
+  }
+
+  .raffle-dual-dots {
+    bottom: 8px;
+  }
+}
+/* =========================================================
+   HOME - FLECHAS E INDICADORES DE IMAGEN PRINCIPAL
+========================================================= */
+
+.hero-showcase-image-wrap {
+  position: relative;
+  overflow: hidden;
+}
+
+/* Flechas */
+.home-hero-image-arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 12;
+
+  width: 36px;
+  height: 36px;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 999px;
+
+  background: rgba(0, 0, 0, 0.32);
+  color: #ffffff;
+
+  font-size: 27px;
+  font-weight: 400;
+  line-height: 1;
+
+  cursor: pointer;
+
+  transform: translateY(-50%);
+
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+
+  opacity: 0.72;
+
+  transition:
+    opacity 180ms ease,
+    background 180ms ease,
+    transform 180ms ease;
+}
+
+.home-hero-image-arrow-left {
+  left: 14px;
+}
+
+.home-hero-image-arrow-right {
+  right: 14px;
+}
+
+.home-hero-image-arrow:hover {
+  opacity: 1;
+  background: rgba(0, 0, 0, 0.52);
+}
+
+.home-hero-image-arrow:active {
+  transform: translateY(-50%) scale(0.92);
+}
+
+/* Indicadores */
+.home-hero-image-dots {
+  position: absolute;
+  z-index: 12;
+
+  left: 50%;
+  bottom: 16px;
+
+  display: flex;
+  align-items: center;
+  gap: 5px;
+
+  transform: translateX(-50%);
+}
+
+.home-hero-image-dots span {
+  width: 6px;
+  height: 6px;
+
+  border-radius: 999px;
+
+  background: rgba(255, 255, 255, 0.48);
+
+  transition:
+    width 180ms ease,
+    background 180ms ease;
+}
+
+.home-hero-image-dots span.active {
+  width: 15px;
+  background: #ffffff;
+}
+
+/* Teléfonos */
+@media (max-width: 768px) {
+  .home-hero-image-arrow {
+    width: 30px;
+    height: 30px;
+    font-size: 22px;
+    opacity: 0.68;
+  }
+
+  .home-hero-image-arrow-left {
+    left: 9px;
+  }
+
+  .home-hero-image-arrow-right {
+    right: 9px;
+  }
+
+  .home-hero-image-dots {
+    bottom: 11px;
+  }
 }

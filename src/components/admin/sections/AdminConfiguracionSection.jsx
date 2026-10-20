@@ -34,6 +34,7 @@ const COLOR_FIELDS = [
 
 ["color_punticos", "Puntos del carrusel"],
 ["notificaciones_color_acento", "Notificaciones / Letras destacadas"],
+["color_reglas_politicas", "🛡️ Reglas y Políticas"],
 ];
 
 const DEFAULT_METODOS = [
@@ -327,8 +328,12 @@ linea_anuncios_mostrar_escritorio:
     footer_color_borde: data?.footer_color_borde || "rgba(255,255,255,0.18)",
     footer_color_hover: data?.footer_color_hover || "rgba(255,255,255,0.14)",
 color_punticos: data?.color_punticos || "#dc2626",
+
 notificaciones_color_acento:
   data?.notificaciones_color_acento || "#dc2626",
+
+color_reglas_politicas:
+  data?.color_reglas_politicas || "#dc2626",
   };
 }
 
@@ -635,10 +640,14 @@ const res = await fetch("/api/admin-configuracion/logo", {
         color_progreso_fondo: config.color_progreso_fondo || null,
 
 color_punticos: config.color_punticos || "#dc2626",
+
 notificaciones_color_acento:
   config.notificaciones_color_acento || "#dc2626",
 
-        metodos_pago: normalizarMetodosPago(config.metodos_pago),
+color_reglas_politicas:
+  config.color_reglas_politicas || "#dc2626",
+
+metodos_pago: normalizarMetodosPago(config.metodos_pago),
 
         seo_titulo:
           limpiarTextoBasico(config.seo_titulo) || "Sorteos LSD | Compra tus tickets",
