@@ -3,6 +3,7 @@
 
 
 import { useEffect, useMemo, useState, useRef } from "react";
+import { createPortal } from "react-dom";
 
 import Swal from "sweetalert2";
 
@@ -182,6 +183,8 @@ const [loadingRifas, setLoadingRifas] = useState(
 
   const [showVerifyModal, setShowVerifyModal] = useState(false);
   const [verifyModalMode, setVerifyModalMode] = useState("tickets");
+
+  const [showReglasModal, setShowReglasModal] = useState(false);
 
   const [rifaActiva, setRifaActiva] = useState(() => {
   const lista = Array.isArray(initialRifas)
@@ -516,11 +519,10 @@ const [loadingRifas, setLoadingRifas] = useState(
 
     const handleEscape = (e) => {
 
-      if (e.key === "Escape") {
-
-        setShowVerifyModal(false);
-
-      }
+if (e.key === "Escape") {
+  setShowVerifyModal(false);
+  setShowReglasModal(false);
+}
 
     };
 
@@ -1076,7 +1078,38 @@ const [loadingRifas, setLoadingRifas] = useState(
 
           </section>
 
+          {/* REGLAS Y POLÍTICAS */}
+          <section
+            className="principal-reglas-access reveal-fade-up"
+            aria-label="Reglas y políticas"
+          >
+            <div className="principal-reglas-access-inner">
+              <div className="principal-reglas-access-icon" aria-hidden="true">
+                🛡️
+              </div>
 
+              <div className="principal-reglas-access-copy">
+                <span className="principal-reglas-access-kicker">
+                  TRANSPARENCIA Y SEGURIDAD
+                </span>
+
+                <h2>Participa con información clara</h2>
+
+                <p>
+                  Consulta las reglas oficiales, las condiciones del Free Drop,
+                  los tickets pagados y nuestras políticas antes de participar.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="principal-reglas-access-btn"
+                onClick={() => setShowReglasModal(true)}
+              >
+                📋 REGLAS Y POLÍTICAS
+              </button>
+            </div>
+          </section>
 
           {/* EVENTOS */}
 
@@ -2210,6 +2243,217 @@ const [loadingRifas, setLoadingRifas] = useState(
         initialMode={verifyModalMode}
 
       />
+            {showReglasModal &&
+  typeof document !== "undefined" &&
+  createPortal(
+        <div
+          className="principal-reglas-modal-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="reglas-politicas-title"
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowReglasModal(false);
+            }
+          }}
+        >
+          <div className="principal-reglas-modal">
+            <div className="principal-reglas-modal-header">
+              <div>
+                <span className="principal-reglas-modal-kicker">
+                  🛡️ TRANSPARENCIA Y SEGURIDAD
+                </span>
+
+                <h2 id="reglas-politicas-title">
+                  Reglas y políticas
+                </h2>
+
+                <p>
+                  Información importante que debes conocer antes de participar.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className="principal-reglas-modal-close"
+                onClick={() => setShowReglasModal(false)}
+                aria-label="Cerrar reglas y políticas"
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="principal-reglas-modal-content">
+
+              {/* REGLAS OFICIALES */}
+              <section className="principal-reglas-modal-section">
+                <div className="principal-reglas-modal-section-title">
+                  <span>🎟️</span>
+                  <div>
+                    <h3>Reglas oficiales</h3>
+                    <p>Cómo funcionan nuestros sorteos.</p>
+                  </div>
+                </div>
+
+                <ul>
+                  <li>
+                    Cada sorteo muestra públicamente el premio, precio vigente
+                    por ticket, fecha programada y demás información disponible.
+                  </li>
+
+                  <li>
+                    Cada ticket aprobado recibe un número de participación
+                    registrado en nuestro sistema.
+                  </li>
+
+                  <li>
+                    Los tickets pueden verificarse mediante la opción
+                    <strong> “Mis Tickets”</strong>.
+                  </li>
+
+                  <li>
+                    El ganador se determina utilizando el mecanismo y resultado
+                    indicado para el sorteo correspondiente.
+                  </li>
+
+                  <li>
+                    Los resultados y la información del evento se publicarán
+                    a través de nuestros canales y de la plataforma.
+                  </li>
+                </ul>
+              </section>
+
+              {/* FREE DROP */}
+              <section className="principal-reglas-modal-section">
+                <div className="principal-reglas-modal-section-title">
+                  <span>🎁</span>
+                  <div>
+                    <h3>Participación gratuita · Free Drop</h3>
+                    <p>Condiciones de las oportunidades gratuitas.</p>
+                  </div>
+                </div>
+
+                <ul>
+                  <li>
+                    Cuando un Free Drop se encuentre activo, los usuarios
+                    podrán solicitar una participación gratuita siguiendo
+                    las instrucciones publicadas.
+                  </li>
+
+                  <li>
+                    Los Free Drops pueden tener disponibilidad, cupos y
+                    límites específicos.
+                  </li>
+
+                  <li>
+                    Una solicitud gratuita no garantiza automáticamente un
+                    ticket hasta que la participación sea validada y registrada.
+                  </li>
+
+                  <li>
+                    Las participaciones duplicadas, información incorrecta o
+                    intentos de abuso podrán ser rechazados.
+                  </li>
+                </ul>
+              </section>
+
+              {/* TICKETS PAGADOS */}
+              <section className="principal-reglas-modal-section">
+                <div className="principal-reglas-modal-section-title">
+                  <span>💳</span>
+                  <div>
+                    <h3>Tickets pagados</h3>
+                    <p>Información sobre compras y aprobación.</p>
+                  </div>
+                </div>
+
+                <ul>
+                  <li>
+                    El precio aplicable será siempre el que aparezca publicado
+                    en el evento al momento de realizar la participación.
+                  </li>
+
+                  <li>
+                    Después de realizar el pago, el usuario deberá completar
+                    correctamente el proceso solicitado por la plataforma.
+                  </li>
+
+                  <li>
+                    Un pago enviado queda sujeto a verificación antes de que
+                    los tickets correspondientes sean aprobados.
+                  </li>
+
+                  <li>
+                    Los tickets aprobados quedarán registrados y podrán
+                    consultarse mediante <strong>“Mis Tickets”</strong>.
+                  </li>
+
+                  <li>
+                    Un comprobante inválido, duplicado, alterado o que no pueda
+                    verificarse podrá ser rechazado.
+                  </li>
+                </ul>
+              </section>
+
+              {/* PRIVACIDAD */}
+              <section className="principal-reglas-modal-section">
+                <div className="principal-reglas-modal-section-title">
+                  <span>🔐</span>
+                  <div>
+                    <h3>Privacidad y términos</h3>
+                    <p>Uso responsable de la plataforma y de tus datos.</p>
+                  </div>
+                </div>
+
+                <ul>
+                  <li>
+                    Podemos solicitar datos como nombre, correo electrónico y
+                    teléfono para registrar y verificar participaciones.
+                  </li>
+
+                  <li>
+                    La información proporcionada se utiliza para gestionar
+                    tickets, verificaciones, comunicaciones relacionadas con
+                    la participación y soporte.
+                  </li>
+
+                  <li>
+                    El participante es responsable de proporcionar información
+                    correcta y mantener acceso al correo utilizado.
+                  </li>
+
+                  <li>
+                    El uso indebido de la plataforma, fraude, manipulación de
+                    comprobantes o abuso del sistema puede ocasionar el rechazo
+                    de una participación.
+                  </li>
+                </ul>
+              </section>
+
+              <div className="principal-reglas-modal-notice">
+                <span>ℹ️</span>
+                <p>
+                  Las condiciones específicas de cada sorteo, incluyendo
+                  premio, precio, disponibilidad y fecha, pueden variar.
+                  Consulta siempre la información publicada en el evento
+                  correspondiente antes de participar.
+                </p>
+              </div>
+            </div>
+
+            <div className="principal-reglas-modal-footer">
+              <button
+                type="button"
+                className="principal-reglas-modal-accept"
+                onClick={() => setShowReglasModal(false)}
+              >
+                ENTENDIDO
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
     </>
 
