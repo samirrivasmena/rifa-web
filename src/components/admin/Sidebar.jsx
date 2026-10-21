@@ -162,6 +162,45 @@ function IconCompras() {
     </svg>
   );
 }
+function IconUsuarios() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      className="adminpro-nav-icon"
+    >
+      <circle
+        cx="9"
+        cy="7"
+        r="4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+
+      <path
+        d="M2 21v-2a4 4 0 0 1 4-4h6a4 4 0 0 1 4 4v2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+
+      <path
+        d="M16 3.2a4 4 0 0 1 0 7.6"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+
+      <path
+        d="M18 15.2a4 4 0 0 1 4 3.8v2"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 
 function IconLogout() {
   return (
@@ -304,8 +343,9 @@ export default function Sidebar({
     { id: "dashboard", icon: <IconDashboard />, label: "Dashboard" },
     { id: "numero", icon: <IconNumero />, label: "Números" },
     { id: "rifas", icon: <IconRifas />, label: "Crear Rifas" },
-    { id: "compras", icon: <IconCompras />, label: "Gestión de Compras" },
-    { id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },
+{ id: "compras", icon: <IconCompras />, label: "Gestión de Compras" },
+{ id: "usuarios", icon: <IconUsuarios />, label: "Usuarios" },
+{ id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },
     { id: "ganadores", icon: <IconGanadores />, label: "Ganadores" },
     { id: "ranking", icon: <IconRanking />, label: "Ranking" },
     { id: "freeDrops", icon: <IconFreeDrop />, label: "Free Drops" },

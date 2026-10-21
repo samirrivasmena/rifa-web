@@ -15,6 +15,7 @@ import AdminPushManager from "../../components/admin/AdminPushManager";
 import AdminDashboardSection from "../../components/admin/sections/AdminDashboardSection";
 import AdminNumerosSection from "../../components/admin/sections/AdminNumerosSection";
 import AdminComprasSection from "../../components/admin/sections/AdminComprasSection";
+import AdminUsuariosSection from "../../components/admin/sections/AdminUsuariosSection";
 import AdminGanadorSection from "../../components/admin/sections/AdminGanadorSection";
 import AdminGanadoresSection from "../../components/admin/sections/AdminGanadoresSection";
 import AdminRankingSection from "../../components/admin/sections/AdminRankingSection";
@@ -1339,6 +1340,11 @@ await Swal.fire({
         scrollToRef(comprasSectionRef, 180);
         break;
 
+      case "usuarios":
+        setSeccionActiva("usuarios");
+        scrollToRef(topRef, 120);
+        break;
+
       case "ganador":
         setSeccionActiva("ganador");
         scrollToRef(ganadorRef, 180);
@@ -1603,6 +1609,13 @@ return (
               padLength={padLength}
             />
           )}
+
+          {seccionActiva === "usuarios" && (
+            <AdminUsuariosSection
+              rifaSeleccionada={rifaSeleccionada}
+            />
+          )}
+
         </main>
       </div>
 
