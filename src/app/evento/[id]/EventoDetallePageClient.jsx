@@ -54,6 +54,7 @@ const freeDropFormInicial = {
   paisTelefono: "US",
   telefono: "",
   estado: "",
+  instagramUsuario: "",
 
   confirmaFollow: false,
   confirmaLike: false,
@@ -1174,6 +1175,13 @@ const registrarParticipacionGratis = async (e) => {
   const email = String(freeDropForm.email || "").trim();
   const telefonoLocal = String(freeDropForm.telefono || "").trim();
   const estado = String(freeDropForm.estado || "").trim();
+  const instagramUsuario = String(
+
+  freeDropForm.instagramUsuario || ""
+)
+  .trim()
+  .replace(/^@+/, "");
+
   const captchaToken = String(
     freeDropForm.captchaToken || ""
   ).trim();
@@ -1264,23 +1272,34 @@ const registrarParticipacionGratis = async (e) => {
   // VALIDACIONES BÁSICAS
   // ==========================================================
 
-  if (
-    !nombre ||
-    !apellido ||
-    !email ||
-    !telefonoLocal ||
-    !estado ||
-    !captchaToken
-  ) {
-    await Swal.fire({
-      icon: "warning",
-      title: "Faltan datos",
-      text:
-        "Completa nombre, apellido, email, teléfono, estado y CAPTCHA.",
-    });
+if (
+  !nombre ||
+  !apellido ||
+  !email ||
+  !telefonoLocal ||
+  !estado ||
+  !instagramUsuario ||
+  !captchaToken
+) {
+  await Swal.fire({
+    icon: "warning",
+    title: "Faltan datos",
+    text:
+      "Completa nombre, apellido, email, teléfono, estado, usuario de Instagram y CAPTCHA.",
+  });
 
-    return;
-  }
+  return;
+}
+if (!/^[A-Za-z0-9._]{1,30}$/.test(instagramUsuario)) {
+  await Swal.fire({
+    icon: "warning",
+    title: "Usuario de Instagram inválido",
+    text:
+      "Escribe únicamente tu usuario de Instagram. Ejemplo: @juan.perez",
+  });
+
+  return;
+}
 
   if (!validarEmail(email)) {
     await Swal.fire({
@@ -1395,9 +1414,12 @@ const registrarParticipacionGratis = async (e) => {
           // +1..., +58..., +57..., etc.
           telefono,
 
-          estado,
-          aceptaReglas,
-          elegibilidad,
+estado,
+
+social_username: instagramUsuario,
+
+aceptaReglas,
+elegibilidad,
 
           freeDropId: freeDropActivo.id,
           captchaToken,
@@ -2512,7 +2534,28 @@ if (!res.ok) {
               required
             />
           </label>
+{/* INSTAGRAM */}
 
+<div className="free-drop-form-field full free-drop-instagram-field">
+  <span>📸 Usuario de Instagram *</span>
+
+  <input
+    type="text"
+    name="instagramUsuario"
+    value={freeDropForm.instagramUsuario}
+    onChange={handleFreeDropChange}
+    placeholder="@tuusuario"
+    autoComplete="off"
+    autoCapitalize="none"
+    spellCheck={false}
+    maxLength={31}
+    required
+  />
+
+  <small className="free-drop-instagram-help">
+    Escribe el usuario de Instagram con el que completaste los requisitos.
+  </small>
+</div>
           {/* CAPTCHA */}
 
           <div className="free-drop-form-field full">

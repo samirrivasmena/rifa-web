@@ -367,10 +367,10 @@ export async function POST(req) {
       body.elegibilidad
     );
 
-    const socialUsername = limpiarTexto(
-      body.social_username ||
-      body.socialUsername
-    );
+const socialUsername = limpiarTexto(
+  body.social_username ||
+  body.socialUsername
+).replace(/^@+/, "");
 
     const evidenceUrl = limpiarTexto(
       body.evidence_url ||
@@ -381,18 +381,25 @@ export async function POST(req) {
     // 2. VALIDACIONES
     // ========================================================
 
-    if (
-      !nombre ||
-      !apellido ||
-      !email ||
-      !telefono ||
-      !estadoResidencia
-    ) {
-      return responderError(
-        "Faltan datos obligatorios",
-        400
-      );
-    }
+if (
+  !nombre ||
+  !apellido ||
+  !email ||
+  !telefono ||
+  !estadoResidencia ||
+  !socialUsername
+) {
+  return responderError(
+    "Faltan datos obligatorios. El usuario de Instagram es requerido.",
+    400
+  );
+}
+if (!/^[A-Za-z0-9._]{1,30}$/.test(socialUsername)) {
+  return responderError(
+    "El usuario de Instagram no es válido. Escribe únicamente tu usuario, por ejemplo: @juan.perez",
+    400
+  );
+}
 
     if (!validarEmail(email)) {
       return responderError(

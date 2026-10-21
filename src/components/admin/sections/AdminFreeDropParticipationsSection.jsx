@@ -98,6 +98,16 @@ function getFullName(item) {
   if (item?.nombreCompleto) return String(item.nombreCompleto).trim();
   return `${nombre} ${apellido}`.trim();
 }
+function getInstagramUsername(item) {
+  return String(
+    item?.social_username ||
+    item?.socialUsername ||
+    item?.instagram_usuario ||
+    ""
+  )
+    .trim()
+    .replace(/^@+/, "");
+}
 
 function getTicketNumber(item, padLength) {
   const ticket = item?.tickets;
@@ -330,25 +340,28 @@ export default function AdminFreeDropParticipationsSection({
   const participacionesFiltradas = useMemo(() => {
     let list = [...participaciones];
 
-    if (busqueda.trim()) {
-      const q = busqueda.trim().toLowerCase();
+if (busqueda.trim()) {
+  const q = busqueda.trim().toLowerCase();
+  const qInstagram = q.replace(/^@+/, "");
 
-      list = list.filter((item) => {
+  list = list.filter((item) => {
         const nombreCompleto = getFullName(item).toLowerCase();
         const email = String(item.email || item.emailCliente || "").toLowerCase();
         const telefono = String(item.telefono || item.telefonoCliente || "").toLowerCase();
         const codigo = String(item.codigo_unico || item.codigoFree || "").toLowerCase();
         const numero = String(item.numeroTicket || item.tickets?.numero_ticket || "").toLowerCase();
         const dropLabel = String(getDropLabel(item)).toLowerCase();
+        const instagram = getInstagramUsername(item).toLowerCase();
 
-        return (
-          nombreCompleto.includes(q) ||
-          email.includes(q) ||
-          telefono.includes(q) ||
-          codigo.includes(q) ||
-          numero.includes(q) ||
-          dropLabel.includes(q)
-        );
+return (
+  nombreCompleto.includes(q) ||
+  email.includes(q) ||
+  telefono.includes(q) ||
+  codigo.includes(q) ||
+  numero.includes(q) ||
+  dropLabel.includes(q) ||
+  instagram.includes(qInstagram)
+);
       });
     }
 
@@ -495,8 +508,13 @@ export default function AdminFreeDropParticipationsSection({
           `#${index + 1}`,
           `${getFullName(item) || "Sin nombre"}`,
           `Email: ${item.email || item.emailCliente || "Sin email"}`,
-          `Teléfono: ${item.telefono || item.telefonoCliente || "Sin teléfono"}`,
-          `Drop: ${getDropLabel(item)}`,
+`Teléfono: ${item.telefono || item.telefonoCliente || "Sin teléfono"}`,
+`Instagram: ${
+  getInstagramUsername(item)
+    ? `@${getInstagramUsername(item)}`
+    : "Sin Instagram"
+}`,
+`Drop: ${getDropLabel(item)}`,
           `Número: ${getTicketNumber(item, padLength)}`,
           `Código: ${item.codigo_unico || item.codigoFree || "Sin código"}`,
           `Estado: ${estadoLabel(item.estado)}`,
@@ -533,11 +551,12 @@ export default function AdminFreeDropParticipationsSection({
     }
 
     const encabezados = [
-      "Participante",
-      "Apellido",
-      "Email",
-      "Teléfono",
-      "Estado",
+"Participante",
+"Apellido",
+"Email",
+"Teléfono",
+"Instagram",
+"Estado",
       "Drop",
       "Número",
       "Código FREE",
@@ -558,11 +577,14 @@ export default function AdminFreeDropParticipationsSection({
       const ticket = item.tickets;
 
       return [
-        item.nombre || "",
-        item.apellido || "",
-        item.email || item.emailCliente || "",
-        item.telefono || item.telefonoCliente || "",
-        estadoLabel(item.estado),
+item.nombre || "",
+item.apellido || "",
+item.email || item.emailCliente || "",
+item.telefono || item.telefonoCliente || "",
+getInstagramUsername(item)
+  ? `@${getInstagramUsername(item)}`
+  : "",
+estadoLabel(item.estado),
         getDropLabel(item),
         ticket?.numero_ticket != null
           ? String(ticket.numero_ticket).padStart(padLength, "0")
@@ -902,7 +924,7 @@ export default function AdminFreeDropParticipationsSection({
       >
         <input
           type="text"
-          placeholder="Buscar por nombre, email, teléfono, código o número"
+          placeholder="Buscar por nombre, email, Instagram, código o número"
           value={busqueda}
           onChange={(e) => setBusqueda(e.target.value)}
           style={inputStyle}
@@ -1241,6 +1263,30 @@ export default function AdminFreeDropParticipationsSection({
                         {item.telefono || item.telefonoCliente || "Sin teléfono"}
                       </strong>
                     </div>
+                    <div>
+  <p style={{ margin: 0, fontSize: "12px", opacity: 0.65 }}>
+    📸 Instagram
+  </p>
+
+  {getInstagramUsername(item) ? (
+    <a
+      href={`https://www.instagram.com/${getInstagramUsername(item)}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        ...valueStyle,
+        color: "#60a5fa",
+        fontWeight: 800,
+        textDecoration: "none",
+        overflowWrap: "anywhere",
+      }}
+    >
+      @{getInstagramUsername(item)}
+    </a>
+  ) : (
+    <strong style={valueStyle}>Sin Instagram</strong>
+  )}
+</div>
 
                     <div>
                       <p style={{ margin: 0, fontSize: "12px", opacity: 0.65 }}>
@@ -1334,8 +1380,9 @@ export default function AdminFreeDropParticipationsSection({
                 {[
                   { label: "Participante", width: "9%", align: "left" },
                   { label: "Email", width: "16%", align: "left" },
-                  { label: "Teléfono", width: "9%", align: "left" },
-                  { label: "Drop", width: "9%", align: "left" },
+{ label: "Teléfono", width: "9%", align: "left" },
+{ label: "Instagram", width: "10%", align: "left" },
+{ label: "Drop", width: "9%", align: "left" },
                   { label: "Número", width: "6%", align: "center" },
                   { label: "Código FREE", width: "11%", align: "center" },
                   { label: "Estado", width: "8%", align: "center" },
@@ -1368,7 +1415,7 @@ export default function AdminFreeDropParticipationsSection({
               {participacionesPaginadas.length === 0 && !loading ? (
                 <tr>
                   <td
-                    colSpan="10"
+                    colSpan="11"
                     style={{
                       textAlign: "center",
                       padding: "24px",
@@ -1418,6 +1465,30 @@ export default function AdminFreeDropParticipationsSection({
                       <td style={{ padding: "13px 6px", verticalAlign: "middle" }}>
                         {item.telefono || item.telefonoCliente || "Sin teléfono"}
                       </td>
+                      <td
+  style={{
+    padding: "13px 6px",
+    verticalAlign: "middle",
+    overflowWrap: "anywhere",
+  }}
+>
+  {getInstagramUsername(item) ? (
+    <a
+      href={`https://www.instagram.com/${getInstagramUsername(item)}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        color: "#60a5fa",
+        fontWeight: 800,
+        textDecoration: "none",
+      }}
+    >
+      @{getInstagramUsername(item)}
+    </a>
+  ) : (
+    <span style={{ opacity: 0.6 }}>Sin Instagram</span>
+  )}
+</td>
 
                       <td
                         style={{
@@ -1700,6 +1771,28 @@ export default function AdminFreeDropParticipationsSection({
                   {getFullName(modalParticipacion) || "Sin nombre"}
                 </strong>
               </div>
+              <div style={detailBoxStyle}>
+  <span style={labelStyle}>📸 Instagram</span>
+
+  {getInstagramUsername(modalParticipacion) ? (
+    <a
+      href={`https://www.instagram.com/${getInstagramUsername(modalParticipacion)}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      style={{
+        ...valueStyle,
+        color: "#60a5fa",
+        fontWeight: 800,
+        textDecoration: "none",
+        overflowWrap: "anywhere",
+      }}
+    >
+      @{getInstagramUsername(modalParticipacion)}
+    </a>
+  ) : (
+    <strong style={valueStyle}>Sin Instagram</strong>
+  )}
+</div>
 
               <div style={detailBoxStyle}>
                 <span style={labelStyle}>Estado</span>

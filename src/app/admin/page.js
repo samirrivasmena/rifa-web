@@ -585,14 +585,16 @@ const porcentajeVendido =
           }
         }
 
-        const cache = await caches.open(
-          "sorteos-admin-badge"
-        );
+if ("caches" in window) {
+  const cache = await window.caches.open(
+    "sorteos-admin-badge"
+  );
 
-        await cache.put(
-          "/admin-badge-count",
-          new Response(String(pendientes))
-        );
+  await cache.put(
+    "/admin-badge-count",
+    new Response(String(pendientes))
+  );
+}
       } catch (error) {
         console.error(
           "No se pudo sincronizar el badge del Admin:",
