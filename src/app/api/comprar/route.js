@@ -274,24 +274,14 @@ function esComprobanteValido(url) {
   }
 
   try {
-    const parsed =
-      new URL(url);
+    const parsed = new URL(url);
 
-    // -------------------------------------------------------
     // HTTPS obligatorio
-    // -------------------------------------------------------
-
-    if (
-      parsed.protocol !==
-      "https:"
-    ) {
+    if (parsed.protocol !== "https:") {
       return false;
     }
 
-    // -------------------------------------------------------
     // HOST EXACTO DE SUPABASE
-    // -------------------------------------------------------
-
     const hostPermitido =
       obtenerSupabaseHostPermitido();
 
@@ -310,10 +300,7 @@ function esComprobanteValido(url) {
       return false;
     }
 
-    // -------------------------------------------------------
     // BUCKET / PATH PERMITIDO
-    // -------------------------------------------------------
-
     if (
       !parsed.pathname.startsWith(
         PATH_COMPROBANTES
@@ -328,6 +315,47 @@ function esComprobanteValido(url) {
   }
 }
 
+function esComprobantePathValido(path) {
+  if (
+    !path ||
+    typeof path !== "string"
+  ) {
+    return false;
+  }
+
+  const limpio = path.trim();
+
+  if (
+    !limpio ||
+    limpio.length > 500
+  ) {
+    return false;
+  }
+
+  // No aceptar URLs completas
+  if (
+    limpio.startsWith("http://") ||
+    limpio.startsWith("https://")
+  ) {
+    return false;
+  }
+
+  // Evitar rutas absolutas y traversal
+  if (
+    limpio.startsWith("/") ||
+    limpio.includes("..") ||
+    limpio.includes("\\")
+  ) {
+    return false;
+  }
+
+  // Formato generado por /api/subir-comprobante:
+  // 2026/10/uuid.jpg
+  const patron =
+    /^\d{4}\/\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/i;
+
+  return patron.test(limpio);
+}
 // =========================================================
 // RESPUESTAS
 // =========================================================
@@ -706,16 +734,17 @@ export async function POST(req) {
       );
     }
 
-    const {
-      nombre,
-      email,
-      telefono,
-      referencia,
-      tickets,
-      totalPagar,
-      paymentMethod,
-      comprobanteUrl,
-    } = body;
+const {
+  nombre,
+  email,
+  telefono,
+  referencia,
+  tickets,
+  totalPagar,
+  paymentMethod,
+  comprobanteUrl,
+  comprobantePath,
+} = body;
 
     const rifaIdRecibido =
       body.rifaId ??
@@ -765,13 +794,21 @@ export async function POST(req) {
         30
       );
 
-    const comprobante =
-      limitarLongitud(
-        limpiarTexto(
-          comprobanteUrl
-        ),
-        500
-      );
+const comprobante =
+  limitarLongitud(
+    limpiarTexto(
+      comprobanteUrl
+    ),
+    500
+  );
+
+const comprobantePathLimpio =
+  limitarLongitud(
+    limpiarTexto(
+      comprobantePath
+    ),
+    500
+  );
 
     const rifaIdLimpio =
       limitarLongitud(
@@ -893,27 +930,43 @@ export async function POST(req) {
       );
     }
 
-    if (
-      !esAppPay &&
-      !comprobante
-    ) {
-      return errorResponse(
-        "El comprobante es obligatorio para este método de pago",
-        400
-      );
-    }
+if (
+  !esAppPay &&
+  !comprobante &&
+  !comprobantePathLimpio
+) {
+  return errorResponse(
+    "El comprobante es obligatorio para este método de pago",
+    400
+  );
+}
 
-    if (
-      !esAppPay &&
-      !esComprobanteValido(
-        comprobante
-      )
-    ) {
-      return errorResponse(
-        "El comprobante no proviene de una fuente permitida",
-        400
-      );
-    }
+if (
+  !esAppPay &&
+  comprobantePathLimpio &&
+  !esComprobantePathValido(
+    comprobantePathLimpio
+  )
+) {
+  return errorResponse(
+    "La ruta del comprobante no es válida",
+    400
+  );
+}
+
+if (
+  !esAppPay &&
+  !comprobantePathLimpio &&
+  comprobante &&
+  !esComprobanteValido(
+    comprobante
+  )
+) {
+  return errorResponse(
+    "El comprobante no proviene de una fuente permitida",
+    400
+  );
+}
 
     // -------------------------------------------------------
     // CARGAR RIFA
@@ -1367,10 +1420,11 @@ export async function POST(req) {
           `APPPAY-${Date.now()}`
         : referenciaLimpia;
 
-    const comprobanteFinal =
-      esAppPay
-        ? null
-        : comprobante;
+const comprobanteFinal =
+  esAppPay
+    ? null
+    : comprobantePathLimpio ||
+      comprobante;
 
     // -------------------------------------------------------
     // CREAR COMPRA

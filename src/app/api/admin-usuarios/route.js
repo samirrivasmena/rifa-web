@@ -25,6 +25,22 @@ function normalizarEstado(valor) {
   return limpiarTexto(valor).toLowerCase();
 }
 
+function esRifaFinalizada(estado) {
+  return ["finalizada", "finalizado", "cerrada", "cerrado"].includes(
+    normalizarEstado(estado)
+  );
+}
+
+function normalizarNumeroComparacion(valor) {
+  const limpio = limpiarTexto(valor);
+  if (!limpio) return null;
+
+  const numerico = Number(limpio);
+  if (Number.isFinite(numerico)) return String(numerico);
+
+  return limpio.replace(/^0+/, "") || "0";
+}
+
 function obtenerTimestamp(...fechas) {
   for (const fecha of fechas) {
     if (!fecha) continue;
@@ -408,6 +424,8 @@ export async function GET(req) {
       comprasResult,
       freeResult,
       tickets,
+      rifaResult,
+      sorteoResult,
     ] = await Promise.all([
       supabaseAdmin
         .from("compras")
@@ -470,6 +488,33 @@ export async function GET(req) {
         }),
 
       traerTodosLosTickets(rifaId),
+
+      supabaseAdmin
+        .from("rifas")
+        .select(`
+          id,
+          nombre,
+          estado,
+          formato
+        `)
+        .eq("id", rifaId)
+        .maybeSingle(),
+
+      supabaseAdmin
+        .from("sorteos")
+        .select(`
+          id,
+          rifa_id,
+          numero_ganador,
+          numero_oficial,
+          fecha_sorteo
+        `)
+        .eq("rifa_id", rifaId)
+        .order("fecha_sorteo", {
+          ascending: false,
+        })
+        .limit(1)
+        .maybeSingle(),
     ]);
 
     if (comprasResult.error) {
@@ -514,6 +559,70 @@ export async function GET(req) {
       ? tickets
       : [];
 
+    if (rifaResult.error) {
+      console.error(
+        "Error cargando rifa para usuarios:",
+        rifaResult.error
+      );
+
+      return responderError(
+        rifaResult.error.message ||
+          "No se pudo cargar la rifa",
+        500
+      );
+    }
+
+    if (sorteoResult.error) {
+      console.error(
+        "Error cargando resultado para usuarios:",
+        sorteoResult.error
+      );
+
+      return responderError(
+        sorteoResult.error.message ||
+          "No se pudo cargar el resultado oficial",
+        500
+      );
+    }
+
+    const rifa = rifaResult.data || null;
+    const sorteo = sorteoResult.data || null;
+
+    /*
+      IMPORTANTE:
+
+      Igual que en Mis Tickets, solamente consideramos
+      que existe un ganador oficial cuando la rifa
+      está finalizada/cerrada y existe un resultado
+      en la tabla sorteos.
+    */
+
+    const numeroGanadorOficial =
+      esRifaFinalizada(rifa?.estado) && sorteo
+        ? normalizarNumeroComparacion(
+            sorteo?.numero_oficial ??
+              sorteo?.numero_ganador
+          )
+        : null;
+
+    /*
+      Marcamos cada ticket de la rifa.
+
+      Esto funciona tanto para tickets pagados
+      como para tickets FREE.
+    */
+
+    const ticketsConGanador =
+      ticketsBase.map((ticket) => ({
+        ...ticket,
+
+        es_ganador:
+          Boolean(numeroGanadorOficial) &&
+          normalizarNumeroComparacion(
+            ticket?.numero_ticket
+          ) === numeroGanadorOficial,
+      }));
+
     /* =====================================================
        MAPAS DE TICKETS
     ===================================================== */
@@ -523,7 +632,7 @@ export async function GET(req) {
     const ticketsPorFreeParticipation =
       new Map();
 
-    ticketsBase.forEach((ticket) => {
+    ticketsConGanador.forEach((ticket) => {
       if (ticket?.compra_id) {
         const key = String(
           ticket.compra_id
@@ -1079,6 +1188,15 @@ export async function GET(req) {
       {
         ok: true,
         rifaId,
+
+        resultado: {
+          hay_ganador_oficial:
+            Boolean(numeroGanadorOficial),
+
+          numero_ganador:
+            numeroGanadorOficial,
+        },
+
         usuarios,
         resumen,
       },

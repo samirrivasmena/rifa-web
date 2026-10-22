@@ -6,6 +6,17 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 /* =========================================================
+   HEADERS — SIN CACHÉ
+========================================================= */
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control":
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
+
+/* =========================================================
    GET — RIFAS PÚBLICAS
 ========================================================= */
 
@@ -19,15 +30,20 @@ export async function GET() {
         rifas,
       },
       {
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
+        headers: NO_CACHE_HEADERS,
       }
     );
   } catch (error) {
+    /*
+     * IMPORTANTE:
+     *
+     * El error completo solamente se registra
+     * en el servidor.
+     *
+     * No enviamos error.message al navegador
+     * porque esta es una API pública.
+     */
+
     console.error(
       "rifas-publicas error:",
       error
@@ -35,18 +51,11 @@ export async function GET() {
 
     return NextResponse.json(
       {
-        error:
-          error?.message ||
-          "Error interno del servidor",
+        error: "Error interno del servidor",
       },
       {
         status: 500,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
+        headers: NO_CACHE_HEADERS,
       }
     );
   }

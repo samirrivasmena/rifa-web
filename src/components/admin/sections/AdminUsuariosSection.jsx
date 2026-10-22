@@ -16,6 +16,44 @@ function numero(valor) {
   return Number.isFinite(n) ? n : 0;
 }
 
+function obtenerDigitosRifa(rifa) {
+  // Primero intenta usar el formato configurado en la rifa.
+  const formato = Number(rifa?.formato);
+
+  if (Number.isInteger(formato) && formato > 0) {
+    return formato;
+  }
+
+  // Si no existe formato, calcula los dígitos usando
+  // la cantidad total de números de la rifa.
+  const total =
+    Number(rifa?.cantidad_numeros) ||
+    Number(rifa?.total_numeros) ||
+    Number(rifa?.cantidadNumeros) ||
+    0;
+
+  if (total > 0) {
+    // Ejemplo:
+    // 1,000 números: 000-999 = 3 dígitos
+    // 10,000 números: 0000-9999 = 4 dígitos
+    return Math.max(
+      1,
+      String(Math.max(0, total - 1)).length
+    );
+  }
+
+  // Valor seguro si faltara la configuración.
+  return 3;
+}
+
+function formatearNumeroTicket(valor, digitos = 3) {
+  const limpio = String(valor ?? "").trim();
+
+  if (!limpio) return "";
+
+  return limpio.padStart(digitos, "0");
+}
+
 function dinero(valor) {
   return numero(valor).toLocaleString("en-US", {
     style: "currency",
@@ -67,7 +105,10 @@ function obtenerInstagram(usuario) {
     texto(item?.social_username)
   );
 
-  return texto(encontrado?.social_username).replace(/^@+/, "");
+  return texto(encontrado?.social_username).replace(
+    /^@+/,
+    ""
+  );
 }
 
 function obtenerCodigosFree(usuario) {
@@ -83,11 +124,15 @@ function obtenerCodigosFree(usuario) {
 }
 
 function obtenerTodosLosNumeros(usuario) {
-  const pagados = Array.isArray(usuario?.tickets_pagados)
+  const pagados = Array.isArray(
+    usuario?.tickets_pagados
+  )
     ? usuario.tickets_pagados
     : [];
 
-  const free = Array.isArray(usuario?.tickets_free)
+  const free = Array.isArray(
+    usuario?.tickets_free
+  )
     ? usuario.tickets_free
     : [];
 
@@ -140,7 +185,9 @@ function esCoincidenciaExacta(usuario, termino) {
     .map(normalizarBusqueda)
     .filter(Boolean);
 
-  return valores.some((valor) => valor === buscado);
+  return valores.some(
+    (valor) => valor === buscado
+  );
 }
 
 function estadoFreeClase(estado) {
@@ -181,7 +228,11 @@ function estadoFreeClase(estado) {
    BADGE
 ========================================================= */
 
-function Badge({ children, color = "blue" }) {
+function Badge({
+  children,
+  color = "blue",
+  destacado = false,
+}) {
   const colores = {
     blue: {
       background: "rgba(59, 130, 246, 0.12)",
@@ -207,6 +258,15 @@ function Badge({ children, color = "blue" }) {
       border: "rgba(245, 158, 11, 0.25)",
     },
 
+    gold: {
+      background:
+        "linear-gradient(135deg, rgba(245,158,11,.24), rgba(234,179,8,.13))",
+      color: "#fbbf24",
+      border: "rgba(251,191,36,.58)",
+      boxShadow:
+        "0 0 0 1px rgba(251,191,36,.06), 0 0 18px rgba(245,158,11,.13)",
+    },
+
     red: {
       background: "rgba(239, 68, 68, 0.12)",
       color: "#f87171",
@@ -220,7 +280,8 @@ function Badge({ children, color = "blue" }) {
     },
   };
 
-  const estilo = colores[color] || colores.blue;
+  const estilo =
+    colores[color] || colores.blue;
 
   return (
     <span
@@ -228,14 +289,17 @@ function Badge({ children, color = "blue" }) {
         display: "inline-flex",
         alignItems: "center",
         justifyContent: "center",
-        padding: "5px 9px",
+        padding: destacado
+          ? "7px 11px"
+          : "5px 9px",
         borderRadius: "999px",
-        fontSize: "11px",
+        fontSize: destacado ? "12px" : "11px",
         lineHeight: 1,
         fontWeight: 800,
         background: estilo.background,
         color: estilo.color,
         border: `1px solid ${estilo.border}`,
+        boxShadow: estilo.boxShadow || "none",
         whiteSpace: "nowrap",
       }}
     >
@@ -248,12 +312,18 @@ function Badge({ children, color = "blue" }) {
    TARJETA RESUMEN
 ========================================================= */
 
-function ResumenCard({ icon, label, value, subtitle }) {
+function ResumenCard({
+  icon,
+  label,
+  value,
+  subtitle,
+}) {
   return (
     <div
       style={{
         minWidth: 0,
-        border: "1px solid rgba(148, 163, 184, 0.14)",
+        border:
+          "1px solid rgba(148, 163, 184, 0.14)",
         borderRadius: "16px",
         padding: "16px",
         background: "rgba(255,255,255,0.025)",
@@ -317,8 +387,12 @@ function ListaNumeros({
   tickets = [],
   color = "blue",
   emptyText = "No tiene números asignados.",
+  digitos = 3,
 }) {
-  if (!Array.isArray(tickets) || tickets.length === 0) {
+  if (
+    !Array.isArray(tickets) ||
+    tickets.length === 0
+  ) {
     return (
       <div
         className="adminpro-empty-box"
@@ -333,7 +407,8 @@ function ListaNumeros({
 
   const ordenados = [...tickets].sort(
     (a, b) =>
-      numero(a?.numero_ticket) - numero(b?.numero_ticket)
+      numero(a?.numero_ticket) -
+      numero(b?.numero_ticket)
   );
 
   return (
@@ -351,13 +426,21 @@ function ListaNumeros({
             ticket?.id ||
             `${ticket?.numero_ticket}-${index}`
           }
-          color={color}
+          color={
+            ticket?.es_ganador
+              ? "gold"
+              : color
+          }
+          destacado={ticket?.es_ganador}
         >
-          #
-          {String(ticket?.numero_ticket ?? "").padStart(
-            4,
-            "0"
+          {ticket?.es_ganador ? "🏆 " : "#"}
+          {formatearNumeroTicket(
+            ticket?.numero_ticket,
+            digitos
           )}
+          {ticket?.es_ganador
+            ? " · GANADOR"
+            : ""}
         </Badge>
       ))}
     </div>
@@ -368,9 +451,33 @@ function ListaNumeros({
    COINCIDENCIA
 ========================================================= */
 
-function CoincidenciaUsuario({ usuario, onOpen }) {
+function CoincidenciaUsuario({
+  usuario,
+  onOpen,
+  digitos = 3,
+}) {
   const resumen = usuario?.resumen || {};
   const instagram = obtenerInstagram(usuario);
+
+  const ticketsPagados = Array.isArray(
+    usuario?.tickets_pagados
+  )
+    ? usuario.tickets_pagados
+    : [];
+
+  const ticketsFree = Array.isArray(
+    usuario?.tickets_free
+  )
+    ? usuario.tickets_free
+    : [];
+
+  const ticketGanador = [
+    ...ticketsPagados,
+    ...ticketsFree,
+  ].find(
+    (ticket) =>
+      ticket?.es_ganador === true
+  );
 
   return (
     <button
@@ -381,12 +488,52 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
         textAlign: "left",
         padding: "16px",
         borderRadius: "16px",
-        border: "1px solid rgba(148,163,184,.14)",
-        background: "rgba(255,255,255,.025)",
+        border: ticketGanador
+          ? "1px solid rgba(251,191,36,.45)"
+          : "1px solid rgba(148,163,184,.14)",
+        background: ticketGanador
+          ? "linear-gradient(135deg, rgba(245,158,11,.08), rgba(255,255,255,.025))"
+          : "rgba(255,255,255,.025)",
+        boxShadow: ticketGanador
+          ? "0 0 24px rgba(245,158,11,.07)"
+          : "none",
         color: "inherit",
         cursor: "pointer",
       }}
     >
+      {ticketGanador ? (
+        <div
+          style={{
+            marginBottom: "13px",
+            display: "flex",
+            alignItems: "center",
+            gap: "8px",
+            flexWrap: "wrap",
+          }}
+        >
+          <Badge
+            color="gold"
+            destacado
+          >
+            🏆 GANADOR DE ESTA RIFA
+          </Badge>
+
+          <span
+            style={{
+              color: "#fbbf24",
+              fontSize: "12px",
+              fontWeight: 900,
+            }}
+          >
+            #
+            {formatearNumeroTicket(
+              ticketGanador?.numero_ticket,
+              digitos
+            )}
+          </span>
+        </div>
+      ) : null}
+
       <div
         style={{
           display: "flex",
@@ -402,9 +549,13 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
               fontSize: "17px",
               fontWeight: 900,
               overflowWrap: "anywhere",
+              color: ticketGanador
+                ? "#f8fafc"
+                : "inherit",
             }}
           >
-            👤 {obtenerNombre(usuario)}
+            {ticketGanador ? "🏆" : "👤"}{" "}
+            {obtenerNombre(usuario)}
           </div>
 
           <div
@@ -425,7 +576,9 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
               fontSize: "13px",
             }}
           >
-            📱 {usuario?.telefono || "Sin teléfono"}
+            📱{" "}
+            {usuario?.telefono ||
+              "Sin teléfono"}
           </div>
 
           {instagram ? (
@@ -449,11 +602,15 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
           }}
         >
           {usuario?.tiene_compras ? (
-            <Badge color="blue">💳 Compras</Badge>
+            <Badge color="blue">
+              💳 Compras
+            </Badge>
           ) : null}
 
           {usuario?.tiene_free ? (
-            <Badge color="purple">🎁 FREE</Badge>
+            <Badge color="purple">
+              🎁 FREE
+            </Badge>
           ) : null}
         </div>
       </div>
@@ -466,32 +623,40 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
           alignItems: "center",
           marginTop: "14px",
           paddingTop: "13px",
-          borderTop: "1px solid rgba(148,163,184,.10)",
+          borderTop:
+            "1px solid rgba(148,163,184,.10)",
           fontSize: "12px",
           fontWeight: 700,
           color: "#94a3b8",
         }}
       >
         <span>
-          💳 {numero(resumen.compras_total)} compras
+          💳 {numero(resumen.compras_total)}{" "}
+          compras
         </span>
 
         <span>
-          🎟️ {numero(resumen.tickets_pagados)} pagados
+          🎟️{" "}
+          {numero(resumen.tickets_pagados)}{" "}
+          pagados
         </span>
 
         <span>
-          🎁 {numero(resumen.tickets_free)} FREE
+          🎁 {numero(resumen.tickets_free)}{" "}
+          FREE
         </span>
 
         <span>
-          💰 {dinero(resumen.monto_aprobado)}
+          💰{" "}
+          {dinero(resumen.monto_aprobado)}
         </span>
 
         <span
           style={{
             marginLeft: "auto",
-            color: "#60a5fa",
+            color: ticketGanador
+              ? "#fbbf24"
+              : "#60a5fa",
             fontWeight: 900,
           }}
         >
@@ -506,8 +671,15 @@ function CoincidenciaUsuario({ usuario, onOpen }) {
    PERFIL SIMPLE DEL USUARIO
 ========================================================= */
 
-function PerfilUsuario({ usuario, onBack }) {
+function PerfilUsuario({
+  usuario,
+  onBack,
+  rifaSeleccionada,
+}) {
   if (!usuario) return null;
+
+  const digitosRifa =
+    obtenerDigitosRifa(rifaSeleccionada);
 
   const resumen = usuario?.resumen || {};
 
@@ -517,7 +689,9 @@ function PerfilUsuario({ usuario, onBack }) {
     ? usuario.tickets_pagados
     : [];
 
-  const ticketsFree = Array.isArray(usuario?.tickets_free)
+  const ticketsFree = Array.isArray(
+    usuario?.tickets_free
+  )
     ? usuario.tickets_free
     : [];
 
@@ -527,24 +701,183 @@ function PerfilUsuario({ usuario, onBack }) {
     ? [...usuario.participaciones_free]
     : [];
 
-  const instagram = obtenerInstagram(usuario);
+  const instagram =
+    obtenerInstagram(usuario);
+
+  const todosLosTickets = [
+    ...ticketsPagados,
+    ...ticketsFree,
+  ];
+
+  const ticketGanador =
+    todosLosTickets.find(
+      (ticket) =>
+        ticket?.es_ganador === true
+    ) || null;
+
+  const usuarioEsGanador =
+    Boolean(ticketGanador);
+
+  const ganadorEsFree =
+    usuarioEsGanador &&
+    ticketsFree.some(
+      (ticket) =>
+        String(ticket?.id || "") ===
+        String(ticketGanador?.id || "")
+    );
 
   participaciones.sort((a, b) => {
     return (
-      new Date(b?.created_at || 0).getTime() -
-      new Date(a?.created_at || 0).getTime()
+      new Date(
+        b?.created_at || 0
+      ).getTime() -
+      new Date(
+        a?.created_at || 0
+      ).getTime()
     );
   });
 
   return (
     <div className="adminpro-page-stack">
+      {/* GANADOR */}
+      {usuarioEsGanador ? (
+        <div
+          className="adminpro-card"
+          style={{
+            position: "relative",
+            overflow: "hidden",
+            border:
+              "1px solid rgba(251,191,36,.50)",
+            background:
+              "linear-gradient(135deg, rgba(245,158,11,.15), rgba(234,179,8,.06), rgba(255,255,255,.02))",
+            boxShadow:
+              "0 0 35px rgba(245,158,11,.09)",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              right: "-12px",
+              top: "-20px",
+              fontSize: "100px",
+              opacity: 0.055,
+              pointerEvents: "none",
+            }}
+          >
+            🏆
+          </div>
+
+          <div
+            style={{
+              position: "relative",
+              zIndex: 1,
+              display: "flex",
+              alignItems: "center",
+              justifyContent:
+                "space-between",
+              gap: "18px",
+              flexWrap: "wrap",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  color: "#fbbf24",
+                  fontSize: "12px",
+                  fontWeight: 950,
+                  letterSpacing: ".05em",
+                  textTransform: "uppercase",
+                  marginBottom: "8px",
+                }}
+              >
+                🏆 GANADOR DE ESTA RIFA
+              </div>
+
+              <div
+                style={{
+                  fontSize:
+                    "clamp(22px, 4vw, 32px)",
+                  fontWeight: 950,
+                  lineHeight: 1.1,
+                  color: "#f8fafc",
+                }}
+              >
+                {obtenerNombre(usuario)}
+              </div>
+
+              <div
+                style={{
+                  marginTop: "8px",
+                  color: "#cbd5e1",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                }}
+              >
+                Este usuario tiene el número
+                ganador oficial de{" "}
+                <strong>
+                  {rifaSeleccionada?.nombre ||
+                    "esta rifa"}
+                </strong>
+                .
+              </div>
+            </div>
+
+            <div
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "flex-end",
+                gap: "7px",
+              }}
+            >
+              <Badge
+                color="gold"
+                destacado
+              >
+                🏆 #
+                {formatearNumeroTicket(
+                  ticketGanador?.numero_ticket,
+                  digitosRifa
+                )}{" "}
+                · GANADOR
+              </Badge>
+
+              <span
+                style={{
+                  color: "#fbbf24",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                }}
+              >
+                {ganadorEsFree
+                  ? "🎁 Ticket FREE"
+                  : "🎟️ Ticket pagado"}
+              </span>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
       {/* PERFIL */}
-      <div className="adminpro-card">
+      <div
+        className="adminpro-card"
+        style={
+          usuarioEsGanador
+            ? {
+                border:
+                  "1px solid rgba(251,191,36,.20)",
+              }
+            : undefined
+        }
+      >
         <div className="adminpro-section-head">
           <div>
             <div
               style={{
-                color: "#8b5cf6",
+                color: usuarioEsGanador
+                  ? "#fbbf24"
+                  : "#8b5cf6",
                 fontSize: "11px",
                 fontWeight: 900,
                 marginBottom: "7px",
@@ -553,13 +886,47 @@ function PerfilUsuario({ usuario, onBack }) {
               PERFIL DEL USUARIO
             </div>
 
-            <h2 style={{ marginBottom: "7px" }}>
-              👤 {obtenerNombre(usuario)}
+            <div
+              style={{
+                display: "inline-flex",
+                alignItems: "center",
+                gap: "6px",
+                marginBottom: "8px",
+                padding: "4px 8px",
+                borderRadius: "999px",
+                background:
+                  "rgba(148, 163, 184, 0.07)",
+                border:
+                  "1px solid rgba(148, 163, 184, 0.12)",
+                color: "#94a3b8",
+                fontSize: "10px",
+                fontWeight: 700,
+                lineHeight: 1,
+              }}
+            >
+              🎟️{" "}
+              {rifaSeleccionada?.nombre ||
+                "Rifa seleccionada"}
+              <span style={{ opacity: 0.5 }}>
+                •
+              </span>
+              🔢 {digitosRifa} dígitos
+            </div>
+
+            <h2
+              style={{
+                marginBottom: "7px",
+              }}
+            >
+              {usuarioEsGanador
+                ? "🏆"
+                : "👤"}{" "}
+              {obtenerNombre(usuario)}
             </h2>
 
             <p style={{ margin: 0 }}>
-              Resumen de participación en la rifa
-              seleccionada.
+              Resumen de participación en la
+              rifa seleccionada.
             </p>
           </div>
 
@@ -572,6 +939,50 @@ function PerfilUsuario({ usuario, onBack }) {
           </button>
         </div>
 
+        {usuarioEsGanador ? (
+          <div
+            style={{
+              marginTop: "18px",
+              padding: "12px 14px",
+              borderRadius: "14px",
+              border:
+                "1px solid rgba(251,191,36,.28)",
+              background:
+                "rgba(245,158,11,.08)",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+            }}
+          >
+            <Badge color="gold">
+              🏆 GANADOR
+            </Badge>
+
+            <span
+              style={{
+                color: "#f8fafc",
+                fontSize: "13px",
+                fontWeight: 800,
+              }}
+            >
+              Número ganador:{" "}
+              <span
+                style={{
+                  color: "#fbbf24",
+                  fontWeight: 950,
+                }}
+              >
+                #
+                {formatearNumeroTicket(
+                  ticketGanador?.numero_ticket,
+                  digitosRifa
+                )}
+              </span>
+            </span>
+          </div>
+        ) : null}
+
         <div
           style={{
             display: "grid",
@@ -580,7 +991,8 @@ function PerfilUsuario({ usuario, onBack }) {
             gap: "18px",
             marginTop: "20px",
             paddingTop: "18px",
-            borderTop: "1px solid rgba(148,163,184,.10)",
+            borderTop:
+              "1px solid rgba(148,163,184,.10)",
           }}
         >
           <div>
@@ -658,7 +1070,11 @@ function PerfilUsuario({ usuario, onBack }) {
               📸 INSTAGRAM
             </div>
 
-            <div style={{ marginTop: "6px" }}>
+            <div
+              style={{
+                marginTop: "6px",
+              }}
+            >
               {instagram ? (
                 <a
                   href={`https://instagram.com/${encodeURIComponent(
@@ -688,8 +1104,8 @@ function PerfilUsuario({ usuario, onBack }) {
             <h2>📊 Resumen del usuario</h2>
 
             <p>
-              Información rápida sin duplicar Gestión de
-              Compras.
+              Información rápida sin duplicar
+              Gestión de Compras.
             </p>
           </div>
 
@@ -700,12 +1116,22 @@ function PerfilUsuario({ usuario, onBack }) {
               flexWrap: "wrap",
             }}
           >
+            {usuarioEsGanador ? (
+              <Badge color="gold">
+                🏆 Ganador
+              </Badge>
+            ) : null}
+
             {usuario?.tiene_compras ? (
-              <Badge color="blue">💳 Compras</Badge>
+              <Badge color="blue">
+                💳 Compras
+              </Badge>
             ) : null}
 
             {usuario?.tiene_free ? (
-              <Badge color="purple">🎁 FREE</Badge>
+              <Badge color="purple">
+                🎁 FREE
+              </Badge>
             ) : null}
           </div>
         </div>
@@ -722,14 +1148,18 @@ function PerfilUsuario({ usuario, onBack }) {
           <ResumenCard
             icon="💰"
             label="Total aprobado"
-            value={dinero(resumen.monto_aprobado)}
+            value={dinero(
+              resumen.monto_aprobado
+            )}
             subtitle="Solo compras aprobadas"
           />
 
           <ResumenCard
             icon="💳"
             label="Compras"
-            value={numero(resumen.compras_total)}
+            value={numero(
+              resumen.compras_total
+            )}
             subtitle={`${numero(
               resumen.compras_aprobadas
             )} aprobadas`}
@@ -738,19 +1168,43 @@ function PerfilUsuario({ usuario, onBack }) {
           <ResumenCard
             icon="🎟️"
             label="Tickets pagados"
-            value={numero(resumen.tickets_pagados)}
+            value={numero(
+              resumen.tickets_pagados
+            )}
           />
 
           <ResumenCard
             icon="🎁"
             label="Tickets FREE"
-            value={numero(resumen.tickets_free)}
+            value={numero(
+              resumen.tickets_free
+            )}
           />
 
           <ResumenCard
-            icon="🏷️"
-            label="Total tickets"
-            value={numero(resumen.tickets_total)}
+            icon={
+              usuarioEsGanador ? "🏆" : "🏷️"
+            }
+            label={
+              usuarioEsGanador
+                ? "Ticket ganador"
+                : "Total tickets"
+            }
+            value={
+              usuarioEsGanador
+                ? `#${formatearNumeroTicket(
+                    ticketGanador?.numero_ticket,
+                    digitosRifa
+                  )}`
+                : numero(
+                    resumen.tickets_total
+                  )
+            }
+            subtitle={
+              usuarioEsGanador
+                ? "Ganador oficial de esta rifa"
+                : undefined
+            }
           />
         </div>
       </div>
@@ -762,20 +1216,23 @@ function PerfilUsuario({ usuario, onBack }) {
             <h2>🎟️ Números pagados</h2>
 
             <p>
-              Todos los números que este usuario tiene por
-              compras aprobadas.
+              Todos los números que este usuario
+              tiene por compras aprobadas.
             </p>
           </div>
 
           <div className="adminpro-badge-box">
             {ticketsPagados.length} número
-            {ticketsPagados.length !== 1 ? "s" : ""}
+            {ticketsPagados.length !== 1
+              ? "s"
+              : ""}
           </div>
         </div>
 
         <ListaNumeros
           tickets={ticketsPagados}
           color="blue"
+          digitos={digitosRifa}
           emptyText="Este usuario no tiene números pagados asignados."
         />
       </div>
@@ -787,24 +1244,29 @@ function PerfilUsuario({ usuario, onBack }) {
             <h2>🎁 Free Drop</h2>
 
             <p>
-              Participaciones gratuitas de este usuario.
+              Participaciones gratuitas de este
+              usuario.
             </p>
           </div>
 
           <div className="adminpro-badge-box">
             {participaciones.length} participación
-            {participaciones.length !== 1 ? "es" : ""}
+            {participaciones.length !== 1
+              ? "es"
+              : ""}
           </div>
         </div>
 
         {participaciones.length === 0 ? (
           <div
             className="adminpro-empty-box"
-            style={{ marginTop: "16px" }}
+            style={{
+              marginTop: "16px",
+            }}
           >
             <p>
-              Este usuario no tiene participaciones FREE
-              en esta rifa.
+              Este usuario no tiene
+              participaciones FREE en esta rifa.
             </p>
           </div>
         ) : (
@@ -815,199 +1277,250 @@ function PerfilUsuario({ usuario, onBack }) {
               marginTop: "18px",
             }}
           >
-            {participaciones.map((participacion) => {
-              const social = texto(
-                participacion?.social_username
-              ).replace(/^@+/, "");
+            {participaciones.map(
+              (participacion) => {
+                const social = texto(
+                  participacion?.social_username
+                ).replace(/^@+/, "");
 
-              const numerosParticipacion =
-                ticketsFree.filter(
-                  (ticket) =>
-                    String(
-                      ticket?.free_drop_participation_id ||
-                        ""
-                    ) ===
-                    String(participacion?.id || "")
-                );
+                const numerosParticipacion =
+                  ticketsFree.filter(
+                    (ticket) =>
+                      String(
+                        ticket?.free_drop_participation_id ||
+                          ""
+                      ) ===
+                      String(
+                        participacion?.id ||
+                          ""
+                      )
+                  );
 
-              return (
-                <div
-                  key={participacion?.id}
-                  style={{
-                    border:
-                      "1px solid rgba(148,163,184,.14)",
-                    background:
-                      "rgba(255,255,255,.025)",
-                    borderRadius: "16px",
-                    padding: "16px",
-                  }}
-                >
+                const tieneGanador =
+                  numerosParticipacion.some(
+                    (ticket) =>
+                      ticket?.es_ganador ===
+                      true
+                  );
+
+                return (
                   <div
+                    key={participacion?.id}
                     style={{
-                      display: "flex",
-                      justifyContent:
-                        "space-between",
-                      alignItems: "flex-start",
-                      gap: "12px",
-                      flexWrap: "wrap",
+                      border: tieneGanador
+                        ? "1px solid rgba(251,191,36,.38)"
+                        : "1px solid rgba(148,163,184,.14)",
+                      background: tieneGanador
+                        ? "linear-gradient(135deg, rgba(245,158,11,.08), rgba(255,255,255,.025))"
+                        : "rgba(255,255,255,.025)",
+                      borderRadius: "16px",
+                      padding: "16px",
                     }}
                   >
-                    <div>
+                    {tieneGanador ? (
                       <div
                         style={{
-                          fontWeight: 900,
-                          fontSize: "15px",
+                          marginBottom:
+                            "13px",
                         }}
                       >
-                        🎁{" "}
-                        {participacion?.codigo_unico ||
-                          "Participación FREE"}
+                        <Badge color="gold">
+                          🏆 FREE GANADOR
+                        </Badge>
                       </div>
+                    ) : null}
 
-                      <div
-                        style={{
-                          marginTop: "6px",
-                          color: "#94a3b8",
-                          fontSize: "12px",
-                        }}
-                      >
-                        📅{" "}
-                        {formatearFecha(
-                          participacion?.created_at
-                        )}
-                      </div>
-                    </div>
-
-                    <Badge
-                      color={estadoFreeClase(
-                        participacion?.estado
-                      )}
+                    <div
+                      style={{
+                        display: "flex",
+                        justifyContent:
+                          "space-between",
+                        alignItems:
+                          "flex-start",
+                        gap: "12px",
+                        flexWrap: "wrap",
+                      }}
                     >
-                      {participacion?.estado ||
-                        "Sin estado"}
-                    </Badge>
-                  </div>
+                      <div>
+                        <div
+                          style={{
+                            fontWeight: 900,
+                            fontSize: "15px",
+                          }}
+                        >
+                          🎁{" "}
+                          {participacion?.codigo_unico ||
+                            "Participación FREE"}
+                        </div>
 
-                  <div
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns:
-                        "repeat(auto-fit, minmax(160px, 1fr))",
-                      gap: "14px",
-                      marginTop: "16px",
-                      paddingTop: "14px",
-                      borderTop:
-                        "1px solid rgba(148,163,184,.10)",
-                    }}
-                  >
-                    <div>
-                      <div
-                        style={{
-                          color: "#94a3b8",
-                          fontSize: "11px",
-                          fontWeight: 800,
-                        }}
-                      >
-                        CÓDIGO FREE
+                        <div
+                          style={{
+                            marginTop: "6px",
+                            color: "#94a3b8",
+                            fontSize: "12px",
+                          }}
+                        >
+                          📅{" "}
+                          {formatearFecha(
+                            participacion?.created_at
+                          )}
+                        </div>
                       </div>
 
-                      <div
-                        style={{
-                          marginTop: "5px",
-                          fontWeight: 900,
-                          overflowWrap: "anywhere",
-                        }}
-                      >
-                        {participacion?.codigo_unico ||
-                          "—"}
-                      </div>
-                    </div>
-
-                    <div>
-                      <div
-                        style={{
-                          color: "#94a3b8",
-                          fontSize: "11px",
-                          fontWeight: 800,
-                        }}
-                      >
-                        INSTAGRAM
-                      </div>
-
-                      <div style={{ marginTop: "5px" }}>
-                        {social ? (
-                          <a
-                            href={`https://instagram.com/${encodeURIComponent(
-                              social
-                            )}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{
-                              color: "#60a5fa",
-                              fontWeight: 800,
-                            }}
-                          >
-                            @{social}
-                          </a>
-                        ) : (
-                          "—"
+                      <Badge
+                        color={estadoFreeClase(
+                          participacion?.estado
                         )}
-                      </div>
+                      >
+                        {participacion?.estado ||
+                          "Sin estado"}
+                      </Badge>
                     </div>
 
-                    <div>
-                      <div
-                        style={{
-                          color: "#94a3b8",
-                          fontSize: "11px",
-                          fontWeight: 800,
-                        }}
-                      >
-                        NÚMERO FREE
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns:
+                          "repeat(auto-fit, minmax(160px, 1fr))",
+                        gap: "14px",
+                        marginTop: "16px",
+                        paddingTop: "14px",
+                        borderTop:
+                          "1px solid rgba(148,163,184,.10)",
+                      }}
+                    >
+                      <div>
+                        <div
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: "11px",
+                            fontWeight: 800,
+                          }}
+                        >
+                          CÓDIGO FREE
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: "5px",
+                            fontWeight: 900,
+                            overflowWrap:
+                              "anywhere",
+                          }}
+                        >
+                          {participacion?.codigo_unico ||
+                            "—"}
+                        </div>
                       </div>
 
-                      <div
-                        style={{
-                          marginTop: "6px",
-                          display: "flex",
-                          gap: "6px",
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        {numerosParticipacion.length >
-                        0 ? (
-                          numerosParticipacion.map(
-                            (ticket, index) => (
-                              <Badge
-                                key={
-                                  ticket?.id ||
-                                  `${ticket?.numero_ticket}-${index}`
-                                }
-                                color="purple"
-                              >
-                                #
-                                {String(
-                                  ticket?.numero_ticket ??
-                                    ""
-                                ).padStart(4, "0")}
-                              </Badge>
+                      <div>
+                        <div
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: "11px",
+                            fontWeight: 800,
+                          }}
+                        >
+                          INSTAGRAM
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: "5px",
+                          }}
+                        >
+                          {social ? (
+                            <a
+                              href={`https://instagram.com/${encodeURIComponent(
+                                social
+                              )}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              style={{
+                                color:
+                                  "#60a5fa",
+                                fontWeight:
+                                  800,
+                              }}
+                            >
+                              @{social}
+                            </a>
+                          ) : (
+                            "—"
+                          )}
+                        </div>
+                      </div>
+
+                      <div>
+                        <div
+                          style={{
+                            color: "#94a3b8",
+                            fontSize: "11px",
+                            fontWeight: 800,
+                          }}
+                        >
+                          NÚMERO FREE
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: "6px",
+                            display: "flex",
+                            gap: "6px",
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          {numerosParticipacion.length >
+                          0 ? (
+                            numerosParticipacion.map(
+                              (
+                                ticket,
+                                index
+                              ) => (
+                                <Badge
+                                  key={
+                                    ticket?.id ||
+                                    `${ticket?.numero_ticket}-${index}`
+                                  }
+                                  color={
+                                    ticket?.es_ganador
+                                      ? "gold"
+                                      : "purple"
+                                  }
+                                  destacado={
+                                    ticket?.es_ganador
+                                  }
+                                >
+                                  {ticket?.es_ganador
+                                    ? "🏆 "
+                                    : "#"}
+                                  {formatearNumeroTicket(
+                                    ticket?.numero_ticket,
+                                    digitosRifa
+                                  )}
+                                  {ticket?.es_ganador
+                                    ? " · GANADOR"
+                                    : ""}
+                                </Badge>
+                              )
                             )
-                          )
-                        ) : (
-                          <span
-                            style={{
-                              color: "#94a3b8",
-                            }}
-                          >
-                            —
-                          </span>
-                        )}
+                          ) : (
+                            <span
+                              style={{
+                                color:
+                                  "#94a3b8",
+                              }}
+                            >
+                              —
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              }
+            )}
           </div>
         )}
       </div>
@@ -1022,80 +1535,96 @@ function PerfilUsuario({ usuario, onBack }) {
 export default function AdminUsuariosSection({
   rifaSeleccionada,
 }) {
-  const [usuarios, setUsuarios] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [usuarios, setUsuarios] =
+    useState([]);
 
-  const [busquedaInput, setBusquedaInput] =
+  const [loading, setLoading] =
+    useState(false);
+
+  const [error, setError] =
     useState("");
 
-  const [busquedaEjecutada, setBusquedaEjecutada] =
-    useState("");
+  const [
+    busquedaInput,
+    setBusquedaInput,
+  ] = useState("");
+
+  const [
+    busquedaEjecutada,
+    setBusquedaEjecutada,
+  ] = useState("");
 
   const [
     usuarioSeleccionado,
     setUsuarioSeleccionado,
   ] = useState(null);
 
-  const rifaId = rifaSeleccionada?.id || "";
+  const rifaId =
+    rifaSeleccionada?.id || "";
+
+  const digitosRifa =
+    obtenerDigitosRifa(rifaSeleccionada);
 
   /* =======================================================
      CARGAR USUARIOS
   ======================================================= */
 
-  const cargarUsuarios = useCallback(async () => {
-    if (!rifaId) {
-      setUsuarios([]);
-      return;
-    }
-
-    try {
-      setLoading(true);
-      setError("");
-
-      const headers = await getAdminAuthHeaders();
-
-      const response = await fetch(
-        `/api/admin-usuarios?rifaId=${encodeURIComponent(
-          rifaId
-        )}`,
-        {
-          method: "GET",
-          headers,
-          cache: "no-store",
-        }
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data?.error ||
-            "No se pudieron cargar los usuarios"
-        );
+  const cargarUsuarios =
+    useCallback(async () => {
+      if (!rifaId) {
+        setUsuarios([]);
+        return;
       }
 
-      setUsuarios(
-        Array.isArray(data?.usuarios)
-          ? data.usuarios
-          : []
-      );
-    } catch (err) {
-      console.error(
-        "Error cargando usuarios:",
-        err
-      );
+      try {
+        setLoading(true);
+        setError("");
 
-      setUsuarios([]);
+        const headers =
+          await getAdminAuthHeaders();
 
-      setError(
-        err?.message ||
-          "No se pudieron cargar los usuarios"
-      );
-    } finally {
-      setLoading(false);
-    }
-  }, [rifaId]);
+        const response = await fetch(
+          `/api/admin-usuarios?rifaId=${encodeURIComponent(
+            rifaId
+          )}`,
+          {
+            method: "GET",
+            headers,
+            cache: "no-store",
+          }
+        );
+
+        const data =
+          await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data?.error ||
+              "No se pudieron cargar los usuarios"
+          );
+        }
+
+        setUsuarios(
+          Array.isArray(data?.usuarios)
+            ? data.usuarios
+            : []
+        );
+      } catch (err) {
+        console.error(
+          "Error cargando usuarios:",
+          err
+        );
+
+        setUsuarios([]);
+
+        setError(
+          err?.message ||
+            "No se pudieron cargar los usuarios"
+        );
+      } finally {
+        setLoading(false);
+      }
+    }, [rifaId]);
 
   useEffect(() => {
     cargarUsuarios();
@@ -1113,32 +1642,76 @@ export default function AdminUsuariosSection({
   ======================================================= */
 
   const resultados = useMemo(() => {
-    const termino = normalizarBusqueda(
-      busquedaEjecutada
-    );
+    const termino =
+      normalizarBusqueda(
+        busquedaEjecutada
+      );
 
     if (!termino) return [];
 
-    const encontrados = usuarios.filter(
-      (usuario) =>
-        crearContenidoBusqueda(usuario).includes(
-          termino
-        )
-    );
+    const encontrados =
+      usuarios.filter((usuario) =>
+        crearContenidoBusqueda(
+          usuario
+        ).includes(termino)
+      );
 
     return encontrados.sort((a, b) => {
-      const exactoA = esCoincidenciaExacta(
-        a,
-        termino
+      const exactoA =
+        esCoincidenciaExacta(
+          a,
+          termino
+        );
+
+      const exactoB =
+        esCoincidenciaExacta(
+          b,
+          termino
+        );
+
+      if (exactoA && !exactoB)
+        return -1;
+
+      if (!exactoA && exactoB)
+        return 1;
+
+      const ganadorA = [
+        ...(Array.isArray(
+          a?.tickets_pagados
+        )
+          ? a.tickets_pagados
+          : []),
+        ...(Array.isArray(
+          a?.tickets_free
+        )
+          ? a.tickets_free
+          : []),
+      ].some(
+        (ticket) =>
+          ticket?.es_ganador === true
       );
 
-      const exactoB = esCoincidenciaExacta(
-        b,
-        termino
+      const ganadorB = [
+        ...(Array.isArray(
+          b?.tickets_pagados
+        )
+          ? b.tickets_pagados
+          : []),
+        ...(Array.isArray(
+          b?.tickets_free
+        )
+          ? b.tickets_free
+          : []),
+      ].some(
+        (ticket) =>
+          ticket?.es_ganador === true
       );
 
-      if (exactoA && !exactoB) return -1;
-      if (!exactoA && exactoB) return 1;
+      if (ganadorA && !ganadorB)
+        return -1;
+
+      if (!ganadorA && ganadorB)
+        return 1;
 
       const fechaA = new Date(
         a?.ultima_actividad?.fecha || 0
@@ -1150,7 +1723,10 @@ export default function AdminUsuariosSection({
 
       return fechaB - fechaA;
     });
-  }, [usuarios, busquedaEjecutada]);
+  }, [
+    usuarios,
+    busquedaEjecutada,
+  ]);
 
   /* =======================================================
      BUSCAR
@@ -1159,7 +1735,8 @@ export default function AdminUsuariosSection({
   function buscar(event) {
     event?.preventDefault?.();
 
-    const valor = texto(busquedaInput);
+    const valor =
+      texto(busquedaInput);
 
     setError("");
     setUsuarioSeleccionado(null);
@@ -1184,25 +1761,34 @@ export default function AdminUsuariosSection({
   ======================================================= */
 
   useEffect(() => {
-    if (!busquedaEjecutada) return;
+    if (!busquedaEjecutada)
+      return;
 
     if (resultados.length === 1) {
-      setUsuarioSeleccionado(resultados[0]);
+      setUsuarioSeleccionado(
+        resultados[0]
+      );
       return;
     }
 
-    const exactos = resultados.filter(
-      (usuario) =>
-        esCoincidenciaExacta(
-          usuario,
-          busquedaEjecutada
-        )
-    );
+    const exactos =
+      resultados.filter(
+        (usuario) =>
+          esCoincidenciaExacta(
+            usuario,
+            busquedaEjecutada
+          )
+      );
 
     if (exactos.length === 1) {
-      setUsuarioSeleccionado(exactos[0]);
+      setUsuarioSeleccionado(
+        exactos[0]
+      );
     }
-  }, [resultados, busquedaEjecutada]);
+  }, [
+    resultados,
+    busquedaEjecutada,
+  ]);
 
   /* =======================================================
      SIN RIFA
@@ -1214,7 +1800,8 @@ export default function AdminUsuariosSection({
         <div className="adminpro-card">
           <div className="adminpro-empty-box">
             <p>
-              Selecciona una rifa para buscar usuarios.
+              Selecciona una rifa para
+              buscar usuarios.
             </p>
           </div>
         </div>
@@ -1229,8 +1816,13 @@ export default function AdminUsuariosSection({
   if (usuarioSeleccionado) {
     return (
       <PerfilUsuario
-        usuario={usuarioSeleccionado}
+        usuario={
+          usuarioSeleccionado
+        }
         onBack={nuevaBusqueda}
+        rifaSeleccionada={
+          rifaSeleccionada
+        }
       />
     );
   }
@@ -1247,8 +1839,9 @@ export default function AdminUsuariosSection({
             <h2>👤 Usuarios</h2>
 
             <p>
-              Busca un usuario y consulta sus números,
-              compras y participación FREE en{" "}
+              Busca un usuario y consulta
+              sus números, compras y
+              participación FREE en{" "}
               <strong>
                 {rifaSeleccionada?.nombre ||
                   "la rifa seleccionada"}
@@ -1305,11 +1898,14 @@ export default function AdminUsuariosSection({
             >
               <span
                 style={{
-                  position: "absolute",
+                  position:
+                    "absolute",
                   left: "15px",
                   top: "50%",
-                  transform: "translateY(-50%)",
-                  pointerEvents: "none",
+                  transform:
+                    "translateY(-50%)",
+                  pointerEvents:
+                    "none",
                 }}
               >
                 🔎
@@ -1339,7 +1935,10 @@ export default function AdminUsuariosSection({
               type="submit"
               className="adminpro-soft-btn blue"
               disabled={
-                loading || !texto(busquedaInput)
+                loading ||
+                !texto(
+                  busquedaInput
+                )
               }
               style={{
                 minHeight: "48px",
@@ -1354,7 +1953,9 @@ export default function AdminUsuariosSection({
               <button
                 type="button"
                 className="adminpro-soft-btn dark"
-                onClick={nuevaBusqueda}
+                onClick={
+                  nuevaBusqueda
+                }
                 style={{
                   minHeight: "48px",
                 }}
@@ -1372,9 +1973,10 @@ export default function AdminUsuariosSection({
               lineHeight: 1.5,
             }}
           >
-            Puedes buscar por nombre, correo,
-            teléfono, Instagram, número de ticket,
-            código FREE o referencia.
+            Puedes buscar por nombre,
+            correo, teléfono, Instagram,
+            número de ticket, código FREE
+            o referencia.
           </div>
         </form>
 
@@ -1427,24 +2029,30 @@ export default function AdminUsuariosSection({
 
             <p
               style={{
-                margin: "9px auto 0",
+                margin:
+                  "9px auto 0",
                 color: "#94a3b8",
                 lineHeight: 1.6,
               }}
             >
-              Encuentra rápidamente toda la
-              información importante de una persona sin
-              tener que revisar compra por compra.
+              Encuentra rápidamente
+              toda la información
+              importante de una persona
+              sin tener que revisar
+              compra por compra.
             </p>
           </div>
         </div>
       ) : null}
 
       {/* CARGANDO */}
-      {loading && busquedaEjecutada ? (
+      {loading &&
+      busquedaEjecutada ? (
         <div className="adminpro-card">
           <div className="adminpro-empty-box">
-            <p>⏳ Buscando usuario...</p>
+            <p>
+              ⏳ Buscando usuario...
+            </p>
           </div>
         </div>
       ) : null}
@@ -1456,7 +2064,8 @@ export default function AdminUsuariosSection({
         <div className="adminpro-card">
           <div className="adminpro-empty-box">
             <p>
-              🔍 No encontramos resultados para{" "}
+              🔍 No encontramos
+              resultados para{" "}
               <strong>
                 “{busquedaEjecutada}”
               </strong>
@@ -1473,17 +2082,22 @@ export default function AdminUsuariosSection({
         <div className="adminpro-card">
           <div className="adminpro-section-head">
             <div>
-              <h2>🔎 Coincidencias</h2>
+              <h2>
+                🔎 Coincidencias
+              </h2>
 
               <p>
-                Selecciona el usuario que quieres
-                consultar.
+                Selecciona el usuario
+                que quieres consultar.
               </p>
             </div>
 
             <div className="adminpro-badge-box">
-              {resultados.length} resultado
-              {resultados.length !== 1 ? "s" : ""}
+              {resultados.length}{" "}
+              resultado
+              {resultados.length !== 1
+                ? "s"
+                : ""}
             </div>
           </div>
 
@@ -1494,13 +2108,20 @@ export default function AdminUsuariosSection({
               marginTop: "18px",
             }}
           >
-            {resultados.map((usuario) => (
-              <CoincidenciaUsuario
-                key={usuario?.id}
-                usuario={usuario}
-                onOpen={setUsuarioSeleccionado}
-              />
-            ))}
+            {resultados.map(
+              (usuario) => (
+                <CoincidenciaUsuario
+                  key={usuario?.id}
+                  usuario={usuario}
+                  onOpen={
+                    setUsuarioSeleccionado
+                  }
+                  digitos={
+                    digitosRifa
+                  }
+                />
+              )
+            )}
           </div>
         </div>
       ) : null}
