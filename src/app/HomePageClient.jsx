@@ -913,32 +913,43 @@ const metodoVisual =
         return;
       }
 
-      let comprobanteUrl = "";
+let comprobantePath = "";
 
-      if (comprobante) {
-        const extension = comprobante.name.split(".").pop();
-        const nombreArchivo = `${Date.now()}-${generarIdUnico()}.${extension}`;
+if (comprobante) {
+  const formDataUpload = new FormData();
+  formDataUpload.append("comprobante", comprobante);
 
-        const { error: errorUpload } = await supabase.storage
-          .from("comprobantes")
-          .upload(nombreArchivo, comprobante);
+  const uploadResponse = await fetch(
+    "/api/subir-comprobante",
+    {
+      method: "POST",
+      body: formDataUpload,
+    }
+  );
 
-        if (errorUpload) {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "error",
-            title: "Error subiendo comprobante",
-            text: errorUpload.message,
-          });
-          return;
-        }
+  const uploadData =
+    await uploadResponse.json();
 
-        const { data: urlData } = supabase.storage
-          .from("comprobantes")
-          .getPublicUrl(nombreArchivo);
+  if (
+    !uploadResponse.ok ||
+    !uploadData?.ok ||
+    !uploadData?.comprobantePath
+  ) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "error",
+      title: "Error subiendo comprobante",
+      text:
+        uploadData?.error ||
+        "No se pudo subir el comprobante.",
+    });
 
-        comprobanteUrl = urlData.publicUrl;
-      }
+    return;
+  }
+
+  comprobantePath =
+    uploadData.comprobantePath;
+}
 
       const response = await fetch("/api/comprar", {
         method: "POST",
@@ -952,9 +963,9 @@ const metodoVisual =
           referencia: referencia.trim(),
           tickets,
           totalPagar,
-          paymentMethod,
-          comprobanteUrl,
-          rifaId: rifaActiva.id,
+paymentMethod,
+comprobantePath,
+rifaId: rifaActiva.id,
           capturaInmediata,
         }),
       });
