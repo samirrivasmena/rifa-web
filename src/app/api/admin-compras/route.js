@@ -5,6 +5,9 @@ import { requireAdmin } from "../../../lib/requireAdmin";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+const COMPROBANTES_BUCKET = "comprobantes";
+const SIGNED_URL_SECONDS = 600;
+
 // =========================================================
 // TRAER TODOS LOS TICKETS
 // =========================================================
@@ -76,65 +79,168 @@ function normalizarCompra(compra = {}) {
 }
 
 // =========================================================
-// PREPARAR COMPROBANTE PARA EL ADMIN
+// VALIDAR PATH DE STORAGE
+// =========================================================
+
+function esPathSeguro(path = "") {
+  const valor = String(path || "").trim();
+
+  if (!valor) return false;
+
+  if (valor.length > 500) {
+    return false;
+  }
+
+  if (
+    valor.startsWith("/") ||
+    valor.includes("..") ||
+    valor.includes("\\")
+  ) {
+    return false;
+  }
+
+  return true;
+}
+
+// =========================================================
+// EXTRAER PATH DE COMPROBANTE
 //
 // SOPORTA:
 //
-// 1. COMPROBANTES ANTIGUOS
-//    Guardados como URL pública completa.
+// NUEVO:
+// 2026/10/uuid.png
 //
-// 2. COMPROBANTES NUEVOS
-//    Guardados solamente como:
-//    2026/10/uuid.png
+// ANTIGUO:
+// https://PROYECTO.supabase.co/storage/v1/object/public/
+// comprobantes/archivo.png
+// =========================================================
+
+function obtenerPathComprobante(valorOriginal = "") {
+  const valor = String(valorOriginal || "").trim();
+
+  if (!valor) {
+    return null;
+  }
+
+  // ---------------------------------------------------------
+  // FORMATO NUEVO:
+  // Ya tenemos solamente el path.
+  // ---------------------------------------------------------
+
+  if (
+    !valor.startsWith("http://") &&
+    !valor.startsWith("https://")
+  ) {
+    return esPathSeguro(valor)
+      ? valor
+      : null;
+  }
+
+  // ---------------------------------------------------------
+  // FORMATO ANTIGUO:
+  // URL pública completa de Supabase.
+  // ---------------------------------------------------------
+
+  try {
+    const url = new URL(valor);
+
+    const supabaseUrl = String(
+      process.env.NEXT_PUBLIC_SUPABASE_URL ||
+      process.env.SUPABASE_URL ||
+      ""
+    ).trim();
+
+    // Si tenemos la URL del proyecto configurada,
+    // comprobamos que el host sea realmente nuestro Supabase.
+    if (supabaseUrl) {
+      try {
+        const urlProyecto = new URL(supabaseUrl);
+
+        if (url.host !== urlProyecto.host) {
+          return null;
+        }
+      } catch {
+        console.error(
+          "SUPABASE_URL/NEXT_PUBLIC_SUPABASE_URL no es válida."
+        );
+
+        return null;
+      }
+    }
+
+    const prefijo =
+      `/storage/v1/object/public/${COMPROBANTES_BUCKET}/`;
+
+    if (!url.pathname.startsWith(prefijo)) {
+      return null;
+    }
+
+    const pathCodificado =
+      url.pathname.slice(prefijo.length);
+
+    if (!pathCodificado) {
+      return null;
+    }
+
+    let path;
+
+    try {
+      path = decodeURIComponent(pathCodificado);
+    } catch {
+      return null;
+    }
+
+    return esPathSeguro(path)
+      ? path
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+// =========================================================
+// GENERAR URL FIRMADA PARA EL ADMIN
 //
-// Para los nuevos generamos una URL firmada temporal.
+// IMPORTANTE:
+// NO modifica comprobante_url en Supabase.
+//
+// Solamente transforma el valor que enviamos al navegador
+// del administrador.
 // =========================================================
 
 async function prepararComprobanteParaAdmin(compra = {}) {
-  const valor = String(
+  const valorOriginal = String(
     compra?.comprobante_url || ""
   ).trim();
 
-  // ---------------------------------------------------------
-  // SIN COMPROBANTE
-  // ---------------------------------------------------------
-
-  if (!valor) {
+  if (!valorOriginal) {
     return {
       ...compra,
       comprobante_url: null,
     };
   }
 
-  // ---------------------------------------------------------
-  // COMPROBANTE ANTIGUO
-  //
-  // Mantenerlo como está para no romper compras anteriores.
-  // ---------------------------------------------------------
+  const path =
+    obtenerPathComprobante(valorOriginal);
 
-  if (
-    valor.startsWith("https://") ||
-    valor.startsWith("http://")
-  ) {
+  if (!path) {
+    console.error(
+      "Comprobante con formato no permitido:",
+      compra?.id
+    );
+
     return {
       ...compra,
-      comprobante_url: valor,
+      comprobante_url: null,
     };
   }
 
-  // ---------------------------------------------------------
-  // COMPROBANTE NUEVO
-  //
-  // La base de datos contiene únicamente el path.
-  // Generamos una URL firmada válida durante 10 minutos.
-  // ---------------------------------------------------------
-
   const { data, error } =
     await supabaseAdmin.storage
-      .from("comprobantes")
+      .from(COMPROBANTES_BUCKET)
       .createSignedUrl(
-        valor,
-        600
+        path,
+        SIGNED_URL_SECONDS
       );
 
   if (error) {
@@ -156,7 +262,7 @@ async function prepararComprobanteParaAdmin(compra = {}) {
 
   if (!signedUrl) {
     console.error(
-      "Supabase no devolvió URL firmada para el comprobante:",
+      "Supabase no devolvió URL firmada:",
       compra?.id
     );
 
@@ -168,6 +274,8 @@ async function prepararComprobanteParaAdmin(compra = {}) {
 
   return {
     ...compra,
+
+    // El admin recibe la URL temporal.
     comprobante_url: signedUrl,
   };
 }
@@ -178,7 +286,7 @@ async function prepararComprobanteParaAdmin(compra = {}) {
 
 export async function GET(req) {
   // =========================================================
-  // 1. VERIFICAR ADMIN
+  // 1. VERIFICAR ADMIN + MFA
   // =========================================================
 
   const auth = await requireAdmin(req);
@@ -195,7 +303,7 @@ export async function GET(req) {
   }
 
   // =========================================================
-  // 2. OBTENER FILTRO DE RIFA
+  // 2. OBTENER RIFA
   // =========================================================
 
   const { searchParams } =
@@ -262,7 +370,7 @@ export async function GET(req) {
     ]);
 
     // =========================================================
-    // 4. VALIDAR CONSULTA DE COMPRAS
+    // 4. VALIDAR CONSULTA
     // =========================================================
 
     const {
@@ -295,10 +403,12 @@ export async function GET(req) {
         : [];
 
     // =========================================================
-    // 6. PREPARAR COMPROBANTES
+    // 6. GENERAR URLs FIRMADAS
     //
-    // Los nuevos reciben URL firmada.
-    // Los antiguos mantienen su URL actual.
+    // Esto funciona para:
+    //
+    // - comprobantes nuevos guardados como path
+    // - comprobantes antiguos guardados como URL pública
     // =========================================================
 
     const compras =
