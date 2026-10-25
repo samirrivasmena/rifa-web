@@ -153,6 +153,21 @@ const [rifas, setRifas] = useState(rifasInicialesSeguras);
   const [showPromoPopup, setShowPromoPopup] = useState(false);
 
   const fileInputRef = useRef(null);
+
+  const purchaseTurnstileContainerRef = useRef(null);
+const purchaseTurnstileWidgetIdRef = useRef(null);
+
+const [purchaseTurnstileToken, setPurchaseTurnstileToken] =
+  useState("");
+
+const [purchaseTurnstileReady, setPurchaseTurnstileReady] =
+  useState(false);
+
+const [purchaseTurnstileError, setPurchaseTurnstileError] =
+  useState(false);
+
+const siteKey =
+  process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || "";
   
 
   const [formData, setFormData] = useState({
@@ -391,6 +406,145 @@ const popupLink = (() => {
   useEffect(() => {
     if (!config?.metodos_pago) return;
   }, [config?.metodos_pago]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    if (!siteKey) {
+      console.error(
+        "NEXT_PUBLIC_TURNSTILE_SITE_KEY no está configurada"
+      );
+
+      setPurchaseTurnstileError(true);
+      setPurchaseTurnstileReady(false);
+      setPurchaseTurnstileToken("");
+      return;
+    }
+
+    let cancelado = false;
+    let retryTimer = null;
+    let script = null;
+
+    const renderPurchaseTurnstile = () => {
+      if (cancelado) return;
+
+      if (
+        !window.turnstile ||
+        !purchaseTurnstileContainerRef.current
+      ) {
+        retryTimer = window.setTimeout(
+          renderPurchaseTurnstile,
+          100
+        );
+        return;
+      }
+
+      if (purchaseTurnstileWidgetIdRef.current !== null) {
+        return;
+      }
+
+      try {
+        const widgetId = window.turnstile.render(
+          purchaseTurnstileContainerRef.current,
+          {
+            sitekey: siteKey,
+
+            callback: (token) => {
+              if (cancelado) return;
+              setPurchaseTurnstileToken(token || "");
+              setPurchaseTurnstileReady(Boolean(token));
+              setPurchaseTurnstileError(false);
+            },
+
+            "expired-callback": () => {
+              if (cancelado) return;
+              setPurchaseTurnstileToken("");
+              setPurchaseTurnstileReady(false);
+            },
+
+            "error-callback": () => {
+              if (cancelado) return;
+              setPurchaseTurnstileToken("");
+              setPurchaseTurnstileReady(false);
+              setPurchaseTurnstileError(true);
+            },
+          }
+        );
+
+        purchaseTurnstileWidgetIdRef.current = widgetId;
+      } catch (error) {
+        console.error(
+          "Error renderizando Turnstile de compra:",
+          error
+        );
+        setPurchaseTurnstileToken("");
+        setPurchaseTurnstileReady(false);
+        setPurchaseTurnstileError(true);
+      }
+    };
+
+    const cargarTurnstile = () => {
+      if (window.turnstile) {
+        renderPurchaseTurnstile();
+        return;
+      }
+
+      const scriptId = "cloudflare-turnstile-script";
+      script = document.getElementById(scriptId);
+
+      if (script) {
+        script.addEventListener("load", renderPurchaseTurnstile);
+        retryTimer = window.setTimeout(renderPurchaseTurnstile, 100);
+        return;
+      }
+
+      script = document.createElement("script");
+      script.id = scriptId;
+      script.src =
+        "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
+      script.async = true;
+      script.defer = true;
+      script.addEventListener("load", renderPurchaseTurnstile);
+      script.addEventListener("error", () => {
+        if (cancelado) return;
+        console.error(
+          "No se pudo cargar el script de Cloudflare Turnstile"
+        );
+        setPurchaseTurnstileToken("");
+        setPurchaseTurnstileReady(false);
+        setPurchaseTurnstileError(true);
+      });
+
+      document.head.appendChild(script);
+    };
+
+    cargarTurnstile();
+
+    return () => {
+      cancelado = true;
+
+      if (retryTimer) {
+        window.clearTimeout(retryTimer);
+      }
+
+      if (script) {
+        script.removeEventListener("load", renderPurchaseTurnstile);
+      }
+
+      if (
+        window.turnstile &&
+        purchaseTurnstileWidgetIdRef.current !== null
+      ) {
+        try {
+          window.turnstile.remove(
+            purchaseTurnstileWidgetIdRef.current
+          );
+        } catch {}
+      }
+
+      purchaseTurnstileWidgetIdRef.current = null;
+    };
+  }, [siteKey]);
 
   const metodosPagoAdmin = useMemo(() => {
     return Array.isArray(config?.metodos_pago) ? config.metodos_pago : [];
@@ -791,6 +945,24 @@ const metodoVisual =
       .slice(2)}`;
   };
 
+  const resetPurchaseTurnstile = () => {
+    setPurchaseTurnstileToken("");
+    setPurchaseTurnstileReady(false);
+    setPurchaseTurnstileError(false);
+
+    if (
+      typeof window !== "undefined" &&
+      window.turnstile &&
+      purchaseTurnstileWidgetIdRef.current !== null
+    ) {
+      try {
+        window.turnstile.reset(
+          purchaseTurnstileWidgetIdRef.current
+        );
+      } catch {}
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -916,19 +1088,45 @@ const metodoVisual =
 let comprobantePath = "";
 
 if (comprobante) {
-  const formDataUpload = new FormData();
-  formDataUpload.append("comprobante", comprobante);
+  if (!purchaseTurnstileToken) {
+    await Swal.fire({
+      ...swalConfig,
+      icon: "warning",
+      title: "Verificación requerida",
+      text: "Completa la verificación de seguridad antes de confirmar tu compra.",
+    });
 
-  const uploadResponse = await fetch(
-    "/api/subir-comprobante",
-    {
-      method: "POST",
-      body: formDataUpload,
-    }
+    return;
+  }
+
+  const formDataUpload = new FormData();
+
+  formDataUpload.append(
+    "comprobante",
+    comprobante
   );
 
-  const uploadData =
-    await uploadResponse.json();
+  formDataUpload.append(
+    "turnstileToken",
+    purchaseTurnstileToken
+  );
+
+  let uploadResponse;
+
+  try {
+    uploadResponse = await fetch(
+      "/api/subir-comprobante",
+      {
+        method: "POST",
+        body: formDataUpload,
+      }
+    );
+  } finally {
+    // El token de Turnstile es de un solo uso.
+    resetPurchaseTurnstile();
+  }
+
+  const uploadData = await uploadResponse.json();
 
   if (
     !uploadResponse.ok ||
@@ -1594,8 +1792,55 @@ rifaId: rifaActiva.id,
                   </section>
                 )}
 
-                <section className="card-section no-border">
-                  {paymentMethod === "App Pay" ? (
+<section className="card-section no-border">
+  {paymentMethod !== "App Pay" && (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "8px",
+        marginBottom: "16px",
+      }}
+    >
+      <div
+        ref={purchaseTurnstileContainerRef}
+        aria-label="Verificación de seguridad"
+      />
+
+      {purchaseTurnstileError && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: "13px",
+            textAlign: "center",
+            color: "#dc2626",
+          }}
+        >
+          No se pudo cargar la verificación de seguridad.
+          Actualiza la página e inténtalo nuevamente.
+        </p>
+      )}
+
+      {!purchaseTurnstileError &&
+        !purchaseTurnstileReady && (
+          <p
+            style={{
+              margin: 0,
+              fontSize: "12px",
+              textAlign: "center",
+              opacity: 0.7,
+            }}
+          >
+            Completa la verificación de seguridad para
+            confirmar tu compra.
+          </p>
+        )}
+    </div>
+  )}
+
+  {paymentMethod === "App Pay" ? (
                     <div className="apppay-submit-helper">
                       <p className="apppay-submit-helper-text">
                         Usa el botón negro de  Pay para completar tu pago.

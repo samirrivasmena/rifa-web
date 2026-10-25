@@ -14,6 +14,9 @@ const BUCKET_COMPROBANTES = "comprobantes";
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
+const TURNSTILE_VERIFY_URL =
+  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
 const MIME_TYPES_PERMITIDOS = new Set([
   "image/jpeg",
   "image/png",
@@ -28,6 +31,13 @@ const EXTENSIONES_POR_MIME = {
   "application/pdf": "pdf",
 };
 
+const HOSTNAMES_PERMITIDOS = new Set([
+  "sorteoslsd.com",
+  "www.sorteoslsd.com",
+  "localhost",
+  "192.168.1.154",
+]);
+
 /* =========================================================
    RESPUESTAS
 ========================================================= */
@@ -41,10 +51,206 @@ function errorResponse(mensaje, status = 400) {
     {
       status,
       headers: {
-        "Cache-Control": "no-store",
+        "Cache-Control": "no-store, no-cache, must-revalidate",
+        Pragma: "no-cache",
+        Expires: "0",
       },
     }
   );
+}
+
+/* =========================================================
+   OBTENER IP DEL CLIENTE
+========================================================= */
+
+function obtenerIp(req) {
+  const forwardedFor =
+    req.headers.get("x-forwarded-for") || "";
+
+  const primeraIp = forwardedFor
+    .split(",")[0]
+    ?.trim();
+
+  if (primeraIp) {
+    return primeraIp.slice(0, 200);
+  }
+
+  const realIp =
+    req.headers.get("x-real-ip") || "";
+
+  if (realIp.trim()) {
+    return realIp.trim().slice(0, 200);
+  }
+
+  return "";
+}
+
+/* =========================================================
+   VERIFICAR TURNSTILE
+========================================================= */
+
+async function verificarTurnstile(req, token) {
+  const secretKey = String(
+    process.env.TURNSTILE_SECRET_KEY || ""
+  ).trim();
+
+  if (!secretKey) {
+    console.error(
+      "SEGURIDAD: TURNSTILE_SECRET_KEY no está configurada"
+    );
+
+    return {
+      ok: false,
+      status: 500,
+      error: "Configuración de seguridad incompleta.",
+    };
+  }
+
+  const tokenLimpio =
+    String(token || "").trim();
+
+  if (!tokenLimpio) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Completa la verificación de seguridad.",
+    };
+  }
+
+  if (tokenLimpio.length > 4096) {
+    return {
+      ok: false,
+      status: 400,
+      error: "Verificación de seguridad inválida.",
+    };
+  }
+
+  const formData =
+    new URLSearchParams();
+
+  formData.append(
+    "secret",
+    secretKey
+  );
+
+  formData.append(
+    "response",
+    tokenLimpio
+  );
+
+  const clientIp =
+    obtenerIp(req);
+
+  if (clientIp) {
+    formData.append(
+      "remoteip",
+      clientIp
+    );
+  }
+
+  let cloudflareResponse;
+
+  try {
+    cloudflareResponse =
+      await fetch(
+        TURNSTILE_VERIFY_URL,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/x-www-form-urlencoded",
+          },
+
+          body:
+            formData.toString(),
+
+          cache: "no-store",
+        }
+      );
+  } catch (error) {
+    console.error(
+      "Error conectando con Turnstile:",
+      error
+    );
+
+    return {
+      ok: false,
+      status: 503,
+      error:
+        "No se pudo completar la verificación de seguridad.",
+    };
+  }
+
+  if (!cloudflareResponse.ok) {
+    console.error(
+      "Turnstile respondió con HTTP:",
+      cloudflareResponse.status
+    );
+
+    return {
+      ok: false,
+      status: 503,
+      error:
+        "No se pudo completar la verificación de seguridad.",
+    };
+  }
+
+  let resultado;
+
+  try {
+    resultado =
+      await cloudflareResponse.json();
+  } catch {
+    return {
+      ok: false,
+      status: 503,
+      error:
+        "Respuesta de seguridad inválida.",
+    };
+  }
+
+  if (!resultado?.success) {
+    console.warn(
+      "Turnstile rechazó una verificación:",
+      resultado?.["error-codes"] || []
+    );
+
+    return {
+      ok: false,
+      status: 403,
+      error:
+        "No se pudo verificar que eres una persona real.",
+    };
+  }
+
+  const hostname =
+    String(
+      resultado?.hostname || ""
+    )
+      .trim()
+      .toLowerCase();
+
+  if (
+    !hostname ||
+    !HOSTNAMES_PERMITIDOS.has(hostname)
+  ) {
+    console.warn(
+      "Turnstile hostname rechazado:",
+      hostname || "(vacío)"
+    );
+
+    return {
+      ok: false,
+      status: 403,
+      error:
+        "Origen de verificación no autorizado.",
+    };
+  }
+
+  return {
+    ok: true,
+  };
 }
 
 /* =========================================================
@@ -83,9 +289,10 @@ function validarArchivo(file) {
     };
   }
 
-  const mimeType = String(file.type || "")
-    .trim()
-    .toLowerCase();
+  const mimeType =
+    String(file.type || "")
+      .trim()
+      .toLowerCase();
 
   if (!MIME_TYPES_PERMITIDOS.has(mimeType)) {
     return {
@@ -98,18 +305,20 @@ function validarArchivo(file) {
   return {
     ok: true,
     mimeType,
-    extension: EXTENSIONES_POR_MIME[mimeType],
+    extension:
+      EXTENSIONES_POR_MIME[mimeType],
   };
 }
 
 /* =========================================================
    FIRMA REAL DEL ARCHIVO
-
-   No confiamos únicamente en file.type.
 ========================================================= */
 
 function validarFirmaArchivo(buffer, mimeType) {
-  if (!Buffer.isBuffer(buffer) || buffer.length === 0) {
+  if (
+    !Buffer.isBuffer(buffer) ||
+    buffer.length === 0
+  ) {
     return false;
   }
 
@@ -125,7 +334,9 @@ function validarFirmaArchivo(buffer, mimeType) {
 
   // PNG: 89 50 4E 47 0D 0A 1A 0A
   if (mimeType === "image/png") {
-    if (buffer.length < 8) return false;
+    if (buffer.length < 8) {
+      return false;
+    }
 
     const firmaPng = [
       0x89,
@@ -139,25 +350,44 @@ function validarFirmaArchivo(buffer, mimeType) {
     ];
 
     return firmaPng.every(
-      (byte, index) => buffer[index] === byte
+      (byte, index) =>
+        buffer[index] === byte
     );
   }
 
   // WEBP: RIFF....WEBP
   if (mimeType === "image/webp") {
-    if (buffer.length < 12) return false;
+    if (buffer.length < 12) {
+      return false;
+    }
 
     return (
-      buffer.toString("ascii", 0, 4) === "RIFF" &&
-      buffer.toString("ascii", 8, 12) === "WEBP"
+      buffer.toString(
+        "ascii",
+        0,
+        4
+      ) === "RIFF" &&
+      buffer.toString(
+        "ascii",
+        8,
+        12
+      ) === "WEBP"
     );
   }
 
   // PDF: %PDF-
   if (mimeType === "application/pdf") {
-    if (buffer.length < 5) return false;
+    if (buffer.length < 5) {
+      return false;
+    }
 
-    return buffer.toString("ascii", 0, 5) === "%PDF-";
+    return (
+      buffer.toString(
+        "ascii",
+        0,
+        5
+      ) === "%PDF-"
+    );
   }
 
   return false;
@@ -196,7 +426,8 @@ export async function POST(req) {
     let formData;
 
     try {
-      formData = await req.formData();
+      formData =
+        await req.formData();
     } catch {
       return errorResponse(
         "No se pudo leer el comprobante.",
@@ -204,16 +435,45 @@ export async function POST(req) {
       );
     }
 
-    const file = formData.get("comprobante");
+    const file =
+      formData.get("comprobante");
+
+    const turnstileToken =
+      String(
+        formData.get("turnstileToken") || ""
+      ).trim();
 
     /* -----------------------------------------------------
-       VALIDACIÓN INICIAL
+       TURNSTILE
+
+       Lo comprobamos ANTES de convertir y subir el archivo.
     ----------------------------------------------------- */
 
-    const validacion = validarArchivo(file);
+    const seguridad =
+      await verificarTurnstile(
+        req,
+        turnstileToken
+      );
+
+    if (!seguridad.ok) {
+      return errorResponse(
+        seguridad.error,
+        seguridad.status
+      );
+    }
+
+    /* -----------------------------------------------------
+       VALIDACIÓN INICIAL DEL ARCHIVO
+    ----------------------------------------------------- */
+
+    const validacion =
+      validarArchivo(file);
 
     if (!validacion.ok) {
-      return errorResponse(validacion.error, 400);
+      return errorResponse(
+        validacion.error,
+        400
+      );
     }
 
     /* -----------------------------------------------------
@@ -223,8 +483,11 @@ export async function POST(req) {
     let buffer;
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
-      buffer = Buffer.from(arrayBuffer);
+      const arrayBuffer =
+        await file.arrayBuffer();
+
+      buffer =
+        Buffer.from(arrayBuffer);
     } catch {
       return errorResponse(
         "No se pudo procesar el comprobante.",
@@ -234,7 +497,6 @@ export async function POST(req) {
 
     /*
      * Segunda comprobación de tamaño.
-     * No dependemos únicamente de file.size.
      */
     if (
       buffer.length <= 0 ||
@@ -250,10 +512,11 @@ export async function POST(req) {
        VALIDAR CONTENIDO REAL
     ----------------------------------------------------- */
 
-    const firmaValida = validarFirmaArchivo(
-      buffer,
-      validacion.mimeType
-    );
+    const firmaValida =
+      validarFirmaArchivo(
+        buffer,
+        validacion.mimeType
+      );
 
     if (!firmaValida) {
       return errorResponse(
@@ -264,19 +527,20 @@ export async function POST(req) {
 
     /* -----------------------------------------------------
        NOMBRE SEGURO
-
-       No utilizamos el nombre original del usuario.
     ----------------------------------------------------- */
 
-    const fecha = new Date();
+    const fecha =
+      new Date();
 
-    const year = String(
-      fecha.getUTCFullYear()
-    );
+    const year =
+      String(
+        fecha.getUTCFullYear()
+      );
 
-    const month = String(
-      fecha.getUTCMonth() + 1
-    ).padStart(2, "0");
+    const month =
+      String(
+        fecha.getUTCMonth() + 1
+      ).padStart(2, "0");
 
     const nombreSeguro =
       `${randomUUID()}.${validacion.extension}`;
@@ -286,21 +550,28 @@ export async function POST(req) {
 
     /* -----------------------------------------------------
        SUBIR CON SERVICE ROLE
-
-       El navegador NO necesita permiso INSERT
-       sobre storage.objects.
     ----------------------------------------------------- */
 
     const {
       data: uploadData,
       error: uploadError,
-    } = await supabaseAdmin.storage
-      .from(BUCKET_COMPROBANTES)
-      .upload(rutaSubida, buffer, {
-        contentType: validacion.mimeType,
-        cacheControl: "3600",
-        upsert: false,
-      });
+    } =
+      await supabaseAdmin.storage
+        .from(
+          BUCKET_COMPROBANTES
+        )
+        .upload(
+          rutaSubida,
+          buffer,
+          {
+            contentType:
+              validacion.mimeType,
+
+            cacheControl: "3600",
+
+            upsert: false,
+          }
+        );
 
     if (uploadError) {
       console.error(
@@ -317,16 +588,13 @@ export async function POST(req) {
     }
 
     const path =
-      uploadData?.path || rutaSubida;
+      uploadData?.path ||
+      rutaSubida;
 
     /* -----------------------------------------------------
        RESPUESTA
 
-       IMPORTANTE:
-       No devolvemos getPublicUrl().
-
-       Devolvemos únicamente la referencia interna
-       del objeto en Storage.
+       No devolvemos una URL pública.
     ----------------------------------------------------- */
 
     return NextResponse.json(
@@ -337,7 +605,8 @@ export async function POST(req) {
       {
         status: 201,
         headers: {
-          "Cache-Control": "no-store",
+          "Cache-Control":
+            "no-store, no-cache, must-revalidate",
         },
       }
     );
@@ -354,8 +623,12 @@ export async function POST(req) {
     if (rutaSubida) {
       try {
         await supabaseAdmin.storage
-          .from(BUCKET_COMPROBANTES)
-          .remove([rutaSubida]);
+          .from(
+            BUCKET_COMPROBANTES
+          )
+          .remove([
+            rutaSubida,
+          ]);
       } catch (cleanupError) {
         console.error(
           "No se pudo limpiar comprobante huérfano:",
