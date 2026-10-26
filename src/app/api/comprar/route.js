@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { enviarPushAdmins } from "@/lib/adminPush";
 
@@ -11,7 +12,11 @@ export const revalidate = 0;
 // =========================================================
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+
 const RATE_LIMIT_MAX = 15;
+
+const UPLOAD_PROOF_MAX_AGE_MS = 10 * 60 * 1000;
+const UPLOAD_PROOF_FUTURE_SKEW_MS = 30 * 1000;
 
 const PATH_COMPROBANTES =
   "/storage/v1/object/public/comprobantes/";
@@ -355,6 +360,149 @@ function esComprobantePathValido(path) {
     /^\d{4}\/\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/i;
 
   return patron.test(limpio);
+}
+// =========================================================
+// VALIDAR PRUEBA CRIPTOGRÁFICA DEL COMPROBANTE
+// =========================================================
+
+function validarUploadProof({
+  path,
+  rifaId,
+  proof,
+}) {
+  try {
+    const secret = String(
+      process.env.PURCHASE_UPLOAD_PROOF_SECRET || ""
+    ).trim();
+
+    /*
+     * Si el secreto no existe, fallamos de forma segura.
+     * Nunca permitimos una compra manual sin poder
+     * comprobar la firma.
+     */
+    if (!secret || secret.length < 32) {
+      console.error(
+        "SEGURIDAD: PURCHASE_UPLOAD_PROOF_SECRET no está configurado correctamente."
+      );
+
+      return false;
+    }
+
+    const pathLimpio = String(path || "").trim();
+    const rifaIdLimpio = String(rifaId || "").trim();
+    const proofLimpio = String(proof || "").trim();
+
+    if (
+      !pathLimpio ||
+      !rifaIdLimpio ||
+      !proofLimpio
+    ) {
+      return false;
+    }
+
+    /*
+     * Formato esperado:
+     *
+     * timestamp.firma
+     *
+     * timestamp = 13 dígitos
+     * firma     = SHA-256 hexadecimal de 64 caracteres
+     */
+    const match =
+      /^(\d{13})\.([0-9a-f]{64})$/i.exec(
+        proofLimpio
+      );
+
+    if (!match) {
+      return false;
+    }
+
+    const issuedAt = Number(match[1]);
+
+    const firmaRecibida =
+      match[2].toLowerCase();
+
+    if (!Number.isFinite(issuedAt)) {
+      return false;
+    }
+
+    const ahora = Date.now();
+
+    /*
+     * Evita aceptar una prueba con una fecha
+     * demasiado adelantada.
+     */
+    if (
+      issuedAt >
+      ahora + UPLOAD_PROOF_FUTURE_SKEW_MS
+    ) {
+      return false;
+    }
+
+    /*
+     * La prueba solamente sirve durante 10 minutos.
+     */
+    if (
+      ahora - issuedAt >
+      UPLOAD_PROOF_MAX_AGE_MS
+    ) {
+      return false;
+    }
+
+    /*
+     * IMPORTANTE:
+     *
+     * Este payload DEBE coincidir exactamente con
+     * el usado por /api/subir-comprobante.
+     */
+    const payload =
+      `${pathLimpio}.${issuedAt}`;
+
+    const firmaEsperada =
+      createHmac(
+        "sha256",
+        secret
+      )
+        .update(
+          payload,
+          "utf8"
+        )
+        .digest("hex");
+
+    /*
+     * Comparación resistente a timing attacks.
+     */
+    const bufferRecibido =
+      Buffer.from(
+        firmaRecibida,
+        "hex"
+      );
+
+    const bufferEsperado =
+      Buffer.from(
+        firmaEsperada,
+        "hex"
+      );
+
+    if (
+      bufferRecibido.length !==
+      bufferEsperado.length
+    ) {
+      return false;
+    }
+
+    return timingSafeEqual(
+      bufferRecibido,
+      bufferEsperado
+    );
+  } catch (error) {
+    console.error(
+      "Error validando uploadProof:",
+      error
+    );
+
+    return false;
+  }
 }
 // =========================================================
 // RESPUESTAS
@@ -744,6 +892,7 @@ const {
   paymentMethod,
   comprobanteUrl,
   comprobantePath,
+  uploadProof,
 } = body;
 
     const rifaIdRecibido =
@@ -808,6 +957,13 @@ const comprobantePathLimpio =
       comprobantePath
     ),
     500
+  );
+  const uploadProofLimpio =
+  limitarLongitud(
+    limpiarTexto(
+      uploadProof
+    ),
+    200
   );
 
     const rifaIdLimpio =
@@ -930,42 +1086,41 @@ const comprobantePathLimpio =
       );
     }
 
-if (
-  !esAppPay &&
-  !comprobante &&
-  !comprobantePathLimpio
-) {
-  return errorResponse(
-    "El comprobante es obligatorio para este método de pago",
-    400
-  );
-}
+if (!esAppPay) {
+  if (
+    !comprobantePathLimpio ||
+    !uploadProofLimpio
+  ) {
+    return errorResponse(
+      "El comprobante no pudo ser verificado. Súbelo nuevamente.",
+      400
+    );
+  }
 
-if (
-  !esAppPay &&
-  comprobantePathLimpio &&
-  !esComprobantePathValido(
-    comprobantePathLimpio
-  )
-) {
-  return errorResponse(
-    "La ruta del comprobante no es válida",
-    400
-  );
-}
+  if (
+    !esComprobantePathValido(
+      comprobantePathLimpio
+    )
+  ) {
+    return errorResponse(
+      "El comprobante no es válido.",
+      400
+    );
+  }
 
-if (
-  !esAppPay &&
-  !comprobantePathLimpio &&
-  comprobante &&
-  !esComprobanteValido(
-    comprobante
-  )
-) {
-  return errorResponse(
-    "El comprobante no proviene de una fuente permitida",
-    400
-  );
+  const uploadProofValido =
+    validarUploadProof({
+      path: comprobantePathLimpio,
+      rifaId: rifaIdLimpio,
+      proof: uploadProofLimpio,
+    });
+
+  if (!uploadProofValido) {
+    return errorResponse(
+      "El comprobante no pudo ser verificado. Súbelo nuevamente.",
+      400
+    );
+  }
 }
 
     // -------------------------------------------------------
@@ -1423,8 +1578,7 @@ if (
 const comprobanteFinal =
   esAppPay
     ? null
-    : comprobantePathLimpio ||
-      comprobante;
+    : comprobantePathLimpio;
 
     // -------------------------------------------------------
     // CREAR COMPRA

@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { randomUUID } from "crypto";
+import {
+  createHmac,
+  randomUUID,
+} from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
 export const runtime = "nodejs";
@@ -16,6 +19,16 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 const TURNSTILE_VERIFY_URL =
   "https://challenges.cloudflare.com/turnstile/v0/siteverify";
+
+/*
+ * Tiempo de validez de la prueba de subida.
+ *
+ * El usuario normalmente registra la compra inmediatamente
+ * después de subir el comprobante.
+ *
+ * 10 minutos es suficiente para completar ese proceso.
+ */
+const UPLOAD_PROOF_TTL_MS = 10 * 60 * 1000;
 
 const MIME_TYPES_PERMITIDOS = new Set([
   "image/jpeg",
@@ -394,6 +407,82 @@ function validarFirmaArchivo(buffer, mimeType) {
 }
 
 /* =========================================================
+   UPLOAD PROOF
+========================================================= */
+
+/*
+ * Genera una prueba criptográfica que demuestra que
+ * comprobantePath fue entregado por esta ruta después de:
+ *
+ * 1. pasar Turnstile;
+ * 2. validar el archivo;
+ * 3. subirlo correctamente al bucket privado.
+ *
+ * Formato:
+ *
+ * timestamp.firmaHmac
+ *
+ * La firma incluye:
+ *
+ * comprobantePath + timestamp
+ *
+ * La clave secreta nunca se envía al navegador.
+ */
+function generarUploadProof(comprobantePath) {
+  const secret = String(
+    process.env.PURCHASE_UPLOAD_PROOF_SECRET || ""
+  ).trim();
+
+  if (!secret) {
+    console.error(
+      "SEGURIDAD: PURCHASE_UPLOAD_PROOF_SECRET no está configurada"
+    );
+
+    return {
+      ok: false,
+      error:
+        "Configuración de seguridad incompleta.",
+    };
+  }
+
+  const pathLimpio =
+    String(comprobantePath || "").trim();
+
+  if (!pathLimpio) {
+    return {
+      ok: false,
+      error:
+        "No se pudo generar la prueba del comprobante.",
+    };
+  }
+
+  const timestamp =
+    Date.now();
+
+  const payload =
+    `${pathLimpio}.${timestamp}`;
+
+  const firma =
+    createHmac(
+      "sha256",
+      secret
+    )
+      .update(
+        payload,
+        "utf8"
+      )
+      .digest("hex");
+
+  return {
+    ok: true,
+    uploadProof:
+      `${timestamp}.${firma}`,
+    expiresAt:
+      timestamp + UPLOAD_PROOF_TTL_MS,
+  };
+}
+
+/* =========================================================
    POST
 ========================================================= */
 
@@ -592,15 +681,69 @@ export async function POST(req) {
       rutaSubida;
 
     /* -----------------------------------------------------
+       GENERAR PRUEBA CRIPTOGRÁFICA
+    ----------------------------------------------------- */
+
+    const prueba =
+      generarUploadProof(path);
+
+    if (!prueba.ok) {
+      /*
+       * El archivo ya fue subido, pero no queremos dejarlo
+       * almacenado si no podemos generar la prueba necesaria
+       * para registrar posteriormente la compra.
+       */
+      try {
+        await supabaseAdmin.storage
+          .from(
+            BUCKET_COMPROBANTES
+          )
+          .remove([
+            path,
+          ]);
+      } catch (cleanupError) {
+        console.error(
+          "No se pudo limpiar comprobante sin uploadProof:",
+          cleanupError
+        );
+      }
+
+      rutaSubida = null;
+
+      return errorResponse(
+        prueba.error ||
+          "No se pudo proteger el comprobante.",
+        500
+      );
+    }
+
+    /* -----------------------------------------------------
        RESPUESTA
 
        No devolvemos una URL pública.
+
+       comprobantePath:
+       ruta privada del archivo.
+
+       uploadProof:
+       prueba firmada por el servidor.
+
+       expiresAt:
+       momento en que expira la prueba.
     ----------------------------------------------------- */
 
     return NextResponse.json(
       {
         ok: true,
-        comprobantePath: path,
+
+        comprobantePath:
+          path,
+
+        uploadProof:
+          prueba.uploadProof,
+
+        expiresAt:
+          prueba.expiresAt,
       },
       {
         status: 201,

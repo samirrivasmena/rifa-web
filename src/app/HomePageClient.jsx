@@ -1086,6 +1086,7 @@ const metodoVisual =
       }
 
 let comprobantePath = "";
+let uploadProof = "";
 
 if (comprobante) {
   if (!purchaseTurnstileToken) {
@@ -1122,16 +1123,21 @@ if (comprobante) {
       }
     );
   } finally {
-    // El token de Turnstile es de un solo uso.
+    /*
+     * El token de Turnstile es de un solo uso.
+     * Lo reiniciamos después del intento de subida.
+     */
     resetPurchaseTurnstile();
   }
 
-  const uploadData = await uploadResponse.json();
+  const uploadData =
+    await uploadResponse.json();
 
   if (
     !uploadResponse.ok ||
     !uploadData?.ok ||
-    !uploadData?.comprobantePath
+    !uploadData?.comprobantePath ||
+    !uploadData?.uploadProof
   ) {
     await Swal.fire({
       ...swalConfig,
@@ -1145,30 +1151,62 @@ if (comprobante) {
     return;
   }
 
+  /*
+   * Estos dos valores vienen del servidor.
+   *
+   * comprobantePath:
+   * ruta privada del archivo.
+   *
+   * uploadProof:
+   * prueba criptográfica generada por el servidor
+   * después de validar Turnstile y subir el archivo.
+   */
   comprobantePath =
     uploadData.comprobantePath;
+
+  uploadProof =
+    uploadData.uploadProof;
 }
 
-      const response = await fetch("/api/comprar", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          nombre: nombre.trim(),
-          email: email.trim(),
-          telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
-          referencia: referencia.trim(),
-          tickets,
-          totalPagar,
-paymentMethod,
-comprobantePath,
-rifaId: rifaActiva.id,
-          capturaInmediata,
-        }),
-      });
+const response = await fetch(
+  "/api/comprar",
+  {
+    method: "POST",
 
-      const data = await response.json();
+    headers: {
+      "Content-Type": "application/json",
+    },
+
+    body: JSON.stringify({
+      nombre:
+        nombre.trim(),
+
+      email:
+        email.trim(),
+
+      telefono:
+        `${codigoPais || "+58"} ${telefonoLimpio}`,
+
+      referencia:
+        referencia.trim(),
+
+      tickets,
+
+      totalPagar,
+
+      paymentMethod,
+
+      comprobantePath,
+
+      uploadProof,
+
+      rifaId:
+        rifaActiva.id,
+
+      capturaInmediata,
+    }),
+  }
+);
 
       if (!response.ok) {
         await Swal.fire({
