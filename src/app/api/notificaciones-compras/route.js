@@ -41,14 +41,17 @@ function ocultarNombre(nombre = "Cliente") {
    El componente solamente necesita un identificador para
    saber si ya mostró esa notificación.
 
-   Generamos uno a partir de datos de la compra y enviamos
-   únicamente una pequeña parte del hash.
+   El ID público se genera usando el momento REAL
+   en que la compra fue aprobada.
+
+   Esto también permite distinguir una nueva aprobación
+   sin exponer el ID real de Supabase.
 ========================================================= */
 
 function crearIdPublico(compra) {
   const base = [
     String(compra?.id || ""),
-    String(compra?.fecha_compra || ""),
+    String(compra?.aprobado_at || ""),
     String(compra?.cantidad_tickets || ""),
   ].join(":");
 
@@ -64,7 +67,7 @@ function crearIdPublico(compra) {
    ESTA RUTA ES PÚBLICA POR DISEÑO.
 
    Se utiliza para mostrar las notificaciones públicas
-   de compras recientes.
+   de compras recientemente APROBADAS.
 
    Por seguridad:
    - NO devuelve email.
@@ -73,6 +76,13 @@ function crearIdPublico(compra) {
    - NO devuelve monto.
    - NO devuelve el ID real de la compra.
    - NO devuelve el nombre completo.
+
+   IMPORTANTE:
+   Las compras se ordenan por aprobado_at.
+
+   Esto significa que "ÚLTIMA COMPRA" representa
+   la compra aprobada más recientemente en el admin,
+   no simplemente la compra creada más recientemente.
 ========================================================= */
 
 export async function GET() {
@@ -83,6 +93,7 @@ export async function GET() {
         id,
         cantidad_tickets,
         fecha_compra,
+        aprobado_at,
         usuarios!compras_usuario_id_fkey (
           nombre
         ),
@@ -91,7 +102,8 @@ export async function GET() {
         )
       `)
       .eq("estado_pago", "aprobado")
-      .order("fecha_compra", {
+      .not("aprobado_at", "is", null)
+      .order("aprobado_at", {
         ascending: false,
       })
       .limit(20);
@@ -154,7 +166,7 @@ export async function GET() {
          *
          * FloatingPurchaseNotifications lo utiliza
          * solamente para detectar si ya mostró
-         * esta compra.
+         * esta aprobación.
          */
         id: crearIdPublico(compra),
 
@@ -168,8 +180,21 @@ export async function GET() {
 
         rifa: nombreRifa,
 
+        /*
+         * Conservamos fecha_compra por compatibilidad
+         * con el frontend existente.
+         */
         fecha_compra:
           compra?.fecha_compra || null,
+
+        /*
+         * Momento real en que la compra fue aprobada.
+         *
+         * Este es el dato utilizado para ordenar
+         * correctamente las notificaciones.
+         */
+        aprobado_at:
+          compra?.aprobado_at || null,
       };
     });
 

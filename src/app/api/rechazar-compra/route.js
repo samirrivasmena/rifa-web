@@ -102,12 +102,13 @@ const { data: compra, error: compraError } = await supabaseAdmin
       }
     }
 
-    const { error: updateError } = await supabaseAdmin
-      .from("compras")
-      .update({
-        estado_pago: "rechazado",
-      })
-      .eq("id", compraIdLimpio);
+const { error: updateError } = await supabaseAdmin
+  .from("compras")
+  .update({
+    estado_pago: "rechazado",
+    aprobado_at: null,
+  })
+  .eq("id", compraIdLimpio);
 
     if (updateError) {
       console.error("Error rechazando compra:", updateError);

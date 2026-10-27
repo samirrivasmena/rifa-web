@@ -1007,24 +1007,25 @@ export async function POST(req) {
        APROBAR COMPRA
     ----------------------------------------------------- */
 
-    const {
-      data: compraActualizada,
-      error: aprobarCompraError,
-    } = await supabaseAdmin
-      .from("compras")
-      .update({
-        estado_pago: "aprobado",
-        rifa_id: rifa.id,
-      })
-      .eq("id", compra.id)
-      .eq(
-        "estado_pago",
-        estadoAnteriorCompra
-      )
-      .select(
-        "id, estado_pago, rifa_id"
-      )
-      .maybeSingle();
+const {
+  data: compraActualizada,
+  error: aprobarCompraError,
+} = await supabaseAdmin
+  .from("compras")
+  .update({
+    estado_pago: "aprobado",
+    rifa_id: rifa.id,
+    aprobado_at: new Date().toISOString(),
+  })
+  .eq("id", compra.id)
+  .eq(
+    "estado_pago",
+    estadoAnteriorCompra
+  )
+  .select(
+    "id, estado_pago, rifa_id, aprobado_at"
+  )
+  .maybeSingle();
 
     if (
       aprobarCompraError ||
