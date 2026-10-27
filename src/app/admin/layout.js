@@ -11,6 +11,12 @@ export const metadata = {
     apple: "/admin-icon-192.png",
   },
 
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Sorteos LSD Admin",
+  },
+
   robots: {
     index: false,
     follow: false,
@@ -19,10 +25,9 @@ export const metadata = {
 
 export const viewport = {
   themeColor: "#0b0b12",
+  viewportFit: "cover",
 };
 
-export default function AdminLayout({
-  children,
-}) {
+export default function AdminLayout({ children }) {
   return children;
 }
