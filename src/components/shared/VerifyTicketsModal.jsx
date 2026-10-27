@@ -6,7 +6,6 @@ import modalStyles from "./VerifyTicketsModal.module.css";
 
 import {
   validarEmail,
-  verificarTicketsPorEmail,
   verificarFreeCode,
   solicitarCodigoMisTickets,
   verificarMisTickets,
@@ -1018,10 +1017,8 @@ const solicitudData = solicitud.data || {};
             ...swalConfig,
             icon: "warning",
             title: "Rifa no disponible",
-            text:
-              "No se pudo identificar la rifa que deseas verificar.",
+            text: "No se pudo identificar la rifa que deseas verificar.",
           });
-
           return;
         }
 
@@ -1030,10 +1027,8 @@ const solicitudData = solicitud.data || {};
             ...swalConfig,
             icon: "warning",
             title: "Email requerido",
-            text:
-              "Ingresa tu correo para verificar tus tickets",
+            text: "Ingresa tu correo para verificar tus tickets.",
           });
-
           return;
         }
 
@@ -1042,218 +1037,166 @@ const solicitudData = solicitud.data || {};
             ...swalConfig,
             icon: "warning",
             title: "Email inválido",
-            text:
-              "Ingresa un correo electrónico válido",
+            text: "Ingresa un correo electrónico válido.",
           });
-
           return;
         }
 
-        const response =
-          await verificarTicketsPorEmail(
+        // PASO 1: solicitar OTP usando el flujo seguro existente.
+        if (!codigoEnviado) {
+          if (!misTicketsCaptchaToken) {
+            await Swal.fire({
+              ...swalConfig,
+              icon: "warning",
+              title: "Verificación requerida",
+              text: "Completa la verificación de seguridad antes de solicitar el código.",
+            });
+            return;
+          }
+
+          const solicitud = await solicitarCodigoMisTickets(
             cleanEmail,
-            rifaId
+            misTicketsCaptchaToken
           );
 
-        const data =
-          response.data || {};
+          setMisTicketsCaptchaToken("");
+          setMisTicketsCaptchaResetKey((actual) => actual + 1);
+
+          const solicitudData = solicitud.data || {};
+
+          if (!solicitud.ok) {
+            await Swal.fire({
+              ...swalConfig,
+              icon: "error",
+              title: "No se pudo enviar el código",
+              text:
+                solicitudData.error ||
+                "No se pudo enviar el código de verificación.",
+            });
+            return;
+          }
+
+          setEmailCodigoEnviado(cleanEmail);
+          setCodigoMisTickets("");
+          setCodigoEnviado(true);
+          setReenviarEn(60);
+
+          await Swal.fire({
+            ...swalConfig,
+            icon: "success",
+            title: "Código enviado",
+            text:
+              solicitudData.mensaje ||
+              "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
+            confirmButtonText: "Continuar",
+          });
+          return;
+        }
+
+        // PASO 2: verificar OTP y obtener datos autorizados.
+        const codigoLimpio = String(codigoMisTickets || "")
+          .replace(/\D/g, "")
+          .slice(0, 6);
+
+        if (!/^\d{6}$/.test(codigoLimpio)) {
+          await Swal.fire({
+            ...swalConfig,
+            icon: "warning",
+            title: "Código requerido",
+            text: "Ingresa el código de 6 dígitos que enviamos a tu correo.",
+          });
+          return;
+        }
+
+        const response = await verificarMisTickets(
+          emailCodigoEnviado || cleanEmail,
+          codigoLimpio
+        );
+        const data = response.data || {};
 
         if (!response.ok) {
           await Swal.fire({
             ...swalConfig,
             icon: "error",
-            title: "Error",
-            text:
-              data.error ||
-              "No se pudieron verificar los tickets",
+            title: "No se pudo consultar",
+            text: data.error || "No se pudieron verificar los tickets.",
           });
-
           return;
         }
 
-        if (!data.encontrado) {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "info",
-            title: "Sin resultados",
-            text:
-              data.mensaje ||
-              "No se encontraron compras con ese correo en esta rifa",
-          });
+        const eventos = Array.isArray(data.eventos) ? data.eventos : [];
+        const rifaIdActual = String(rifaId);
+        const eventoActual = eventos.find((evento) => {
+          const idEvento =
+            evento?.rifa?.id ??
+            evento?.rifa_id ??
+            evento?.id ??
+            null;
+          return idEvento !== null && String(idEvento) === rifaIdActual;
+        });
 
-          return;
-        }
-
-        const compras =
-          Array.isArray(data.compras)
-            ? data.compras
-            : [];
-
-        const ticketsData =
-          Array.isArray(data.tickets)
-            ? data.tickets
-            : [];
-
-        const rifaInfo =
-          data.rifa ||
-          compras.find(
-            (compra) =>
-              compra?.rifas
-          )?.rifas ||
-          null;
-
-        const comprasPendientes =
-          compras.filter(
-            (compra) =>
-              String(
-                compra.estado_pago || ""
-              ).toLowerCase() ===
-              "pendiente"
-          );
-
-        if (
-          ticketsData.length === 0 &&
-          comprasPendientes.length > 0
-        ) {
-          await Swal.fire({
-            ...swalConfig,
-            icon: "info",
-            title: "Compra pendiente",
-
-            html: `
-              <div style="line-height:1.7;">
-                <p>
-                  Encontramos tu compra, pero todavía está
-                  pendiente de aprobación.
-                </p>
-
-                <p>
-                  Soporte puede tardar hasta
-                  <strong>24 horas</strong>
-                  en validarla.
-                </p>
-              </div>
-            `,
-          });
-
-          return;
-        }
+        const ticketsData = Array.isArray(eventoActual?.ticketsPagados)
+          ? eventoActual.ticketsPagados.filter(
+              (ticket) =>
+                ticket?.numero_ticket !== null &&
+                ticket?.numero_ticket !== undefined
+            )
+          : [];
 
         if (ticketsData.length === 0) {
           await Swal.fire({
             ...swalConfig,
             icon: "info",
             title: "Sin tickets aprobados",
-            text:
-              "No se encontraron tickets aprobados para este correo en esta rifa.",
+            text: "No se encontraron tickets pagados y aprobados para este correo en esta rifa.",
           });
-
           return;
         }
 
-        const formatoRifa =
-          rifaInfo?.formato ||
-          "4digitos";
+        const rifaInfo = eventoActual?.rifa || {};
+        const padLength = obtenerPadLength(rifaInfo);
+        const nombreRifa = rifaInfo?.nombre || "Rifa";
 
-        const nombreRifa =
-          rifaInfo?.nombre ||
-          "Rifa";
-
-        const padLength =
-          formatoRifa === "3digitos"
-            ? 3
-            : 4;
-
-        const numerosOrdenados = [
-          ...ticketsData,
-        ]
+        const numerosOrdenados = [...ticketsData]
           .sort(
             (a, b) =>
-              Number(
-                a.numero_ticket
-              ) -
-              Number(
-                b.numero_ticket
-              )
+              Number(a.numero_ticket) - Number(b.numero_ticket)
           )
           .map((ticket) =>
-            String(
-              ticket.numero_ticket
-            ).padStart(
-              padLength,
-              "0"
-            )
+            formatearNumeroTicket(ticket.numero_ticket, padLength)
+          );
+
+        const chips = numerosOrdenados
+          .map(
+            (numero) =>
+              `<span style="display:inline-flex;align-items:center;justify-content:center;min-width:58px;padding:7px 9px;border-radius:8px;background:#172033;border:1px solid #334b72;font-size:12px;font-weight:800;letter-spacing:.35px;color:#dbeafe;">#${escaparHtml(
+                numero
+              )}</span>`
           )
-          .join(", ");
+          .join("");
 
         setLoading(false);
-
         limpiarYcerrar();
 
         await Swal.fire({
           ...swalConfig,
           icon: "success",
           title: "Tickets encontrados",
-
           html: `
-            <div
-              style="
-                text-align:left;
-                line-height:1.8;
-              "
-            >
-              <p>
-                <strong>Correo:</strong>
-                ${escaparHtml(
-                  cleanEmail
-                )}
-              </p>
-
-              <p>
-                <strong>Rifa:</strong>
-                ${escaparHtml(
-                  nombreRifa
-                )}
-              </p>
-
-              <p>
-                <strong>Cantidad de tickets:</strong>
-                ${ticketsData.length}
-              </p>
-
-              <p>
-                <strong>Formato:</strong>
-                ${padLength} dígitos
-              </p>
-
-              <p style="margin-top:12px;">
-                <strong>
-                  Números asignados:
-                </strong>
-              </p>
-
-              <div
-                style="
-                  margin-top:8px;
-                  padding:12px;
-                  border-radius:12px;
-                  background:#2a2a2a;
-                  border:1px solid #3f3f46;
-                  line-height:1.8;
-                  word-break:break-word;
-                "
-              >
-                ${escaparHtml(
-                  numerosOrdenados
-                )}
+            <div style="text-align:left;line-height:1.7;color:#fff;">
+              <p><strong>Correo:</strong> ${escaparHtml(
+                emailCodigoEnviado || cleanEmail
+              )}</p>
+              <p><strong>Rifa:</strong> ${escaparHtml(nombreRifa)}</p>
+              <p><strong>Cantidad de tickets:</strong> ${ticketsData.length}</p>
+              <p style="margin-top:12px;"><strong>Números asignados:</strong></p>
+              <div style="display:flex;flex-wrap:wrap;gap:7px;margin-top:8px;padding:12px;border-radius:12px;background:#111827;border:1px solid #334155;">
+                ${chips}
               </div>
             </div>
           `,
-
-          confirmButtonColor:
-            "#991b1b",
+          confirmButtonColor: "#991b1b",
         });
-
         return;
       }
 
@@ -1481,7 +1424,9 @@ const solicitudData = solicitud.data || {};
           }.`
         : "Ingresa tu correo. Te enviaremos un código de 6 dígitos antes de mostrar tus participaciones."
       : modo === "tickets"
-      ? "Ingresa el correo electrónico que usaste al comprar para consultar tus tickets aprobados en esta rifa."
+      ? codigoEnviado
+        ? `Ingresa el código de 6 dígitos enviado a ${emailCodigoEnviado || "tu correo"}.`
+        : "Ingresa el correo electrónico que usaste al comprar. Te enviaremos un código de 6 dígitos antes de mostrar tus tickets aprobados en esta rifa."
       : "Ingresa tu código FREE para consultar tu participación gratis.";
 
   const warning =
@@ -1505,7 +1450,7 @@ const solicitudData = solicitud.data || {};
 
   setModo(nuevoModo);
 
-  if (nuevoModo !== "historial") {
+  {
     setCodigoMisTickets("");
     setCodigoEnviado(false);
     setEmailCodigoEnviado("");
@@ -1621,8 +1566,8 @@ const reenviarCodigoHistorial =
     }
   };
 
-  const historialPasoCodigo =
-    modo === "historial" &&
+  const pasoCodigoSeguro =
+    (modo === "historial" || modo === "tickets") &&
     codigoEnviado;
 
   return (
@@ -1739,7 +1684,7 @@ const reenviarCodigoHistorial =
           </button>
         </div>
 
-        {modo === "historial" && (
+        {(modo === "historial" || modo === "tickets") && (
           <div className="verify-modal-progress">
             <div
               className={`verify-modal-step ${
@@ -1837,7 +1782,7 @@ const reenviarCodigoHistorial =
                 Escribe el código que recibiste al participar en el FREE DROP.
               </small>
             </div>
-          ) : historialPasoCodigo ? (
+          ) : pasoCodigoSeguro ? (
             <div className="verify-modal-code-wrap">
               <div className="verify-modal-code-email">
                 <span>✉️</span>
@@ -1987,9 +1932,11 @@ const reenviarCodigoHistorial =
               <small className="verify-modal-helper">
                 {modo === "historial"
                   ? "Te enviaremos un código de 6 dígitos antes de mostrar tus participaciones."
+                  : modo === "tickets"
+                  ? "Te enviaremos un código de 6 dígitos antes de mostrar tus tickets pagados de esta rifa."
                   : "Usa el mismo correo con el que realizaste la compra."}
               </small>
-{modo === "historial" && !codigoEnviado && (
+{(modo === "historial" || modo === "tickets") && !codigoEnviado && (
   <div
     style={{
       display: "flex",
@@ -2027,7 +1974,9 @@ const reenviarCodigoHistorial =
                 : "✉️ Enviar código"
             ) : modo ===
               "tickets" ? (
-              "🎟️ Verificar tickets"
+              codigoEnviado
+                ? "🔐 Verificar código"
+                : "✉️ Enviar código"
             ) : (
               "🎁 Verificar FREE"
             )}
