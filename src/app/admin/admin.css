@@ -11721,3 +11721,117 @@ input[type="number"]::-webkit-outer-spin-button {
     height: 210px;
   }
 }
+/* =========================================================
+   RAFFLE DETAIL MODAL - RESPONSIVE MOBILE
+========================================================= */
+
+@media (max-width: 768px) {
+
+  /* Modal completo */
+  .adminpro-raffle-detail-modal {
+    width: calc(100vw - 24px) !important;
+    max-width: calc(100vw - 24px) !important;
+    max-height: calc(100dvh - 24px) !important;
+
+    margin: 12px auto !important;
+    padding: 20px !important;
+
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+
+    box-sizing: border-box !important;
+  }
+
+  /* Cabecera */
+  .adminpro-raffle-detail-modal .adminpro-section-head {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px !important;
+  }
+
+  /* Botón cerrar */
+  .adminpro-raffle-detail-modal .adminpro-soft-btn {
+    align-self: flex-start !important;
+  }
+
+  /* Número + estado */
+  .adminpro-raffle-detail-hero {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: space-between !important;
+    gap: 14px !important;
+    width: 100% !important;
+  }
+
+  .adminpro-raffle-detail-number {
+    flex: 0 0 auto !important;
+  }
+
+  .adminpro-raffle-detail-state {
+    flex: 0 1 auto !important;
+    min-width: 0 !important;
+  }
+
+  /* IMPORTANTE:
+     En teléfono todos los datos pasan a una sola columna
+  */
+  .adminpro-raffle-detail-grid {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  /* Cada tarjeta */
+  .adminpro-raffle-detail-grid > div {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  /* IDs, emails, referencias, etc. nunca salen del cuadro */
+  .adminpro-raffle-detail-grid strong,
+  .adminpro-raffle-detail-grid span,
+  .adminpro-raffle-detail-grid p {
+    max-width: 100% !important;
+
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+    white-space: normal !important;
+  }
+
+  /* Botones inferiores */
+  .adminpro-raffle-detail-modal .adminpro-actions-wrap {
+    width: 100% !important;
+  }
+
+  .adminpro-raffle-detail-modal .adminpro-actions-wrap button {
+    width: 100% !important;
+    white-space: normal !important;
+  }
+}
+
+
+/* Teléfonos pequeños */
+@media (max-width: 480px) {
+
+  .adminpro-raffle-detail-modal {
+    width: calc(100vw - 16px) !important;
+    max-width: calc(100vw - 16px) !important;
+    margin: 8px auto !important;
+    padding: 16px !important;
+    border-radius: 22px !important;
+  }
+
+  .adminpro-raffle-detail-number {
+    font-size: clamp(32px, 11vw, 48px) !important;
+  }
+
+  .adminpro-raffle-detail-state span {
+    font-size: 13px !important;
+    padding: 10px 14px !important;
+  }
+}
