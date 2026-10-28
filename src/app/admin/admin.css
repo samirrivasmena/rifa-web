@@ -11835,3 +11835,60 @@ input[type="number"]::-webkit-outer-spin-button {
     padding: 10px 14px !important;
   }
 }
+/* =========================================================
+   RAFFLE DETAIL - MOBILE FIX
+   Evita desbordamientos en Detalle / Tickets ocupados
+========================================================= */
+
+@media (max-width: 640px) {
+  .adminpro-raffle-detail-modal {
+    width: calc(100% - 24px);
+    max-width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    box-sizing: border-box;
+    overflow-x: hidden;
+  }
+
+  .adminpro-raffle-detail-grid {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+  }
+
+  .adminpro-raffle-detail-grid > div {
+    min-width: 0;
+  }
+
+  .adminpro-raffle-detail-grid strong,
+  .adminpro-raffle-detail-grid p {
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .adminpro-raffle-sold-list {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .adminpro-raffle-sold-item {
+    grid-template-columns: minmax(0, 1fr);
+    width: 100%;
+    min-width: 0;
+    gap: 10px;
+  }
+
+  .adminpro-raffle-sold-item > div {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .adminpro-raffle-sold-item strong,
+  .adminpro-raffle-sold-item p {
+    display: block;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+}
