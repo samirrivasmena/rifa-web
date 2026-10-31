@@ -62,6 +62,13 @@ export default function Admin() {
 const [dataLoading, setDataLoading] = useState(false);
 const [showSecondImage, setShowSecondImage] = useState(false);
 
+/* =========================================================
+   MODO MANTENIMIENTO GLOBAL
+========================================================= */
+
+const [modoMantenimiento, setModoMantenimiento] = useState(false);
+const [mantenimientoLoading, setMantenimientoLoading] = useState(false);
+
 const [notificacionesPushActivas, setNotificacionesPushActivas] =
   useState(false);
 
@@ -229,6 +236,145 @@ return rifaIdElegida;
     return "";
   }
 }, []);
+/* =========================================================
+   MODO MANTENIMIENTO GLOBAL
+========================================================= */
+
+const cargarModoMantenimiento = useCallback(async () => {
+  try {
+    const headers = await getAdminAuthHeaders();
+
+    if (!headers.Authorization) {
+      return;
+    }
+
+    const response = await fetch("/api/admin-mantenimiento", {
+      method: "GET",
+      headers,
+      cache: "no-store",
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data?.ok) {
+      console.error(
+        "Error consultando modo mantenimiento:",
+        data?.error || response.status
+      );
+      return;
+    }
+
+    setModoMantenimiento(data.modo_mantenimiento === true);
+  } catch (error) {
+    console.error("Error cargando modo mantenimiento:", error);
+  }
+}, []);
+
+const cambiarModoMantenimiento = useCallback(async () => {
+  if (mantenimientoLoading) {
+    return;
+  }
+
+  const nuevoEstado = !modoMantenimiento;
+
+  const confirmacion = await Swal.fire({
+    icon: nuevoEstado ? "warning" : "question",
+    title: nuevoEstado
+      ? "¿Activar mantenimiento?"
+      : "¿Reabrir la página?",
+    text: nuevoEstado
+      ? "La página pública se pondrá en modo mantenimiento. El panel administrativo seguirá disponible."
+      : "La página pública volverá a estar disponible para los usuarios.",
+    showCancelButton: true,
+    confirmButtonText: nuevoEstado
+      ? "Sí, activar"
+      : "Sí, reabrir",
+    cancelButtonText: "Cancelar",
+    reverseButtons: true,
+  });
+
+  if (!confirmacion.isConfirmed) {
+    return;
+  }
+
+  try {
+    setMantenimientoLoading(true);
+
+    const headers = await getAdminAuthHeaders();
+
+    if (!headers.Authorization) {
+      await Swal.fire({
+        icon: "error",
+        title: "Sin sesión",
+        text: "No se encontró una sesión válida del administrador.",
+      });
+
+      return;
+    }
+
+    const response = await fetch("/api/admin-mantenimiento", {
+      method: "PUT",
+      headers: {
+        ...headers,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        activo: nuevoEstado,
+      }),
+    });
+
+    const data = await response.json();
+
+    if (!response.ok || !data?.ok) {
+      throw new Error(
+        data?.error || "No se pudo cambiar el modo mantenimiento."
+      );
+    }
+
+    const estadoReal = data.modo_mantenimiento === true;
+
+    setModoMantenimiento(estadoReal);
+
+    await Swal.fire({
+      icon: "success",
+      title: estadoReal
+        ? "Mantenimiento activado"
+        : "Página reabierta",
+      text: estadoReal
+        ? "El modo mantenimiento quedó activado."
+        : "El modo mantenimiento quedó desactivado.",
+      timer: 1800,
+      showConfirmButton: false,
+    });
+  } catch (error) {
+    console.error("Error cambiando modo mantenimiento:", error);
+
+    await Swal.fire({
+      icon: "error",
+      title: "No se pudo cambiar",
+      text:
+        error?.message ||
+        "Ocurrió un error cambiando el modo mantenimiento.",
+    });
+
+    // Volvemos a consultar el servidor.
+    // No suponemos que el cambio falló o tuvo éxito.
+    await cargarModoMantenimiento();
+  } finally {
+    setMantenimientoLoading(false);
+  }
+}, [
+  modoMantenimiento,
+  mantenimientoLoading,
+  cargarModoMantenimiento,
+]);
+useEffect(() => {
+  if (!accesoPermitido) {
+    return;
+  }
+
+  cargarModoMantenimiento();
+}, [accesoPermitido, cargarModoMantenimiento]);
 const recargarTodo = useCallback(async () => {
   try {
     setDataLoading(true);
@@ -1407,13 +1553,16 @@ return (
 />
 
 <main className="adminpro-main">
-  <HeaderPanel
-    rifas={rifas}
-    rifaSeleccionadaId={rifaSeleccionadaId}
-    setRifaSeleccionadaId={cambiarRifaSeleccionada}
-    onRecargar={recargarTodo}
-    dataLoading={dataLoading}
-  />
+<HeaderPanel
+  rifas={rifas}
+  rifaSeleccionadaId={rifaSeleccionadaId}
+  setRifaSeleccionadaId={cambiarRifaSeleccionada}
+  onRecargar={recargarTodo}
+  dataLoading={dataLoading}
+  modoMantenimiento={modoMantenimiento}
+  mantenimientoLoading={mantenimientoLoading}
+  onCambiarMantenimiento={cambiarModoMantenimiento}
+/>
 
           {dataLoading && (
             <div className="adminpro-top-info">Cargando datos del panel...</div>

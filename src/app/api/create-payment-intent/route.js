@@ -1,6 +1,7 @@
 import Stripe from "stripe";
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -134,6 +135,19 @@ function esTicketOcupado(ticket) {
 
 export async function POST(req) {
   try {
+        /* -------------------------------------------------------
+       MODO MANTENIMIENTO GLOBAL
+    ------------------------------------------------------- */
+
+    const modoMantenimiento =
+      await obtenerModoMantenimiento();
+
+    if (modoMantenimiento) {
+      return errorResponse(
+        "La página se encuentra temporalmente en mantenimiento.",
+        503
+      );
+    }
     /* -------------------------------------------------------
        STRIPE CONFIGURADO
     ------------------------------------------------------- */

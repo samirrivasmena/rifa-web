@@ -1,6 +1,7 @@
 import EventoDetallePageClient from "./EventoDetallePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
-
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
+import MaintenancePage from "@/components/public/MaintenancePage";
 /* =========================================================
    RENDER DINÁMICO
    Evita que Vercel conserve configuración/colores anteriores
@@ -297,6 +298,13 @@ export async function generateMetadata({ params }) {
 ========================================================= */
 
 export default async function Page() {
+  const modoMantenimiento =
+    await obtenerModoMantenimiento();
+
+  if (modoMantenimiento) {
+    return <MaintenancePage />;
+  }
+
   const config = await obtenerConfiguracionSitio();
 
   /* =======================================================

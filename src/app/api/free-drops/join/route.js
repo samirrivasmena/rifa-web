@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { sendFreeDropConfirmationEmail } from "@/lib/email/sendFreeDropConfirmationEmail";
 import { enviarPushAdmins } from "@/lib/adminPush";
-
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
 
 // ============================================================
 // SUPABASE SERVER
@@ -326,6 +326,19 @@ export async function POST(req) {
   const supabase = getSupabaseServerClient();
 
   try {
+        // ========================================================
+    // MODO MANTENIMIENTO GLOBAL
+    // ========================================================
+
+    const modoMantenimiento =
+      await obtenerModoMantenimiento();
+
+    if (modoMantenimiento) {
+      return responderError(
+        "La página se encuentra temporalmente en mantenimiento.",
+        503
+      );
+    }
     // ========================================================
     // 1. BODY
     // ========================================================

@@ -1,16 +1,18 @@
-import PrincipalPageClient from "./PrincipalPageClient";
+﻿import PrincipalPageClient from "./PrincipalPageClient";
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
+import MaintenancePage from "@/components/public/MaintenancePage";
 import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
 import { obtenerConfiguracionPublica } from "@/lib/configuracion/obtenerConfiguracionPublica";
 
 /* =========================================================
-   RENDER DINÁMICO
+   RENDER DINÃMICO
 ========================================================= */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /* =========================================================
-   CONFIGURACIÓN GENERAL
+   CONFIGURACIÃ“N GENERAL
 ========================================================= */
 
 const siteUrl =
@@ -18,7 +20,7 @@ const siteUrl =
   "https://www.sorteoslsd.com";
 
 /* =========================================================
-   OBTENER CONFIGURACIÓN SEGURA
+   OBTENER CONFIGURACIÃ“N SEGURA
 ========================================================= */
 
 async function obtenerConfiguracion() {
@@ -26,7 +28,7 @@ async function obtenerConfiguracion() {
     return await obtenerConfiguracionPublica();
   } catch (error) {
     console.error(
-      "Error obteniendo configuración de /principal:",
+      "Error obteniendo configuraciÃ³n de /principal:",
       error
     );
 
@@ -90,10 +92,16 @@ export async function generateMetadata() {
 }
 
 /* =========================================================
-   PÁGINA
+   PÃGINA
 ========================================================= */
 
 export default async function Page() {
+  const modoMantenimiento =
+    await obtenerModoMantenimiento();
+
+  if (modoMantenimiento) {
+    return <MaintenancePage />;
+  }
   const [config, rifasIniciales] = await Promise.all([
     obtenerConfiguracion(),
     obtenerRifasPublicas().catch((error) => {
@@ -172,3 +180,4 @@ export default async function Page() {
     </div>
   );
 }
+

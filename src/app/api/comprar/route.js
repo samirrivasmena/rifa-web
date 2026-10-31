@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createHmac, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { enviarPushAdmins } from "@/lib/adminPush";
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -823,6 +824,29 @@ async function obtenerInventarioRifa(
 
 export async function POST(req) {
   try {
+        // -------------------------------------------------------
+    // MODO MANTENIMIENTO GLOBAL
+    // -------------------------------------------------------
+
+    const modoMantenimiento =
+      await obtenerModoMantenimiento();
+
+    if (modoMantenimiento) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error:
+            "La página se encuentra temporalmente en mantenimiento.",
+        },
+        {
+          status: 503,
+          headers: {
+            "Cache-Control": "no-store",
+            "Retry-After": "300",
+          },
+        }
+      );
+    }
     // -------------------------------------------------------
     // RATE LIMIT
     // -------------------------------------------------------

@@ -29,6 +29,9 @@ export default function HeaderPanel({
   setRifaSeleccionadaId,
   onRecargar,
   dataLoading,
+  modoMantenimiento = false,
+  mantenimientoLoading = false,
+  onCambiarMantenimiento,
 }) {
   const rifaSeleccionada =
     rifas.find((rifa) => String(rifa.id) === String(rifaSeleccionadaId)) || null;
@@ -72,10 +75,36 @@ export default function HeaderPanel({
         </div>
       </div>
 
-      <div className="adminpro-header-right">
-        <button
-          className="adminpro-header-refresh"
-          onClick={onRecargar}
+<div className="adminpro-header-right">
+  <button
+    type="button"
+    className={`adminpro-maintenance-button ${
+      modoMantenimiento ? "activo" : ""
+    }`}
+    onClick={onCambiarMantenimiento}
+    disabled={mantenimientoLoading}
+    title={
+      modoMantenimiento
+        ? "Desactivar modo mantenimiento"
+        : "Activar modo mantenimiento"
+    }
+    aria-label={
+      modoMantenimiento
+        ? "Desactivar modo mantenimiento"
+        : "Activar modo mantenimiento"
+    }
+    aria-pressed={modoMantenimiento}
+  >
+    {mantenimientoLoading
+      ? "⏳"
+      : modoMantenimiento
+        ? "🚧"
+        : "🛠️"}
+  </button>
+
+  <button
+    className="adminpro-header-refresh"
+    onClick={onRecargar}
           type="button"
           disabled={dataLoading}
         >

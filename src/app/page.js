@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import HomePageClient from "./HomePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
+import MaintenancePage from "@/components/public/MaintenancePage";
 
 /* =========================================================
    RENDER DINÁMICO
@@ -16,7 +18,8 @@ export const revalidate = 0;
 ========================================================= */
 
 const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://www.sorteoslsd.com";
 
 /* =========================================================
    OBTENER CONFIGURACIÓN
@@ -163,6 +166,21 @@ export async function generateMetadata() {
 ========================================================= */
 
 export default async function Page() {
+  /* =======================================================
+     MODO MANTENIMIENTO GLOBAL
+  ======================================================= */
+
+  const modoMantenimiento =
+    await obtenerModoMantenimiento();
+
+  if (modoMantenimiento) {
+    return <MaintenancePage />;
+  }
+
+  /* =======================================================
+     CARGAR INFORMACIÓN PÚBLICA
+  ======================================================= */
+
   const [config, rifasIniciales] = await Promise.all([
     obtenerConfiguracion(),
     obtenerRifasIniciales(),
