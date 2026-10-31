@@ -1423,6 +1423,25 @@ a.home-top-link,
   font-weight: 900;
   color: var(--text-main);
 }
+/* =========================================================
+   MOVIMIENTO DEL NOMBRE DE LA MARCA
+   ========================================================= */
+
+.principal-hero-content h1 {
+  animation: marcaMovimiento 3s ease-in-out infinite;
+  transform-origin: center;
+}
+
+@keyframes marcaMovimiento {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-8px);
+  }
+}
 
 .principal-bio p {
   margin: 0 0 8px;
