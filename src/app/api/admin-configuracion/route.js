@@ -284,23 +284,34 @@ export async function PUT(request) {
        Métodos de pago
     ----------------------------------------------------- */
 
-    if (Array.isArray(payload.metodos_pago)) {
-      payload.metodos_pago = payload.metodos_pago.map((metodo, index) => ({
-        id: metodo?.id || `metodo-${Date.now()}-${index}`,
-        activo: metodo?.activo !== false,
-        orden: Number.isFinite(Number(metodo?.orden))
-          ? Number(metodo.orden)
-          : index + 1,
-        nombre: metodo?.nombre || "",
-        cuenta: metodo?.cuenta || "",
-        titular: metodo?.titular || "",
-        subtitulo: metodo?.subtitulo || "",
-        descripcion: metodo?.descripcion || "",
-        logo: metodo?.logo || "",
-        extra: Array.isArray(metodo?.extra) ? metodo.extra : [],
-        nota: metodo?.nota || "",
-      }));
-    }
+if (Array.isArray(payload.metodos_pago)) {
+  payload.metodos_pago = payload.metodos_pago.map((metodo, index) => ({
+    id: metodo?.id || `metodo-${Date.now()}-${index}`,
+    activo: metodo?.activo !== false,
+
+    orden: Number.isFinite(Number(metodo?.orden))
+      ? Number(metodo.orden)
+      : index + 1,
+
+    nombre: metodo?.nombre || "",
+    tipo: metodo?.tipo || "normal",
+
+    cuenta: metodo?.cuenta || "",
+    titular: metodo?.titular || "",
+    subtitulo: metodo?.subtitulo || "",
+
+    // Datos especiales para Pago Móvil
+    banco: metodo?.banco || "",
+    codigo_banco: metodo?.codigo_banco || "",
+    telefono: metodo?.telefono || "",
+    documento: metodo?.documento || "",
+
+    descripcion: metodo?.descripcion || "",
+    logo: metodo?.logo || "",
+    extra: Array.isArray(metodo?.extra) ? metodo.extra : [],
+    nota: metodo?.nota || "",
+  }));
+}
 
     /* -----------------------------------------------------
        Fecha de actualización

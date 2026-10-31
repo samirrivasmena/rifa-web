@@ -118,6 +118,8 @@ document.documentElement.style.setProperty(
   const [verifyEmail, setVerifyEmail] = useState("");
   const [loadingCompra, setLoadingCompra] = useState(false);
   const [capturaInmediata, setCapturaInmediata] = useState(false);
+  const [tasaBcv, setTasaBcv] = useState(null);
+  const [tasaBcvFecha, setTasaBcvFecha] = useState(null);
 
 const rifasInicialesSeguras = Array.isArray(initialRifas)
   ? initialRifas
@@ -546,6 +548,48 @@ const popupLink = (() => {
     };
   }, [siteKey]);
 
+  useEffect(() => {
+  let cancelado = false;
+
+  const cargarTasaBcv = async () => {
+    try {
+      const response = await fetch("/api/tasa-bcv", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      const data = await response.json();
+
+      if (!response.ok || !data?.ok) {
+        throw new Error(data?.error || "No se pudo obtener la tasa BCV");
+      }
+
+      const tasa = Number(data?.tasa);
+
+      if (!Number.isFinite(tasa) || tasa <= 0) {
+        throw new Error("Tasa BCV inválida");
+      }
+
+      if (!cancelado) {
+        setTasaBcv(tasa);
+        setTasaBcvFecha(data?.fecha || null);
+      }
+    } catch (error) {
+      console.error("Error cargando tasa BCV:", error);
+
+      if (!cancelado) {
+        setTasaBcv(null);
+        setTasaBcvFecha(null);
+      }
+    }
+  };
+
+  cargarTasaBcv();
+
+  return () => {
+    cancelado = true;
+  };
+}, []);
   const metodosPagoAdmin = useMemo(() => {
     return Array.isArray(config?.metodos_pago) ? config.metodos_pago : [];
   }, [config?.metodos_pago]);
@@ -621,9 +665,22 @@ const popupLink = (() => {
   const precioPorTicket = Number.isFinite(precioPorTicketRaw)
     ? precioPorTicketRaw
     : 0;
-  const totalPagar = tickets * precioPorTicket;
+const totalPagar = tickets * precioPorTicket;
 
-  const totalNumeros = Number(progresoRifaActiva.total || 0);
+const totalPagarBs =
+  Number.isFinite(tasaBcv) && tasaBcv > 0
+    ? totalPagar * tasaBcv
+    : null;
+
+const totalPagarBsFormateado =
+  totalPagarBs !== null
+    ? new Intl.NumberFormat("es-VE", {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+      }).format(totalPagarBs)
+    : "";
+
+const totalNumeros = Number(progresoRifaActiva.total || 0);
   const ticketsVendidos = Number(progresoRifaActiva.vendidos || 0);
   const porcentajeVendido = Number(progresoRifaActiva.porcentaje || 0);
 
@@ -684,16 +741,33 @@ const popupLink = (() => {
 const metodoVisual =
   paymentMethodsConfig[paymentMethod] || {};
 
-  const metodoSeleccionado = {
-    ...metodoVisual,
-    key: paymentMethod,
-    titulo: metodoAdmin?.nombre || paymentMethod,
-    nombre: metodoAdmin?.titular || "",
-    cuenta: metodoAdmin?.cuenta || "",
-    descripcion: metodoAdmin?.descripcion || "",
-    subtitulo: metodoAdmin?.subtitulo || "CUENTA",
-    note: metodoAdmin?.nota || "",
-  };
+const metodoSeleccionado = {
+  ...metodoVisual,
+
+  key: paymentMethod,
+  titulo: metodoAdmin?.nombre || paymentMethod,
+
+  // Tipo de método
+  tipo: metodoAdmin?.tipo || "normal",
+
+  // Datos normales
+  nombre: metodoAdmin?.titular || "",
+  cuenta: metodoAdmin?.cuenta || "",
+  subtitulo: metodoAdmin?.subtitulo || "CUENTA",
+
+  // Datos especiales de Pago Móvil
+  banco: metodoAdmin?.banco || "",
+  codigoBanco: metodoAdmin?.codigo_banco || "",
+  telefono: metodoAdmin?.telefono || "",
+  documento: metodoAdmin?.documento || "",
+
+  // El logo configurado en Admin tiene prioridad.
+  // Si no existe, conserva el logo anterior.
+  logo: metodoAdmin?.logo || metodoVisual?.logo || "",
+
+  descripcion: metodoAdmin?.descripcion || "",
+  note: metodoAdmin?.nota || "",
+};
 
   const esPagoDigital = paymentMethod === "App Pay";
 
@@ -1608,10 +1682,18 @@ const response = await fetch(
                   </p>
 
                   <div className="payment-options-row">
-                    {paymentMethods.map((method) => {
-                      const metodoVisual = paymentMethodsConfig[method] || {};
+{paymentMethods.map((method) => {
+  const metodoAdminItem =
+    metodosPagoAdmin.find((metodo) => metodo.nombre === method) || null;
 
-                      return (
+  const metodoVisualBase = paymentMethodsConfig[method] || {};
+
+  const metodoVisual = {
+    ...metodoVisualBase,
+    logo: metodoAdminItem?.logo || metodoVisualBase?.logo || "",
+  };
+
+  return (
                         <button
                           key={method}
                           className={`payment-pill ${metodoVisual.bgClass || ""} ${
@@ -1695,6 +1777,220 @@ const response = await fetch(
                       {metodoSeleccionado.note && (
                         <p className="apppay-disclaimer">
                           {metodoSeleccionado.note}
+                        </p>
+                      )}
+                    </div>
+                                   ) : metodoSeleccionado.tipo === "pago_movil" ? (
+                    <div className="selected-payment-box premium-card-hover">
+                      <h4>{metodoSeleccionado.titulo}</h4>
+
+                      {metodoSeleccionado.logo && (
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "center",
+                            margin: "10px 0 16px",
+                          }}
+                        >
+                          <img
+                            src={metodoSeleccionado.logo}
+                            alt={metodoSeleccionado.titulo}
+                            style={{
+                              width: "72px",
+                              height: "72px",
+                              objectFit: "contain",
+                            }}
+                          />
+                        </div>
+                      )}
+
+                      {metodoSeleccionado.banco && (
+                        <div style={{ marginBottom: "14px" }}>
+                          <span className="payment-small-label">BANCO</span>
+                          <div className="payment-account">
+                            {metodoSeleccionado.banco}
+                          </div>
+                        </div>
+                      )}
+
+                      {metodoSeleccionado.codigoBanco && (
+                        <>
+                          <span className="payment-small-label">
+                            CÓDIGO DEL BANCO
+                          </span>
+
+                          <div className="payment-account-row">
+                            <div className="payment-account">
+                              {metodoSeleccionado.codigoBanco}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="copy-btn"
+                              onClick={() =>
+                                copiarTexto(metodoSeleccionado.codigoBanco)
+                              }
+                              disabled={rifaCompleta}
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {metodoSeleccionado.telefono && (
+                        <>
+                          <span className="payment-small-label">
+                            TELÉFONO
+                          </span>
+
+                          <div className="payment-account-row">
+                            <div className="payment-account">
+                              {metodoSeleccionado.telefono}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="copy-btn"
+                              onClick={() =>
+                                copiarTexto(metodoSeleccionado.telefono)
+                              }
+                              disabled={rifaCompleta}
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {metodoSeleccionado.documento && (
+                        <>
+                          <span className="payment-small-label">
+                            CÉDULA / RIF
+                          </span>
+
+                          <div className="payment-account-row">
+                            <div className="payment-account">
+                              {metodoSeleccionado.documento}
+                            </div>
+
+                            <button
+                              type="button"
+                              className="copy-btn"
+                              onClick={() =>
+                                copiarTexto(metodoSeleccionado.documento)
+                              }
+                              disabled={rifaCompleta}
+                            >
+                              Copiar
+                            </button>
+                          </div>
+                        </>
+                      )}
+
+                      {metodoSeleccionado.nombre && (
+                        <div
+                          className="payment-owner"
+                          style={{ marginTop: "14px" }}
+                        >
+                          TITULAR: {metodoSeleccionado.nombre}
+                        </div>
+                      )}
+
+<div
+  className="payment-total"
+  style={{
+    marginTop: "18px",
+    padding: "16px",
+    textAlign: "center",
+  }}
+>
+  <div
+    style={{
+      fontSize: "12px",
+      fontWeight: "800",
+      marginBottom: "6px",
+    }}
+  >
+    TOTAL A PAGAR
+  </div>
+
+  {totalPagarBs !== null ? (
+    <>
+      <div
+        style={{
+          fontSize: "26px",
+          fontWeight: "900",
+          lineHeight: "1.1",
+        }}
+      >
+        Bs. {totalPagarBsFormateado}
+      </div>
+
+      <div
+        style={{
+          fontSize: "13px",
+          fontWeight: "700",
+          marginTop: "7px",
+        }}
+      >
+        ${Number(totalPagar || 0).toFixed(2)} USD ·{" "}
+        {tickets} {tickets === 1 ? "boleto" : "boletos"}
+      </div>
+
+      <div
+        style={{
+          fontSize: "11px",
+          marginTop: "8px",
+          opacity: 0.72,
+        }}
+      >
+        Tasa BCV: Bs.{" "}
+        {new Intl.NumberFormat("es-VE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 4,
+        }).format(tasaBcv)}{" "}
+        por USD
+      </div>
+
+      {tasaBcvFecha && (
+        <div
+          style={{
+            fontSize: "10px",
+            marginTop: "3px",
+            opacity: 0.6,
+          }}
+        >
+          Tasa actualizada: {tasaBcvFecha}
+        </div>
+      )}
+    </>
+  ) : (
+    <>
+      <div
+        style={{
+          fontSize: "22px",
+          fontWeight: "900",
+        }}
+      >
+        ${Number(totalPagar || 0).toFixed(2)} USD
+      </div>
+
+      <div
+        style={{
+          fontSize: "11px",
+          marginTop: "7px",
+          opacity: 0.7,
+        }}
+      >
+        Tasa BCV temporalmente no disponible
+      </div>
+    </>
+  )}
+</div>
+                      {metodoSeleccionado.descripcion && (
+                        <p className="payment-description">
+                          {metodoSeleccionado.descripcion}
                         </p>
                       )}
                     </div>

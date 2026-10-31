@@ -165,11 +165,23 @@ function normalizarMetodosPago(lista) {
     ...metodo,
     id: metodo?.id || crearId(),
     activo: metodo?.activo !== false,
-    orden: Number.isFinite(Number(metodo?.orden)) ? Number(metodo.orden) : index + 1,
+    orden: Number.isFinite(Number(metodo?.orden))
+      ? Number(metodo.orden)
+      : index + 1,
+
     nombre: metodo?.nombre || "",
+    tipo: metodo?.tipo || "normal",
+
     cuenta: metodo?.cuenta || "",
     titular: metodo?.titular || "",
     subtitulo: metodo?.subtitulo || "",
+
+    // Campos especiales para Pago Móvil
+    banco: metodo?.banco || "",
+    codigo_banco: metodo?.codigo_banco || "",
+    telefono: metodo?.telefono || "",
+    documento: metodo?.documento || "",
+
     descripcion: metodo?.descripcion || "",
     logo: metodo?.logo || "",
     extra: Array.isArray(metodo?.extra) ? metodo.extra : [],
@@ -426,33 +438,43 @@ const res = await fetch("/api/admin-configuracion", {
     });
   }
 
-  function agregarMetodoPago() {
-    setConfig((prev) => {
-      const lista = prev?.metodos_pago || [];
+function agregarMetodoPago() {
+  setConfig((prev) => {
+    const lista = prev?.metodos_pago || [];
 
-      return {
-        ...prev,
-        metodos_pago: [
-          ...lista,
-          {
-            id: crearId(),
-            activo: true,
-            orden: lista.length + 1,
-            nombre: "Nuevo método",
-            cuenta: "",
-            titular: "",
-            subtitulo: "CUENTA",
-            descripcion: "",
-            logo: "",
-            extra: [],
-            nota: "",
-          },
-        ],
-      };
-    });
+    return {
+      ...prev,
+      metodos_pago: [
+        ...lista,
+        {
+          id: crearId(),
+          activo: true,
+          orden: lista.length + 1,
 
-    setTab("pagos");
-  }
+          nombre: "Nuevo método",
+          tipo: "normal",
+
+          cuenta: "",
+          titular: "",
+          subtitulo: "CUENTA",
+
+          // Campos especiales para Pago Móvil
+          banco: "",
+          codigo_banco: "",
+          telefono: "",
+          documento: "",
+
+          descripcion: "",
+          logo: "",
+          extra: [],
+          nota: "",
+        },
+      ],
+    };
+  });
+
+  setTab("pagos");
+}
 
   async function eliminarMetodoPago(index) {
     const metodo = config?.metodos_pago?.[index];
@@ -1481,45 +1503,113 @@ RENDIRSE🛑.`}
                       </div>
 
                       <div className="admin-config-form-grid">
-                        <Field label="Nombre del método">
-                          <input
-                            value={metodo.nombre || ""}
-                            onChange={(e) =>
-                              cambiarMetodo(index, "nombre", e.target.value)
-                            }
-                            placeholder="Zelle, Binance, PayPal..."
-                          />
-                        </Field>
+<Field label="Nombre del método">
+  <input
+    value={metodo.nombre || ""}
+    onChange={(e) =>
+      cambiarMetodo(index, "nombre", e.target.value)
+    }
+    placeholder="Zelle, Binance, PayPal..."
+  />
+</Field>
 
-                        <Field label="Cuenta / Email / Usuario">
-                          <input
-                            value={metodo.cuenta || ""}
-                            onChange={(e) =>
-                              cambiarMetodo(index, "cuenta", e.target.value)
-                            }
-                            placeholder="Cuenta, correo, usuario o número"
-                          />
-                        </Field>
+<Field label="Tipo de método">
+  <select
+    value={metodo.tipo || "normal"}
+    onChange={(e) =>
+      cambiarMetodo(index, "tipo", e.target.value)
+    }
+  >
+    <option value="normal">Método normal</option>
+    <option value="pago_movil">🇻🇪 Pago Móvil</option>
+  </select>
+</Field>
 
-                        <Field label="Titular">
-                          <input
-                            value={metodo.titular || ""}
-                            onChange={(e) =>
-                              cambiarMetodo(index, "titular", e.target.value)
-                            }
-                            placeholder="Nombre del titular"
-                          />
-                        </Field>
+{metodo.tipo === "pago_movil" ? (
+  <>
+    <Field label="Banco">
+      <input
+        value={metodo.banco || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "banco", e.target.value)
+        }
+        placeholder="Banco de Venezuela"
+      />
+    </Field>
 
-                        <Field label="Subtítulo">
-                          <input
-                            value={metodo.subtitulo || ""}
-                            onChange={(e) =>
-                              cambiarMetodo(index, "subtitulo", e.target.value)
-                            }
-                            placeholder="ID, EMAIL, CASH TAG..."
-                          />
-                        </Field>
+    <Field label="Código del banco">
+      <input
+        value={metodo.codigo_banco || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "codigo_banco", e.target.value)
+        }
+        placeholder="0102"
+      />
+    </Field>
+
+    <Field label="Teléfono">
+      <input
+        value={metodo.telefono || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "telefono", e.target.value)
+        }
+        placeholder="0424 2922950"
+      />
+    </Field>
+
+    <Field label="Cédula / RIF">
+      <input
+        value={metodo.documento || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "documento", e.target.value)
+        }
+        placeholder="V-12345678"
+      />
+    </Field>
+
+    <Field label="Titular">
+      <input
+        value={metodo.titular || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "titular", e.target.value)
+        }
+        placeholder="Nombre del titular"
+      />
+    </Field>
+  </>
+) : (
+  <>
+    <Field label="Cuenta / Email / Usuario">
+      <input
+        value={metodo.cuenta || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "cuenta", e.target.value)
+        }
+        placeholder="Cuenta, correo, usuario o número"
+      />
+    </Field>
+
+    <Field label="Titular">
+      <input
+        value={metodo.titular || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "titular", e.target.value)
+        }
+        placeholder="Nombre del titular"
+      />
+    </Field>
+
+    <Field label="Subtítulo">
+      <input
+        value={metodo.subtitulo || ""}
+        onChange={(e) =>
+          cambiarMetodo(index, "subtitulo", e.target.value)
+        }
+        placeholder="ID, EMAIL, CASH TAG..."
+      />
+    </Field>
+  </>
+)}
 
                         <Field label="Logo del método">
                           <input
