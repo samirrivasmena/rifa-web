@@ -23,10 +23,20 @@ export default function SiteConfigApplier() {
     root.style.setProperty("--site-error", config.color_error || "#dc2626");
     root.style.setProperty("--site-hover", config.color_hover || "#b91c1c");
 
-    root.style.setProperty("--site-hue", `${config.tono_global ?? 0}deg`);
-    root.style.setProperty("--site-saturation", `${config.saturacion_global ?? 100}%`);
-    root.style.setProperty("--site-brightness", `${config.luminosidad_global ?? 100}%`);
-    root.style.setProperty("--site-contrast", `${config.contraste_global ?? 100}%`);
+    // Tono exclusivo para los logos de la marca.
+    const tonoLogo = Number(config.tono_global ?? 0);
+
+    root.style.setProperty(
+      "--site-logo-hue",
+      `${Number.isFinite(tonoLogo) ? tonoLogo : 0}deg`
+    );
+
+    // Neutralizamos los antiguos efectos globales.
+    root.style.setProperty("--site-hue", "0deg");
+    root.style.setProperty("--site-saturation", "100%");
+    root.style.setProperty("--site-brightness", "100%");
+    root.style.setProperty("--site-contrast", "100%");
+    root.style.setProperty("--site-luminosity", "100%");
   }, [config]);
 
   return null;

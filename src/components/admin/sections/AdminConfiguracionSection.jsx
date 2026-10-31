@@ -750,11 +750,13 @@ linea_anuncios_mostrar_escritorio:
         footer_texto: limpiarTextoMarketing(config.footer_texto) || "Todos los derechos reservados.",
         footer_mostrar_redes: config.footer_mostrar_redes !== false,
 
-        saturacion_global: Number(config.saturacion_global ?? 100),
-        brillo_global: Number(config.brillo_global ?? 100),
-        contraste_global: Number(config.contraste_global ?? 100),
-        tono_global: Number(config.tono_global ?? 0),
-        luminosidad_global: Number(config.luminosidad_global ?? 100),
+// El tono se utiliza exclusivamente para los logos de la marca.
+// Los antiguos efectos globales quedan permanentemente neutrales.
+saturacion_global: 100,
+brillo_global: 100,
+contraste_global: 100,
+tono_global: Number(config.tono_global ?? 0),
+luminosidad_global: 100,
 
         descripcion_principal:
           limpiarTextoMarketing(config.descripcion_principal) || null,
@@ -1357,62 +1359,18 @@ RENDIRSE🛑.`}
               title="Colores y apariencia"
               description="Controla la identidad visual completa del sitio."
             >
-              <div className="admin-master-controls">
-                <RangeControl
-                  icon="🌈"
-                  title="Tono Global"
-                  description="Cambia completamente la tonalidad del sitio."
-                  value={config.tono_global || 0}
-                  min={-180}
-                  max={180}
-                  suffix="°"
-                  onChange={(value) => cambiarCampo("tono_global", value)}
-                />
-
-                <RangeControl
-                  icon="☀️"
-                  title="Luminosidad Global"
-                  description="Aclara u oscurece toda la web."
-                  value={config.luminosidad_global || 100}
-                  min={50}
-                  max={150}
-                  suffix="%"
-                  onChange={(value) => cambiarCampo("luminosidad_global", value)}
-                />
-
-                <RangeControl
-                  icon="◐"
-                  title="Brillo Global"
-                  description="Controla el brillo general de la interfaz."
-                  value={config.brillo_global || 100}
-                  min={50}
-                  max={150}
-                  suffix="%"
-                  onChange={(value) => cambiarCampo("brillo_global", value)}
-                />
-
-                <RangeControl
-                  icon="🌑"
-                  title="Contraste Global"
-                  description="Más fuerza visual en textos y botones."
-                  value={config.contraste_global || 100}
-                  min={50}
-                  max={150}
-                  suffix="%"
-                  onChange={(value) => cambiarCampo("contraste_global", value)}
-                />
-
-                <RangeControl
-                  icon="💎"
-                  title="Saturación Global"
-                  description="Controla la intensidad de los colores."
-                  value={config.saturacion_global || 100}
-                  min={0}
-                  max={200}
-                  suffix="%"
-                  onChange={(value) => cambiarCampo("saturacion_global", value)}
-                />
-              </div>
+<div className="admin-master-controls">
+  <RangeControl
+    icon="🌈"
+    title="Tono de los logos"
+    description="Cambia únicamente la tonalidad de los logos de Sorteos LSD."
+    value={config.tono_global ?? 0}
+    min={-180}
+    max={180}
+    suffix="°"
+    onChange={(value) => cambiarCampo("tono_global", value)}
+  />
+</div>
 
               <div className="admin-color-grid-premium">
                 {COLOR_FIELDS.map(([campo, label]) => (

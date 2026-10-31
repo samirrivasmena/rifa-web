@@ -354,27 +354,20 @@ const [loadingRifas, setLoadingRifas] = useState(
 
 
 
-    const saturacion = Number(config.saturacion_global) || 100;
+// El tono queda reservado exclusivamente para los logos de la marca.
+const tonoLogo = Number(config.tono_global ?? 0);
 
-    const brillo = Number(config.brillo_global) || 100;
+root.style.setProperty(
+  "--site-logo-hue",
+  `${Number.isFinite(tonoLogo) ? tonoLogo : 0}deg`
+);
 
-    const contraste = Number(config.contraste_global) || 100;
-
-    const tono = Number(config.tono_global) || 0;
-
-    const luminosidad = Number(config.luminosidad_global) || 100;
-
-
-
-    root.style.setProperty("--site-saturation", `${saturacion}%`);
-
-    root.style.setProperty("--site-brightness", `${brillo}%`);
-
-    root.style.setProperty("--site-contrast", `${contraste}%`);
-
-    root.style.setProperty("--site-hue", `${tono}deg`);
-
-    root.style.setProperty("--site-luminosity", `${luminosidad}%`);
+// Neutralizamos los antiguos efectos globales.
+root.style.setProperty("--site-hue", "0deg");
+root.style.setProperty("--site-saturation", "100%");
+root.style.setProperty("--site-brightness", "100%");
+root.style.setProperty("--site-contrast", "100%");
+root.style.setProperty("--site-luminosity", "100%");
 
 
 
