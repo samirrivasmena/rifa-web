@@ -14,6 +14,7 @@ const TABS = [
   { id: "seo", label: "SEO", icon: "🌎" },
   { id: "popup", label: "Popup", icon: "📢" },
   { id: "linea-anuncios", label: "Línea de anuncios", icon: "📣" },
+  { id: "musica", label: "Música", icon: "🎵" },
   { id: "footer", label: "Footer", icon: "🦶" },
 ];
 
@@ -260,6 +261,16 @@ function normalizarConfig(data) {
     notificaciones_activas: data?.notificaciones_activas !== false,
     notificaciones_duracion: Number(data?.notificaciones_duracion ?? 3),
     notificaciones_posicion: data?.notificaciones_posicion || "bottom-left",
+    // Música
+musica_activa: esVerdadero(data?.musica_activa),
+musica_url: data?.musica_url || "",
+musica_nombre: data?.musica_nombre || "",
+musica_volumen: Number.isFinite(Number(data?.musica_volumen))
+  ? Number(data.musica_volumen)
+  : 0.35,
+musica_loop: data?.musica_loop !== false,
+musica_autoplay: data?.musica_autoplay !== false,
+musica_mostrar_controles: data?.musica_mostrar_controles !== false,
     popup_activo: esVerdadero(data?.popup_activo),
     popup_titulo: data?.popup_titulo || "",
     popup_mensaje: data?.popup_mensaje || "",
@@ -368,6 +379,8 @@ export default function AdminConfiguracionSection() {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState("");
 
   const logoInputRef = useRef(null);
+  const [subiendoMusica, setSubiendoMusica] = useState(false);
+const musicaInputRef = useRef(null);
 
   useEffect(() => {
     cargarConfig();
@@ -607,6 +620,130 @@ const res = await fetch("/api/admin-configuracion/logo", {
       }
     }
   }
+async function subirMusica(file) {
+  if (!file) return;
+
+  const tiposPermitidos = ["audio/mpeg", "audio/mp3"];
+
+  if (!tiposPermitidos.includes(file.type)) {
+    Swal.fire({
+      title: "Formato no permitido",
+      text: "Solo puedes subir archivos MP3.",
+      icon: "warning",
+      background: "#15151b",
+      color: "#fff",
+    });
+
+    if (musicaInputRef.current) {
+      musicaInputRef.current.value = "";
+    }
+
+    return;
+  }
+
+  if (file.size > 20 * 1024 * 1024) {
+    Swal.fire({
+      title: "Archivo demasiado grande",
+      text: "La música no puede superar los 20 MB.",
+      icon: "warning",
+      background: "#15151b",
+      color: "#fff",
+    });
+
+    if (musicaInputRef.current) {
+      musicaInputRef.current.value = "";
+    }
+
+    return;
+  }
+
+  try {
+    setSubiendoMusica(true);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const authHeaders = await getAdminAuthHeaders();
+
+    const { "Content-Type": _contentType, ...headers } =
+      authHeaders;
+
+    const res = await fetch(
+      "/api/admin-configuracion/musica",
+      {
+        method: "POST",
+        headers,
+        body: formData,
+      }
+    );
+
+    const data = await leerJsonSeguro(
+      res,
+      "/api/admin-configuracion/musica"
+    );
+
+    if (!res.ok || !data?.ok) {
+      throw new Error(
+        data?.error || "No se pudo subir la música."
+      );
+    }
+
+    setConfig((prev) =>
+      normalizarConfig({
+        ...prev,
+        ...data.configuracion,
+      })
+    );
+
+    window.dispatchEvent(
+      new Event("site-config-updated")
+    );
+
+    localStorage.setItem(
+      "site-config-updated",
+      String(Date.now())
+    );
+
+    if ("BroadcastChannel" in window) {
+      const channel =
+        new BroadcastChannel("site-config-channel");
+
+      channel.postMessage({
+        type: "site-config-updated",
+      });
+
+      channel.close();
+    }
+
+    Swal.fire({
+      title: "Música actualizada 🎵",
+      text: "El archivo MP3 fue subido correctamente.",
+      icon: "success",
+      timer: 1600,
+      showConfirmButton: false,
+      background: "#15151b",
+      color: "#fff",
+    });
+  } catch (error) {
+    console.error(error);
+
+    Swal.fire({
+      title: "Error",
+      text:
+        error.message ||
+        "No se pudo subir la música.",
+      icon: "error",
+      background: "#15151b",
+      color: "#fff",
+    });
+  } finally {
+    setSubiendoMusica(false);
+
+    if (musicaInputRef.current) {
+      musicaInputRef.current.value = "";
+    }
+  }
+}
 
   async function guardarCambios() {
     if (!config) return;
@@ -677,7 +814,17 @@ metodos_pago: normalizarMetodosPago(config.metodos_pago),
           limpiarTextoMarketing(config.seo_descripcion) ||
           "Compra tus tickets, verifica tus números y consulta eventos disponibles.",
         seo_imagen: config.seo_imagen || null,
-
+// Música
+musica_activa: Boolean(config.musica_activa),
+musica_url: config.musica_url || null,
+musica_nombre: limpiarTextoBasico(config.musica_nombre) || null,
+musica_volumen: Math.max(
+  0,
+  Math.min(1, Number(config.musica_volumen ?? 0.35))
+),
+musica_loop: Boolean(config.musica_loop),
+musica_autoplay: Boolean(config.musica_autoplay),
+musica_mostrar_controles: Boolean(config.musica_mostrar_controles),
         popup_activo: Boolean(config.popup_activo),
         popup_titulo: limpiarTextoBasico(config.popup_titulo) || null,
         popup_mensaje: limpiarTextoMarketing(config.popup_mensaje) || null,
@@ -954,7 +1101,7 @@ const res = await fetch("/api/admin-configuracion", {
           type="button"
           className="admin-config-save-top"
           onClick={guardarCambios}
-          disabled={guardando || subiendoLogo}
+          disabled={guardando || subiendoLogo || subiendoMusica}
         >
           {guardando ? (
             <>
@@ -1148,7 +1295,7 @@ RENDIRSE🛑.`}
                   type="button"
                   className="identidad-save-button"
                   onClick={guardarCambios}
-                  disabled={guardando || subiendoLogo}
+                  disabled={guardando || subiendoLogo || subiendoMusica}
                 >
                   {guardando ? "⏳ GUARDANDO..." : "💾 GUARDAR CAMBIOS"}
                 </button>
@@ -2048,6 +2195,259 @@ RENDIRSE🛑.`}
           {/* =====================================================
               POPUP
           ===================================================== */}
+          {/* =====================================================
+    MÚSICA
+===================================================== */}
+{tab === "musica" && (
+  <ConfigCard
+    icon="🎵"
+    title="Música del sitio"
+    description="Configura la música ambiental que podrá reproducirse en las páginas públicas."
+  >
+    <div className="admin-config-form-grid">
+
+      {/* ACTIVAR */}
+      <Field label="Activar música" asLabel={false}>
+        <label className="admin-switch">
+          <input
+            type="checkbox"
+            checked={Boolean(config.musica_activa)}
+            onChange={(e) =>
+              cambiarCampo("musica_activa", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* MOSTRAR CONTROLES */}
+      <Field label="Mostrar controles al público" asLabel={false}>
+        <label className="admin-switch">
+          <input
+            type="checkbox"
+            checked={Boolean(config.musica_mostrar_controles)}
+            onChange={(e) =>
+              cambiarCampo(
+                "musica_mostrar_controles",
+                e.target.checked
+              )
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* NOMBRE */}
+      <Field label="Nombre de la canción" full>
+        <input
+          value={config.musica_nombre || ""}
+          onChange={(e) =>
+            cambiarCampo("musica_nombre", e.target.value)
+          }
+          placeholder="Ej: Música oficial Sorteos LSD"
+        />
+      </Field>
+
+{/* ARCHIVO DE MÚSICA */}
+<Field
+  label="Archivo de música"
+  help="Sube un archivo MP3. Tamaño máximo: 20 MB."
+  full
+>
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: "12px",
+    }}
+  >
+    <label
+      className={`btn-upload-logo ${
+        subiendoMusica ? "uploading" : ""
+      }`}
+      style={{
+        width: "fit-content",
+        cursor: subiendoMusica ? "wait" : "pointer",
+      }}
+    >
+      {subiendoMusica
+        ? "⏳ SUBIENDO MÚSICA..."
+        : config.musica_url
+          ? "🎵 CAMBIAR MÚSICA"
+          : "📤 SUBIR MÚSICA"}
+
+      <input
+        ref={musicaInputRef}
+        type="file"
+        accept=".mp3,audio/mpeg,audio/mp3"
+        hidden
+        disabled={subiendoMusica}
+        onChange={(e) =>
+          subirMusica(e.target.files?.[0])
+        }
+      />
+    </label>
+
+    {config.musica_url ? (
+      <div
+        style={{
+          padding: "12px 14px",
+          borderRadius: "12px",
+          background: "rgba(34,197,94,0.08)",
+          border: "1px solid rgba(34,197,94,0.22)",
+        }}
+      >
+        <strong>✅ Música cargada</strong>
+        <div
+          style={{
+            marginTop: "4px",
+            fontSize: "12px",
+            opacity: 0.7,
+          }}
+        >
+          Puedes escucharla en la vista previa de abajo o
+          reemplazarla por otro MP3.
+        </div>
+      </div>
+    ) : (
+      <div
+        style={{
+          fontSize: "12px",
+          opacity: 0.65,
+        }}
+      >
+        MP3 • Máximo 20 MB
+      </div>
+    )}
+  </div>
+</Field>
+
+      {/* VOLUMEN */}
+      <Field label={`Volumen inicial — ${Math.round(
+        Number(config.musica_volumen ?? 0.35) * 100
+      )}%`} full>
+        <input
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={Number(config.musica_volumen ?? 0.35)}
+          onChange={(e) =>
+            cambiarCampo(
+              "musica_volumen",
+              Number(e.target.value)
+            )
+          }
+          style={{ width: "100%" }}
+        />
+      </Field>
+
+      {/* LOOP */}
+      <Field label="Repetir música automáticamente" asLabel={false}>
+        <label className="admin-switch">
+          <input
+            type="checkbox"
+            checked={Boolean(config.musica_loop)}
+            onChange={(e) =>
+              cambiarCampo("musica_loop", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+      {/* AUTOPLAY */}
+      <Field label="Reproducción automática" asLabel={false}>
+        <label className="admin-switch">
+          <input
+            type="checkbox"
+            checked={Boolean(config.musica_autoplay)}
+            onChange={(e) =>
+              cambiarCampo("musica_autoplay", e.target.checked)
+            }
+          />
+          <span />
+        </label>
+      </Field>
+
+    </div>
+
+    <div
+      style={{
+        marginTop: "22px",
+        padding: "16px",
+        borderRadius: "14px",
+        background: "rgba(255,255,255,0.04)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
+    >
+      <strong>🎧 Comportamiento público</strong>
+
+      <p
+        style={{
+          margin: "8px 0 0",
+          opacity: 0.72,
+          lineHeight: 1.6,
+        }}
+      >
+        Los visitantes podrán pausar, reproducir, silenciar y
+        controlar el volumen. Su preferencia de volumen y silencio
+        se conservará en su dispositivo.
+      </p>
+
+      <p
+        style={{
+          margin: "8px 0 0",
+          opacity: 0.72,
+          lineHeight: 1.6,
+        }}
+      >
+        Algunos navegadores bloquean la reproducción automática con
+        sonido hasta que el visitante interactúa con la página.
+      </p>
+    </div>
+
+    {config.musica_url && (
+      <div
+        style={{
+          marginTop: "20px",
+          padding: "16px",
+          borderRadius: "14px",
+          background: "rgba(0,0,0,0.18)",
+        }}
+      >
+        <strong>
+          🎵 {config.musica_nombre || "Vista previa"}
+        </strong>
+
+        <audio
+          key={config.musica_url}
+          controls
+          preload="metadata"
+          src={config.musica_url}
+          style={{
+            display: "block",
+            width: "100%",
+            marginTop: "12px",
+          }}
+        />
+      </div>
+    )}
+
+    <div style={{ marginTop: "22px" }}>
+      <button
+        type="button"
+        className="admin-config-primary-btn"
+        onClick={guardarCambios}
+        disabled={guardando || subiendoLogo}
+      >
+        {guardando
+          ? "⏳ GUARDANDO..."
+          : "💾 GUARDAR CONFIGURACIÓN DE MÚSICA"}
+      </button>
+    </div>
+  </ConfigCard>
+)}
           {tab === "popup" && (
             <ConfigCard
               icon="📢"

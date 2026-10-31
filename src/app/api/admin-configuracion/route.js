@@ -63,6 +63,15 @@ const CAMPOS_CONFIGURACION = [
   "seo_descripcion",
   "seo_imagen",
 
+    // Música
+  "musica_activa",
+  "musica_url",
+  "musica_nombre",
+  "musica_volumen",
+  "musica_loop",
+  "musica_autoplay",
+  "musica_mostrar_controles",
+  
 "popup_activo",
 "popup_titulo",
 "popup_mensaje",

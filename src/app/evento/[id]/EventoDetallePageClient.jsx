@@ -2040,7 +2040,18 @@ if (!res.ok) {
           <FloatingShareButton
             url={shareUrl}
             title={evento?.nombre || "Evento"}
-            text={`🔥 *${evento?.nombre || "Evento"}*
+text={
+  estaFinalizado
+    ? `🔥 *${evento?.nombre || "Evento"}*
+
+🏁 *¡EVENTO FINALIZADO!*
+🏆 *Premio:* ${premios.length > 0 ? premios[0] : "Disponible"}
+🎟️ *Valor del ticket:* $${precio.toFixed(2)}
+📊 *Ventas finales:* ${porcentajeVendido.toFixed(1)}%
+
+🏆 *Consulta los resultados oficiales del evento*
+👇 Mira todos los detalles aquí:`
+    : `🔥 *${evento?.nombre || "Evento"}*
 
 🎉 *¡No te quedes por fuera!*
 🏆 *Premio:* ${premios.length > 0 ? premios[0] : "Disponible"}
@@ -2048,7 +2059,8 @@ if (!res.ok) {
 📈 *Ventas del evento:* ${porcentajeVendido.toFixed(1)}%
 
 ✅ *Compra tus tickets en la PAGINA OFICIAL*
-👇 Mira todos los detalles aquí:`}
+👇 Mira todos los detalles aquí:`
+}
           />
         </div>
       )}
