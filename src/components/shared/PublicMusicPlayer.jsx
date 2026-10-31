@@ -948,14 +948,10 @@ const cambiarVolumen = (event) => {
             flex-basis: 28px;
           }
 
-          .public-music-volume {
-            width: 58px;
-          }
-
-          .public-music-percent {
-            display: none;
-          }
-        }
+.public-music-volume,
+.public-music-percent {
+  display: none;
+}
 
         /* =================================================
            TELÉFONOS MUY PEQUEÑOS
