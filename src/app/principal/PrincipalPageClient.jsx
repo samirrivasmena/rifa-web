@@ -354,15 +354,27 @@ const [loadingRifas, setLoadingRifas] = useState(
 
 
 
-// El tono queda reservado exclusivamente para los logos de la marca.
+// =====================================================
+// PERSONALIZACIÓN EXCLUSIVA DE LOS LOGOS DE LA MARCA
+// =====================================================
+
 const tonoLogo = Number(config.tono_global ?? 0);
+const claridadLogo = Number(config.luminosidad_global ?? 100);
 
 root.style.setProperty(
   "--site-logo-hue",
   `${Number.isFinite(tonoLogo) ? tonoLogo : 0}deg`
 );
 
-// Neutralizamos los antiguos efectos globales.
+root.style.setProperty(
+  "--site-logo-lightness",
+  `${Number.isFinite(claridadLogo) ? claridadLogo : 100}%`
+);
+
+// =====================================================
+// ANTIGUOS EFECTOS GLOBALES NEUTRALIZADOS
+// =====================================================
+
 root.style.setProperty("--site-hue", "0deg");
 root.style.setProperty("--site-saturation", "100%");
 root.style.setProperty("--site-brightness", "100%");

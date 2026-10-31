@@ -9811,18 +9811,19 @@ body > .principal-reglas-modal-overlay {
   }
 }
 /* =========================================================
-   TONO EXCLUSIVO PARA LOGOS DE SORTEOS LSD
+   COLOR EXCLUSIVO PARA LOGOS DE SORTEOS LSD
    ========================================================= */
 
 :root {
   --site-logo-hue: 0deg;
+  --site-logo-lightness: 100%;
 }
 
 /*
- * Aplica el tono configurado desde el Admin
- * únicamente a los logos principales de la marca.
+ * Estos efectos se aplican SOLAMENTE a los logos
+ * principales de Sorteos LSD.
  *
- * NO afecta:
+ * NO afectan:
  * - imágenes de rifas
  * - métodos de pago
  * - logos de resultados
@@ -9832,5 +9833,7 @@ body > .principal-reglas-modal-overlay {
  */
 .site-logo-img,
 .public-footer-logo {
-  filter: hue-rotate(var(--site-logo-hue)) !important;
+  filter:
+    hue-rotate(var(--site-logo-hue))
+    brightness(var(--site-logo-lightness)) !important;
 }

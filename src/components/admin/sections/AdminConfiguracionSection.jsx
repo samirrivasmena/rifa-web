@@ -756,7 +756,7 @@ saturacion_global: 100,
 brillo_global: 100,
 contraste_global: 100,
 tono_global: Number(config.tono_global ?? 0),
-luminosidad_global: 100,
+luminosidad_global: Number(config.luminosidad_global ?? 100),
 
         descripcion_principal:
           limpiarTextoMarketing(config.descripcion_principal) || null,
@@ -1369,6 +1369,17 @@ RENDIRSE🛑.`}
     max={180}
     suffix="°"
     onChange={(value) => cambiarCampo("tono_global", value)}
+  />
+
+  <RangeControl
+    icon="☀️"
+    title="Claro / Oscuro"
+    description="Aclara u oscurece únicamente los logos de Sorteos LSD."
+    value={config.luminosidad_global ?? 100}
+    min={0}
+    max={300}
+    suffix="%"
+    onChange={(value) => cambiarCampo("luminosidad_global", value)}
   />
 </div>
 
