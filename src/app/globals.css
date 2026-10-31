@@ -1423,25 +1423,7 @@ a.home-top-link,
   font-weight: 900;
   color: var(--text-main);
 }
-/* =========================================================
-   MOVIMIENTO DEL NOMBRE DE LA MARCA
-   ========================================================= */
 
-.principal-hero-content h1 {
-  animation: marcaMovimiento 3s ease-in-out infinite;
-  transform-origin: center;
-}
-
-@keyframes marcaMovimiento {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-
-  50% {
-    transform: translateY(-8px);
-  }
-}
 
 .principal-bio p {
   margin: 0 0 8px;
@@ -9855,4 +9837,156 @@ body > .principal-reglas-modal-overlay {
   filter:
     hue-rotate(var(--site-logo-hue))
     brightness(var(--site-logo-lightness)) !important;
+}
+/* =========================================================
+   NOMBRE DE MARCA - CONTENEDOR SEGURO
+   ========================================================= */
+
+.principal-hero-content h1.principal-brand-window {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.principal-brand-window > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+@media (max-width: 768px) {
+  .principal-hero-content h1.principal-brand-window {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+  }
+}
+/* =========================================================
+   PROTECCIÓN COLUMNA DE CONTENIDO DEL HERO
+   ========================================================= */
+
+.principal-hero-content {
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  overflow: hidden;
+}
+/* =========================================================
+   NOMBRE DE MARCA - CINTA SEGURA
+   SIN ANIMACIÓN
+   ========================================================= */
+
+.principal-brand-window {
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+
+  overflow: hidden;
+
+  margin: 16px 0 24px;
+}
+
+.principal-brand-track {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+
+  align-items: center;
+
+  width: max-content;
+  min-width: max-content;
+
+  white-space: nowrap;
+}
+
+.principal-brand-track > span {
+  display: block;
+
+  flex-grow: 0;
+  flex-shrink: 0;
+  flex-basis: auto;
+
+  width: max-content;
+
+  margin-right: 55px;
+
+  font-size: clamp(42px, 7vw, 90px);
+  line-height: 0.96;
+  font-weight: 900;
+  color: var(--text-main);
+
+  white-space: nowrap;
+}
+
+
+/* =========================================================
+   TELÉFONOS
+   ========================================================= */
+
+@media (max-width: 768px) {
+
+  .principal-brand-window {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+
+    overflow: hidden;
+
+    margin: 16px 0 24px;
+  }
+
+  .principal-brand-track {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+
+    width: max-content;
+    min-width: max-content;
+
+    white-space: nowrap;
+  }
+
+  .principal-brand-track > span {
+    display: block;
+
+    flex: 0 0 auto;
+
+    width: max-content;
+
+    margin-right: 38px;
+
+    font-size: clamp(40px, 12vw, 56px);
+    line-height: 0.96;
+    font-weight: 900;
+
+    white-space: nowrap;
+  }
+}
+/* =========================================================
+   MOVIMIENTO INFINITO DEL NOMBRE DE LA MARCA
+   ========================================================= */
+
+/* PC + LAPTOP */
+.principal-brand-track {
+  animation: principalBrandScroll 10s linear infinite;
+  will-change: transform;
+}
+
+@keyframes principalBrandScroll {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-33.3333%, 0, 0);
+  }
+}
+
+/* TELÉFONOS - MÁS LENTO */
+@media (max-width: 768px) {
+  .principal-brand-track {
+    animation-duration: 3s;
+  }
 }

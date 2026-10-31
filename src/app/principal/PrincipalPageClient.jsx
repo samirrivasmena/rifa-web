@@ -1029,7 +1029,13 @@ if (e.key === "Escape") {
 
 
 
-                <h1>{nombreMarca}</h1>
+                <div className="principal-brand-window" aria-label={nombreMarca}>
+  <div className="principal-brand-track">
+    <span>{nombreMarca}</span>
+    <span>{nombreMarca}</span>
+    <span>{nombreMarca}</span>
+  </div>
+</div>
 
 
 
