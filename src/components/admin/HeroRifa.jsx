@@ -1,5 +1,7 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
+
 import {
   Eye,
   ShoppingCart,
@@ -12,6 +14,8 @@ import {
   Globe,
   Star,
   ImageIcon,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 function formatBool(value) {
@@ -92,6 +96,60 @@ export default function HeroRifa({
 
   const imagenPrincipal = portada_url || "";
   const imagenScroll = portada_scroll_url || imagenPrincipal;
+  const tieneSegundaImagen =
+  Boolean(portada_scroll_url) && portada_scroll_url !== portada_url;
+
+const [imagenActiva, setImagenActiva] = useState(
+  showSecondImage && tieneSegundaImagen ? 1 : 0
+);
+
+const touchStartXRef = useRef(null);
+
+useEffect(() => {
+  if (!tieneSegundaImagen) {
+    setImagenActiva(0);
+    return;
+  }
+
+  setImagenActiva(showSecondImage ? 1 : 0);
+}, [showSecondImage, tieneSegundaImagen]);
+
+const mostrarAnterior = () => {
+  if (!tieneSegundaImagen) return;
+  setImagenActiva((actual) => (actual === 0 ? 1 : 0));
+};
+
+const mostrarSiguiente = () => {
+  if (!tieneSegundaImagen) return;
+  setImagenActiva((actual) => (actual === 0 ? 1 : 0));
+};
+
+const handleTouchStart = (event) => {
+  touchStartXRef.current = event.touches?.[0]?.clientX ?? null;
+};
+
+const handleTouchEnd = (event) => {
+  if (!tieneSegundaImagen || touchStartXRef.current === null) return;
+
+  const touchEndX = event.changedTouches?.[0]?.clientX;
+
+  if (typeof touchEndX !== "number") {
+    touchStartXRef.current = null;
+    return;
+  }
+
+  const diferencia = touchEndX - touchStartXRef.current;
+
+  if (Math.abs(diferencia) >= 45) {
+    if (diferencia < 0) {
+      mostrarSiguiente();
+    } else {
+      mostrarAnterior();
+    }
+  }
+
+  touchStartXRef.current = null;
+};
 
   return (
     <section className="adminhero4 adminhero4--compact">
@@ -265,34 +323,85 @@ export default function HeroRifa({
         </div>
 
         <div className="adminhero4__right">
-          <div className="adminhero4__media adminhero4__media-switch">
-            {imagenPrincipal ? (
-              <>
-                <img
-                  src={imagenPrincipal}
-                  alt={nombre || "Rifa"}
-                  className={`adminhero4__image-layer ${
-                    showSecondImage ? "hide" : "show"
-                  }`}
-                />
-                <img
-                  src={imagenScroll}
-                  alt={`${nombre || "Rifa"} scroll`}
-                  className={`adminhero4__image-layer ${
-                    showSecondImage ? "show" : "hide"
-                  }`}
-                />
-              </>
-            ) : (
-              <div className="adminhero4__media-placeholder">
-                <div className="adminhero4__media-placeholder-icon">
-                  <ImageIcon className="adminhero4__icon" />
-                </div>
-                <strong>Sin portada</strong>
-                <span>Esta rifa todavía no tiene imagen principal cargada.</span>
-              </div>
-            )}
+<div
+  className="adminhero4__media adminhero4__media-switch"
+  onTouchStart={handleTouchStart}
+  onTouchEnd={handleTouchEnd}
+>
+  {imagenPrincipal ? (
+    <>
+      <img
+        src={imagenPrincipal}
+        alt={nombre || "Rifa"}
+        className={`adminhero4__image-layer ${
+          imagenActiva === 0 ? "show" : "hide"
+        }`}
+        draggable="false"
+      />
+
+      {tieneSegundaImagen && (
+        <img
+          src={imagenScroll}
+          alt={`${nombre || "Rifa"} secundaria`}
+          className={`adminhero4__image-layer ${
+            imagenActiva === 1 ? "show" : "hide"
+          }`}
+          draggable="false"
+        />
+      )}
+
+      {tieneSegundaImagen && (
+        <>
+          <button
+            type="button"
+            className="adminhero4__carousel-arrow adminhero4__carousel-arrow--left"
+            onClick={mostrarAnterior}
+            aria-label="Imagen anterior"
+          >
+            <ChevronLeft />
+          </button>
+
+          <button
+            type="button"
+            className="adminhero4__carousel-arrow adminhero4__carousel-arrow--right"
+            onClick={mostrarSiguiente}
+            aria-label="Imagen siguiente"
+          >
+            <ChevronRight />
+          </button>
+
+          <div
+            className="adminhero4__carousel-dots"
+            aria-label="Selector de imágenes"
+          >
+            <button
+              type="button"
+              className={imagenActiva === 0 ? "active" : ""}
+              onClick={() => setImagenActiva(0)}
+              aria-label="Ver imagen principal"
+            />
+
+            <button
+              type="button"
+              className={imagenActiva === 1 ? "active" : ""}
+              onClick={() => setImagenActiva(1)}
+              aria-label="Ver segunda imagen"
+            />
           </div>
+        </>
+      )}
+    </>
+  ) : (
+    <div className="adminhero4__media-placeholder">
+      <div className="adminhero4__media-placeholder-icon">
+        <ImageIcon className="adminhero4__icon" />
+      </div>
+
+      <strong>Sin portada</strong>
+      <span>Esta rifa todavía no tiene imagen principal cargada.</span>
+    </div>
+  )}
+</div>
 
           <div className="adminhero4__insight">
             <div className="adminhero4__ring">
