@@ -2630,10 +2630,26 @@ function RangeControl({ icon, title, description, value, min, max, suffix, onCha
         onChange={(e) => onChange(Number(e.target.value))}
       />
 
-      <b>
-        {value}
-        {suffix}
-      </b>
+<b
+  style={{
+    background:
+      title === "Tono de los logos"
+        ? `hsl(${((Number(value) + 360) % 360)}, 100%, 50%)`
+        : undefined,
+    color: title === "Tono de los logos" ? "#ffffff" : undefined,
+    border:
+      title === "Tono de los logos"
+        ? "1px solid rgba(255,255,255,0.18)"
+        : undefined,
+    textShadow:
+      title === "Tono de los logos"
+        ? "0 1px 3px rgba(0,0,0,0.75)"
+        : undefined,
+  }}
+>
+  {value}
+  {suffix}
+</b>
     </div>
   );
 }
