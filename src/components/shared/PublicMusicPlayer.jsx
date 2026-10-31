@@ -220,37 +220,51 @@ export default function PublicMusicPlayer() {
   // VOLUMEN
   // =========================================================
 
-  const cambiarVolumen = (event) => {
-    const nuevoVolumen = Number(event.target.value);
+const cambiarVolumen = (event) => {
+  const nuevoVolumen = Number(event.target.value);
 
-    if (!Number.isFinite(nuevoVolumen)) return;
+  if (!Number.isFinite(nuevoVolumen)) return;
 
-    const volumenSeguro = Math.max(
-      0,
-      Math.min(1, nuevoVolumen)
-    );
+  const volumenSeguro = Math.max(
+    0,
+    Math.min(1, nuevoVolumen)
+  );
 
-    setVolume(volumenSeguro);
+  // Actualizar estado
+  setVolume(volumenSeguro);
+
+  // Aplicar inmediatamente al audio.
+  // Esto ayuda especialmente en Safari/iPhone.
+  const audio = audioRef.current;
+
+  if (audio) {
+    audio.volume = volumenSeguro;
+
+    if (volumenSeguro > 0) {
+      audio.muted = false;
+    }
+  }
+
+  // Si aumenta el volumen, quitar mute.
+  if (volumenSeguro > 0 && muted) {
+    setMuted(false);
 
     try {
-      localStorage.setItem(
-        VOLUME_KEY,
-        String(volumenSeguro)
-      );
+      localStorage.setItem(MUTED_KEY, "false");
     } catch {
       // Ignorar.
     }
+  }
 
-    if (volumenSeguro > 0 && muted) {
-      setMuted(false);
-
-      try {
-        localStorage.setItem(MUTED_KEY, "false");
-      } catch {
-        // Ignorar.
-      }
-    }
-  };
+  try {
+    localStorage.setItem(
+      VOLUME_KEY,
+      String(volumenSeguro)
+    );
+  } catch {
+    // Ignorar.
+  }
+};
 
   // =========================================================
   // CAMBIAR ESTADO DEL PANEL
