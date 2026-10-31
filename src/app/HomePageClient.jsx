@@ -1266,11 +1266,21 @@ const response = await fetch(
 
       tickets,
 
-      totalPagar,
+totalPagar,
 
-      paymentMethod,
+tasaBcv:
+  metodoSeleccionado.tipo === "pago_movil"
+    ? tasaBcv
+    : null,
 
-      comprobantePath,
+montoBolivares:
+  metodoSeleccionado.tipo === "pago_movil"
+    ? totalPagarBs
+    : null,
+
+paymentMethod,
+
+comprobantePath,
 
       uploadProof,
 
@@ -1281,6 +1291,7 @@ const response = await fetch(
     }),
   }
 );
+const data = await response.json();
 
       if (!response.ok) {
         await Swal.fire({

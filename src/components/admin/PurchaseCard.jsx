@@ -415,6 +415,30 @@ export default function PurchaseCard({
             ? monto.toFixed(2)
             : "0.00"}
         </p>
+        {compra?.metodo_pago === "PAGO MOVIL BDV" &&
+  Number.isFinite(Number(compra?.monto_bolivares)) &&
+  Number.isFinite(Number(compra?.tasa_bcv)) && (
+    <>
+      <p>
+        <strong>Monto Pago Móvil:</strong>{" "}
+        Bs.{" "}
+        {new Intl.NumberFormat("es-VE", {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        }).format(Number(compra.monto_bolivares))}
+      </p>
+
+      <p>
+        <strong>Tasa BCV:</strong>{" "}
+        Bs.{" "}
+        {new Intl.NumberFormat("es-VE", {
+          minimumFractionDigits: 4,
+          maximumFractionDigits: 4,
+        }).format(Number(compra.tasa_bcv))}{" "}
+        / USD
+      </p>
+    </>
+  )}
 
         <p>
           <strong>

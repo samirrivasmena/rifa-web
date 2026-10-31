@@ -913,6 +913,8 @@ const {
   referencia,
   tickets,
   totalPagar,
+  tasaBcv,
+  montoBolivares,
   paymentMethod,
   comprobanteUrl,
   comprobantePath,
@@ -1003,18 +1005,28 @@ const comprobantePathLimpio =
 
     const totalRecibido =
       Number(totalPagar);
+      const tasaBcvRecibida =
+  tasaBcv !== null && tasaBcv !== undefined
+    ? Number(tasaBcv)
+    : null;
+
+const montoBolivaresRecibido =
+  montoBolivares !== null && montoBolivares !== undefined
+    ? Number(montoBolivares)
+    : null;
 
     // -------------------------------------------------------
     // MÉTODOS DE PAGO
     // -------------------------------------------------------
 
-    const metodosPermitidos = [
-      "Binance",
-      "Zelle",
-      "App Pay",
-      "PayPal",
-      "Cash App",
-    ];
+const metodosPermitidos = [
+  "Binance",
+  "Zelle",
+  "App Pay",
+  "PayPal",
+  "Cash App",
+  "PAGO MOVIL BDV",
+];
 
     if (
       !metodosPermitidos.includes(
@@ -1643,11 +1655,21 @@ const payloadCompra = {
   cantidad_tickets:
     cantidadTickets,
 
-  monto_total:
-    totalEsperado,
+monto_total:
+  totalEsperado,
 
-  metodo_pago:
-    metodoPago,
+tasa_bcv:
+  Number.isFinite(tasaBcvRecibida)
+    ? tasaBcvRecibida
+    : null,
+
+monto_bolivares:
+  Number.isFinite(montoBolivaresRecibido)
+    ? Number(montoBolivaresRecibido.toFixed(2))
+    : null,
+
+metodo_pago:
+  metodoPago,
 
   referencia:
     referenciaFinal,
