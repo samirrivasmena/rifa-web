@@ -9990,3 +9990,19 @@ body > .principal-reglas-modal-overlay {
     animation-duration: 3s;
   }
 }
+/* =========================================================
+   HOME - PUNTICOS FINALIZADOS CON COLOR DEL ADMIN
+========================================================= */
+
+.home-events-dots .home-event-dot.active,
+.home-events-dots .home-event-dot.carousel-dot.active,
+.home-events-dots.carousel-dots .carousel-dot.active {
+  background: var(--site-dots, #dc2626) !important;
+  background-color: var(--site-dots, #dc2626) !important;
+
+  box-shadow: 0 0 0 5px color-mix(
+    in srgb,
+    var(--site-dots, #dc2626) 11%,
+    transparent
+  ) !important;
+}

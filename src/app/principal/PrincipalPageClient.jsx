@@ -1837,159 +1837,185 @@ if (e.key === "Escape") {
 
             <div className="principal-payments-vertical">
 
-              {metodosPagoPublicos.map((method) => {
-
-                const mostrarCuenta = Boolean(method?.cuenta);
-
-                const mostrarTitular = Boolean(method?.titular);
-
-
-
-                const extras = Array.isArray(method?.extra) ? method.extra : [];
-
-
-
-                const nombreMetodo =
-
-                  method?.titulo || method?.nombre || "Método de pago";
-
-
-
-                return (
-
-                  <div
-
-                    key={method?.id || method?.nombre}
-
-                    className="principal-payment-block premium-card-hover"
-
-                  >
-
-                    {method?.logo && (
-
-                      <img
-
-                        src={method.logo}
-
-                        alt={nombreMetodo}
-
-                        className="principal-payment-icon"
-
-                      />
-
-                    )}
-
-
-
-                    <h3>{nombreMetodo}</h3>
-
-
-
-                    {method?.subtitulo && <p>{method.subtitulo}</p>}
-
-
-
-                    {mostrarCuenta && (
-
-                      <div className="copy-line">
-
-                        <strong>{method.cuenta}</strong>
-
-
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => copiarTexto(method.cuenta)}
-
-                        >
-
-                          📋
-
-                        </button>
-
-                      </div>
-
-                    )}
-
-
-
-                    {extras.map((item) => (
-
-                      <div
-
-                        key={`${method?.id || method?.nombre}-${item?.label}-${item?.value}`}
-
-                      >
-
-                        <p>{item?.label}</p>
-
-
-
-                        <div className="copy-line">
-
-                          <strong>{item?.value}</strong>
-
-
-
-                          <button
-
-                            type="button"
-
-                            onClick={() => copiarTexto(item?.value)}
-
-                          >
-
-                            📋
-
-                          </button>
-
-                        </div>
-
-                      </div>
-
-                    ))}
-
-
-
-                    {mostrarTitular && (
-
-                      <div className="copy-line">
-
-                        <span>
-
-                          <strong>Titular:</strong> {method.titular}
-
-                        </span>
-
-
-
-                        <button
-
-                          type="button"
-
-                          onClick={() => copiarTexto(method.titular)}
-
-                        >
-
-                          📋
-
-                        </button>
-
-                      </div>
-
-                    )}
-
-
-
-                    {method?.descripcion && <p>{method.descripcion}</p>}
-
-                  </div>
-
-                );
-
-              })}
+{metodosPagoPublicos.map((method) => {
+  const mostrarCuenta = Boolean(method?.cuenta);
+  const mostrarTitular = Boolean(method?.titular);
+
+  const esPagoMovil = method?.tipo === "pago_movil";
+
+  const extras = Array.isArray(method?.extra) ? method.extra : [];
+
+  const nombreMetodo =
+    method?.titulo || method?.nombre || "Método de pago";
+
+  return (
+    <div
+      key={method?.id || method?.nombre}
+      className="principal-payment-block premium-card-hover"
+    >
+      {method?.logo && (
+        <img
+          src={method.logo}
+          alt={nombreMetodo}
+          className="principal-payment-icon"
+        />
+      )}
+
+      <h3>{nombreMetodo}</h3>
+
+      {method?.subtitulo && <p>{method.subtitulo}</p>}
+
+      {/* =========================================
+          PAGO MÓVIL
+      ========================================= */}
+      {esPagoMovil ? (
+        <>
+          {method?.banco && (
+            <div>
+              <p>BANCO</p>
+
+              <div className="copy-line">
+                <strong>{method.banco}</strong>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(method.banco)}
+                  aria-label="Copiar banco"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          )}
+
+          {method?.codigo_banco && (
+            <div>
+              <p>CÓDIGO DEL BANCO</p>
+
+              <div className="copy-line">
+                <strong>{method.codigo_banco}</strong>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(method.codigo_banco)}
+                  aria-label="Copiar código del banco"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          )}
+
+          {method?.telefono && (
+            <div>
+              <p>TELÉFONO</p>
+
+              <div className="copy-line">
+                <strong>{method.telefono}</strong>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(method.telefono)}
+                  aria-label="Copiar teléfono"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          )}
+
+          {method?.documento && (
+            <div>
+              <p>CÉDULA / RIF</p>
+
+              <div className="copy-line">
+                <strong>{method.documento}</strong>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(method.documento)}
+                  aria-label="Copiar cédula o RIF"
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          )}
+
+          {mostrarTitular && (
+            <div className="copy-line">
+              <span>
+                <strong>Titular:</strong> {method.titular}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => copiarTexto(method.titular)}
+                aria-label="Copiar titular"
+              >
+                📋
+              </button>
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          {/* =========================================
+              MÉTODOS NORMALES
+          ========================================= */}
+          {mostrarCuenta && (
+            <div className="copy-line">
+              <strong>{method.cuenta}</strong>
+
+              <button
+                type="button"
+                onClick={() => copiarTexto(method.cuenta)}
+              >
+                📋
+              </button>
+            </div>
+          )}
+
+          {extras.map((item) => (
+            <div
+              key={`${method?.id || method?.nombre}-${item?.label}-${item?.value}`}
+            >
+              <p>{item?.label}</p>
+
+              <div className="copy-line">
+                <strong>{item?.value}</strong>
+
+                <button
+                  type="button"
+                  onClick={() => copiarTexto(item?.value)}
+                >
+                  📋
+                </button>
+              </div>
+            </div>
+          ))}
+
+          {mostrarTitular && (
+            <div className="copy-line">
+              <span>
+                <strong>Titular:</strong> {method.titular}
+              </span>
+
+              <button
+                type="button"
+                onClick={() => copiarTexto(method.titular)}
+              >
+                📋
+              </button>
+            </div>
+          )}
+        </>
+      )}
+
+      {method?.descripcion && <p>{method.descripcion}</p>}
+    </div>
+  );
+})}
 
 
 
