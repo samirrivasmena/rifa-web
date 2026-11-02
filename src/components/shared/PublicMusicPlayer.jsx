@@ -18,6 +18,7 @@ export default function PublicMusicPlayer() {
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.35);
   const [ready, setReady] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
 
   // 0 = discreto
   // 1 = mini reproductor
@@ -32,6 +33,72 @@ export default function PublicMusicPlayer() {
     pathname?.startsWith("/admin") ||
     pathname?.startsWith("/admin-login") ||
     pathname?.startsWith("/admin-mfa-setup");
+
+  // =========================================================
+  // NO MOSTRAR EN /PRINCIPAL
+  // =========================================================
+
+  const esRutaSinMusica =
+    pathname === "/principal" ||
+    pathname?.startsWith("/principal/");
+
+  // =========================================================
+  // DETECTAR MODO MANTENIMIENTO
+  // =========================================================
+
+  useEffect(() => {
+    const actualizarMantenimiento = (event) => {
+      if (typeof event?.detail?.active === "boolean") {
+        setMaintenanceMode(event.detail.active);
+        return;
+      }
+
+      setMaintenanceMode(
+        document.body.classList.contains(
+          "site-maintenance-active"
+        )
+      );
+    };
+
+    actualizarMantenimiento();
+
+    window.addEventListener(
+      "site-maintenance-change",
+      actualizarMantenimiento
+    );
+
+    return () => {
+      window.removeEventListener(
+        "site-maintenance-change",
+        actualizarMantenimiento
+      );
+    };
+  }, []);
+
+  // =========================================================
+  // DETENER AUDIO DONDE NO DEBE EXISTIR
+  // =========================================================
+
+  useEffect(() => {
+    if (!maintenanceMode && !esRutaSinMusica && !esRutaAdmin) {
+      return;
+    }
+
+    const audio = audioRef.current;
+
+    if (audio) {
+      audio.pause();
+
+      try {
+        audio.currentTime = 0;
+      } catch {
+        // Ignorar si el audio todavía no está preparado.
+      }
+    }
+
+    setPlaying(false);
+    setPanelState(0);
+  }, [maintenanceMode, esRutaSinMusica, esRutaAdmin]);
 
   // =========================================================
   // CONFIGURACIÓN INICIAL DEL VISITANTE
@@ -95,6 +162,9 @@ export default function PublicMusicPlayer() {
     if (
       !audio ||
       !ready ||
+      esRutaAdmin ||
+      esRutaSinMusica ||
+      maintenanceMode ||
       !config?.musica_activa ||
       !config?.musica_url ||
       !config?.musica_autoplay
@@ -105,7 +175,15 @@ export default function PublicMusicPlayer() {
     let cancelado = false;
 
     const intentarReproducir = async () => {
-      if (userPausedRef.current || cancelado) return;
+      if (
+        userPausedRef.current ||
+        cancelado ||
+        maintenanceMode ||
+        esRutaSinMusica ||
+        esRutaAdmin
+      ) {
+        return;
+      }
 
       try {
         await audio.play();
@@ -127,6 +205,9 @@ export default function PublicMusicPlayer() {
       if (
         !audio.paused ||
         userPausedRef.current ||
+        maintenanceMode ||
+        esRutaSinMusica ||
+        esRutaAdmin ||
         !config?.musica_autoplay
       ) {
         return;
@@ -162,6 +243,9 @@ export default function PublicMusicPlayer() {
     };
   }, [
     ready,
+    esRutaAdmin,
+    esRutaSinMusica,
+    maintenanceMode,
     config?.musica_activa,
     config?.musica_url,
     config?.musica_autoplay,
@@ -174,7 +258,14 @@ export default function PublicMusicPlayer() {
   const togglePlay = async () => {
     const audio = audioRef.current;
 
-    if (!audio) return;
+    if (
+      !audio ||
+      maintenanceMode ||
+      esRutaSinMusica ||
+      esRutaAdmin
+    ) {
+      return;
+    }
 
     if (!audio.paused) {
       userPausedRef.current = true;
@@ -220,51 +311,47 @@ export default function PublicMusicPlayer() {
   // VOLUMEN
   // =========================================================
 
-const cambiarVolumen = (event) => {
-  const nuevoVolumen = Number(event.target.value);
+  const cambiarVolumen = (event) => {
+    const nuevoVolumen = Number(event.target.value);
 
-  if (!Number.isFinite(nuevoVolumen)) return;
+    if (!Number.isFinite(nuevoVolumen)) return;
 
-  const volumenSeguro = Math.max(
-    0,
-    Math.min(1, nuevoVolumen)
-  );
+    const volumenSeguro = Math.max(
+      0,
+      Math.min(1, nuevoVolumen)
+    );
 
-  // Actualizar estado
-  setVolume(volumenSeguro);
+    setVolume(volumenSeguro);
 
-  // Aplicar inmediatamente al audio.
-  // Esto ayuda especialmente en Safari/iPhone.
-  const audio = audioRef.current;
+    const audio = audioRef.current;
 
-  if (audio) {
-    audio.volume = volumenSeguro;
+    if (audio) {
+      audio.volume = volumenSeguro;
 
-    if (volumenSeguro > 0) {
-      audio.muted = false;
+      if (volumenSeguro > 0) {
+        audio.muted = false;
+      }
     }
-  }
 
-  // Si aumenta el volumen, quitar mute.
-  if (volumenSeguro > 0 && muted) {
-    setMuted(false);
+    if (volumenSeguro > 0 && muted) {
+      setMuted(false);
+
+      try {
+        localStorage.setItem(MUTED_KEY, "false");
+      } catch {
+        // Ignorar.
+      }
+    }
 
     try {
-      localStorage.setItem(MUTED_KEY, "false");
+      localStorage.setItem(
+        VOLUME_KEY,
+        String(volumenSeguro)
+      );
     } catch {
       // Ignorar.
     }
-  }
-
-  try {
-    localStorage.setItem(
-      VOLUME_KEY,
-      String(volumenSeguro)
-    );
-  } catch {
-    // Ignorar.
-  }
-};
+  };
 
   // =========================================================
   // CAMBIAR ESTADO DEL PANEL
@@ -289,6 +376,8 @@ const cambiarVolumen = (event) => {
 
   if (
     esRutaAdmin ||
+    esRutaSinMusica ||
+    maintenanceMode ||
     !config?.musica_activa ||
     !config?.musica_url
   ) {
@@ -321,10 +410,6 @@ const cambiarVolumen = (event) => {
         <div
           className={`public-music-player state-${panelState}`}
         >
-          {/* ===============================================
-              PESTAÑA DISCRETA / BOTÓN DE EXPANSIÓN
-          =============================================== */}
-
           <button
             type="button"
             className="public-music-tab"
@@ -357,10 +442,6 @@ const cambiarVolumen = (event) => {
             </span>
           </button>
 
-          {/* ===============================================
-              CONTENIDO DEL REPRODUCTOR
-          =============================================== */}
-
           {panelState > 0 && (
             <div className="public-music-body">
               <button
@@ -380,10 +461,6 @@ const cambiarVolumen = (event) => {
               >
                 {playing ? "⏸" : "▶"}
               </button>
-
-              {/* ===========================================
-                  TÍTULO ANIMADO
-              =========================================== */}
 
               <button
                 type="button"
@@ -425,10 +502,6 @@ const cambiarVolumen = (event) => {
                     : "Pausada"}
                 </small>
               </button>
-
-              {/* ===========================================
-                  CONTROLES COMPLETOS
-              =========================================== */}
 
               {panelState === 2 && (
                 <div className="public-music-controls">
@@ -474,16 +547,10 @@ const cambiarVolumen = (event) => {
       )}
 
       <style jsx>{`
-        /* =================================================
-           CONTENEDOR GENERAL
-        ================================================= */
-
         .public-music-player {
           position: fixed;
-
           top: 130px;
           right: 0;
-
           z-index: 9990;
 
           display: flex;
@@ -497,17 +564,12 @@ const cambiarVolumen = (event) => {
             opacity 0.28s ease;
         }
 
-        /* =================================================
-           PESTAÑA LATERAL
-        ================================================= */
-
         .public-music-tab {
           position: relative;
           z-index: 2;
 
           width: 48px;
           height: 46px;
-
           flex: 0 0 48px;
 
           display: flex;
@@ -517,11 +579,8 @@ const cambiarVolumen = (event) => {
 
           padding: 0;
 
-          border: 1px solid
-            rgba(255, 255, 255, 0.13);
-
+          border: 1px solid rgba(255, 255, 255, 0.13);
           border-right: 0;
-
           border-radius: 18px 0 0 18px;
 
           background: rgba(15, 15, 18, 0.92);
@@ -531,11 +590,9 @@ const cambiarVolumen = (event) => {
 
           box-shadow:
             -5px 8px 24px rgba(0, 0, 0, 0.2),
-            inset 0 1px 0
-              rgba(255, 255, 255, 0.05);
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
           color: #ffffff;
-
           cursor: pointer;
 
           transition:
@@ -548,15 +605,14 @@ const cambiarVolumen = (event) => {
           background: rgba(25, 25, 29, 0.96);
         }
 
-.public-music-tab-note {
-  display: block;
+        .public-music-tab-note {
+          display: block;
+          font-size: 20px;
+          line-height: 1;
+        }
 
-  font-size: 20px;
-  line-height: 1;
-}
         .public-music-tab-arrow {
           display: block;
-
           margin-top: -1px;
 
           font-size: 26px;
@@ -568,28 +624,19 @@ const cambiarVolumen = (event) => {
           transition: transform 0.25s ease;
         }
 
-        /* =================================================
-           ESTADO CERRADO
-        ================================================= */
-
-.public-music-player.state-0
-  .public-music-tab {
-  width: 52px;
-  height: 50px;
-  flex-basis: 52px;
-
-  opacity: 0.95;
-}
+        .public-music-player.state-0
+          .public-music-tab {
+          width: 52px;
+          height: 50px;
+          flex-basis: 52px;
+          opacity: 0.95;
+        }
 
         .public-music-player.state-0
           .public-music-tab:hover {
           width: 48px;
           opacity: 1;
         }
-
-        /* =================================================
-           CUERPO
-        ================================================= */
 
         .public-music-body {
           display: flex;
@@ -603,9 +650,7 @@ const cambiarVolumen = (event) => {
 
           padding: 6px 8px;
 
-          border: 1px solid
-            rgba(255, 255, 255, 0.13);
-
+          border: 1px solid rgba(255, 255, 255, 0.13);
           border-radius: 17px;
 
           background: rgba(15, 15, 18, 0.92);
@@ -615,8 +660,7 @@ const cambiarVolumen = (event) => {
 
           box-shadow:
             0 10px 30px rgba(0, 0, 0, 0.23),
-            inset 0 1px 0
-              rgba(255, 255, 255, 0.05);
+            inset 0 1px 0 rgba(255, 255, 255, 0.05);
 
           animation: musicPanelIn 0.24s ease both;
         }
@@ -633,10 +677,6 @@ const cambiarVolumen = (event) => {
           }
         }
 
-        /* =================================================
-           PLAY / PAUSA
-        ================================================= */
-
         .public-music-main-button,
         .public-music-mute {
           border: 0;
@@ -646,13 +686,7 @@ const cambiarVolumen = (event) => {
           place-items: center;
 
           color: #ffffff;
-
-          background: rgba(
-            255,
-            255,
-            255,
-            0.1
-          );
+          background: rgba(255, 255, 255, 0.1);
 
           cursor: pointer;
 
@@ -663,20 +697,13 @@ const cambiarVolumen = (event) => {
 
         .public-music-main-button:hover,
         .public-music-mute:hover {
-          background: rgba(
-            255,
-            255,
-            255,
-            0.17
-          );
-
+          background: rgba(255, 255, 255, 0.17);
           transform: scale(1.04);
         }
 
         .public-music-main-button {
           width: 36px;
           height: 36px;
-
           flex: 0 0 36px;
 
           border-radius: 50%;
@@ -684,46 +711,32 @@ const cambiarVolumen = (event) => {
           font-size: 13px;
         }
 
-        /* =================================================
-           INFORMACIÓN / TÍTULO
-        ================================================= */
-
         .public-music-info {
           width: 130px;
           min-width: 0;
 
           display: flex;
           flex-direction: column;
-
           gap: 2px;
 
           padding: 0;
-
           overflow: hidden;
 
           border: 0;
           outline: 0;
 
           background: transparent;
-
           color: inherit;
 
           text-align: left;
-
           cursor: pointer;
         }
 
-        /* =================================================
-           VENTANA DEL TÍTULO
-        ================================================= */
-
         .public-music-title-window {
           position: relative;
-
           width: 100%;
 
           overflow: hidden;
-
           white-space: nowrap;
 
           -webkit-mask-image: linear-gradient(
@@ -748,7 +761,6 @@ const cambiarVolumen = (event) => {
           align-items: center;
 
           width: max-content;
-
           gap: 14px;
 
           padding-right: 14px;
@@ -757,8 +769,7 @@ const cambiarVolumen = (event) => {
           line-height: 1.25;
           font-weight: 750;
 
-          animation:
-            musicTitleScroll 11s linear infinite;
+          animation: musicTitleScroll 11s linear infinite;
         }
 
         .public-music-title-track span {
@@ -793,31 +804,19 @@ const cambiarVolumen = (event) => {
           font-size: 9px;
           line-height: 1.2;
 
-          color: rgba(
-            255,
-            255,
-            255,
-            0.62
-          );
+          color: rgba(255, 255, 255, 0.62);
         }
-
-        /* =================================================
-           CONTROLES COMPLETOS
-        ================================================= */
 
         .public-music-controls {
           display: flex;
           align-items: center;
-
           gap: 7px;
 
           padding-left: 8px;
 
-          border-left: 1px solid
-            rgba(255, 255, 255, 0.12);
+          border-left: 1px solid rgba(255, 255, 255, 0.12);
 
-          animation:
-            musicControlsIn 0.2s ease both;
+          animation: musicControlsIn 0.2s ease both;
         }
 
         @keyframes musicControlsIn {
@@ -835,7 +834,6 @@ const cambiarVolumen = (event) => {
         .public-music-mute {
           width: 30px;
           height: 30px;
-
           flex: 0 0 30px;
 
           border-radius: 10px;
@@ -845,13 +843,9 @@ const cambiarVolumen = (event) => {
 
         .public-music-volume {
           width: 80px;
-
           cursor: pointer;
 
-          accent-color: var(
-            --site-primary,
-            #dc2626
-          );
+          accent-color: var(--site-primary, #dc2626);
         }
 
         .public-music-percent {
@@ -860,17 +854,8 @@ const cambiarVolumen = (event) => {
           font-size: 9px;
           font-weight: 700;
 
-          color: rgba(
-            255,
-            255,
-            255,
-            0.7
-          );
+          color: rgba(255, 255, 255, 0.7);
         }
-
-        /* =================================================
-           TELÉFONOS
-        ================================================= */
 
         @media (max-width: 640px) {
           .public-music-player {
@@ -880,27 +865,27 @@ const cambiarVolumen = (event) => {
           .public-music-tab {
             width: 42px;
             height: 42px;
-
             flex-basis: 42px;
 
             border-radius: 16px 0 0 16px;
           }
 
-.public-music-player.state-0
-  .public-music-tab {
-  width: 46px;
-  height: 46px;
-  flex-basis: 46px;
-}
+          .public-music-player.state-0
+            .public-music-tab {
+            width: 46px;
+            height: 46px;
+            flex-basis: 46px;
+          }
 
-.public-music-tab-note {
-  font-size: 18px;
-}
+          .public-music-tab-note {
+            font-size: 18px;
+          }
 
-.public-music-tab-arrow {
-  font-size: 23px;
-  font-weight: 700;
-}
+          .public-music-tab-arrow {
+            font-size: 23px;
+            font-weight: 700;
+          }
+
           .public-music-body {
             gap: 6px;
 
@@ -917,7 +902,6 @@ const cambiarVolumen = (event) => {
           .public-music-main-button {
             width: 34px;
             height: 34px;
-
             flex-basis: 34px;
           }
 
@@ -927,7 +911,6 @@ const cambiarVolumen = (event) => {
 
           .public-music-title-track {
             font-size: 11px;
-
             animation-duration: 10s;
           }
 
@@ -937,25 +920,20 @@ const cambiarVolumen = (event) => {
 
           .public-music-controls {
             gap: 5px;
-
             padding-left: 6px;
           }
 
           .public-music-mute {
             width: 28px;
             height: 28px;
-
-            flex-basis: 28px;
+            flex: 0 0 28px;
           }
 
-.public-music-volume,
-.public-music-percent {
-  display: none;
-}
-
-        /* =================================================
-           TELÉFONOS MUY PEQUEÑOS
-        ================================================= */
+          .public-music-volume,
+          .public-music-percent {
+            display: none;
+          }
+        }
 
         @media (max-width: 380px) {
           .public-music-info {
@@ -967,13 +945,7 @@ const cambiarVolumen = (event) => {
           }
         }
 
-        /* =================================================
-           ACCESIBILIDAD - MENOS MOVIMIENTO
-        ================================================= */
-
-        @media (
-          prefers-reduced-motion: reduce
-        ) {
+        @media (prefers-reduced-motion: reduce) {
           .public-music-title-track {
             animation: none;
           }

@@ -1,4 +1,28 @@
+"use client";
+
+import { useEffect } from "react";
+
 export default function MaintenancePage() {
+  useEffect(() => {
+    document.body.classList.add("site-maintenance-active");
+
+    window.dispatchEvent(
+      new CustomEvent("site-maintenance-change", {
+        detail: { active: true },
+      })
+    );
+
+    return () => {
+      document.body.classList.remove("site-maintenance-active");
+
+      window.dispatchEvent(
+        new CustomEvent("site-maintenance-change", {
+          detail: { active: false },
+        })
+      );
+    };
+  }, []);
+
   return (
     <main className="maintenance-page">
       <section className="maintenance-card">
