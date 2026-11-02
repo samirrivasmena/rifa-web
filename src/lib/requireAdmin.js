@@ -2,7 +2,13 @@ import { supabaseAdmin } from "./supabaseAdmin";
 
 export async function requireAdmin(req) {
   try {
-    const ADMIN_EMAIL = String(process.env.ADMIN_EMAIL || "")
+    const ADMIN_USER_ID = String(
+      process.env.ADMIN_USER_ID || ""
+    ).trim();
+
+    const ADMIN_EMAIL = String(
+      process.env.ADMIN_EMAIL || ""
+    )
       .trim()
       .toLowerCase();
 
@@ -10,9 +16,9 @@ export async function requireAdmin(req) {
     // 1. COMPROBAR CONFIGURACIÓN DEL ADMIN
     // =========================================================
 
-    if (!ADMIN_EMAIL) {
+    if (!ADMIN_USER_ID) {
       console.error(
-        "SEGURIDAD: falta configurar ADMIN_EMAIL en las variables de entorno"
+        "SEGURIDAD: falta configurar ADMIN_USER_ID en las variables de entorno"
       );
 
       return {
@@ -37,7 +43,8 @@ export async function requireAdmin(req) {
       };
     }
 
-    const token = authHeader.slice(7).trim();
+    const token =
+      authHeader.slice(7).trim();
 
     if (!token) {
       return {
@@ -65,14 +72,26 @@ export async function requireAdmin(req) {
     }
 
     // =========================================================
-    // 4. COMPROBAR EMAIL DEL ADMINISTRADOR
+    // 4. COMPROBAR USER ID DEL ADMINISTRADOR
+    // =========================================================
+    //
+    // El User UID es ahora la identidad principal del Admin.
+    //
+    // Cambiar:
+    // - contraseña
+    // - correo
+    // - nombre
+    //
+    // NO cambia este UUID.
     // =========================================================
 
-    const userEmail = String(user.email || "")
-      .trim()
-      .toLowerCase();
+    const userId =
+      String(user.id || "").trim();
 
-    if (!userEmail || userEmail !== ADMIN_EMAIL) {
+    if (
+      !userId ||
+      userId !== ADMIN_USER_ID
+    ) {
       return {
         ok: false,
         status: 403,
@@ -81,14 +100,34 @@ export async function requireAdmin(req) {
     }
 
     // =========================================================
-    // 5. COMPROBAR MFA / AAL2
+    // 5. COMPROBACIÓN TEMPORAL DEL EMAIL
     // =========================================================
     //
-    // Le pasamos explícitamente el JWT que llegó en la petición.
-    // Supabase comprueba el nivel de autenticación de ESA sesión.
+    // ADMIN_EMAIL se conserva durante la migración.
+    // NO bloqueamos el acceso por email porque el User UID
+    // es ahora la identidad principal.
     //
-    // aal1 = contraseña solamente
-    // aal2 = contraseña + segundo factor MFA
+    // Si el email no coincide, solo dejamos constancia
+    // en el servidor.
+    // =========================================================
+
+    const userEmail =
+      String(user.email || "")
+        .trim()
+        .toLowerCase();
+
+    if (
+      ADMIN_EMAIL &&
+      userEmail &&
+      userEmail !== ADMIN_EMAIL
+    ) {
+      console.warn(
+        "SEGURIDAD: el email del administrador no coincide con ADMIN_EMAIL, pero el ADMIN_USER_ID sí es válido."
+      );
+    }
+
+    // =========================================================
+    // 6. COMPROBAR MFA / AAL2
     // =========================================================
 
     const {
@@ -108,22 +147,26 @@ export async function requireAdmin(req) {
       return {
         ok: false,
         status: 401,
-        error: "No se pudo verificar la seguridad MFA",
+        error:
+          "No se pudo verificar la seguridad MFA",
         requiresMfa: true,
       };
     }
 
-    if (aalData?.currentLevel !== "aal2") {
+    if (
+      aalData?.currentLevel !== "aal2"
+    ) {
       return {
         ok: false,
         status: 403,
-        error: "Se requiere verificación MFA",
+        error:
+          "Se requiere verificación MFA",
         requiresMfa: true,
       };
     }
 
     // =========================================================
-    // 6. ADMIN COMPLETAMENTE VERIFICADO
+    // 7. ADMIN COMPLETAMENTE VERIFICADO
     // =========================================================
 
     return {
@@ -137,12 +180,16 @@ export async function requireAdmin(req) {
       aal: "aal2",
     };
   } catch (error) {
-    console.error("requireAdmin error:", error);
+    console.error(
+      "requireAdmin error:",
+      error
+    );
 
     return {
       ok: false,
       status: 500,
-      error: "Error interno de autenticación",
+      error:
+        "Error interno de autenticación",
     };
   }
 }

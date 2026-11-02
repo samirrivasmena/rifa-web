@@ -24,6 +24,7 @@ import AdminConfiguracionSection from "@/components/admin/sections/AdminConfigur
 import AdminFreeDropsSection from "@/components/admin/sections/AdminFreeDropsSection";
 import AdminFreeDropsSettingsSection from "@/components/admin/sections/AdminFreeDropsSettingsSection";
 import AdminFreeDropParticipationsSection from "@/components/admin/sections/AdminFreeDropParticipationsSection";
+import AdminPerfilSection from "@/components/admin/sections/AdminPerfilSection";
 
 import {
   enriquecerListaRifasConResumen,
@@ -40,7 +41,13 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import "./admin.css";
 
 export default function Admin() {
-  const { authLoading, accesoPermitido, adminEmail, cerrarSesion } = useAdminAuth();
+  const {
+  authLoading,
+  accesoPermitido,
+  adminEmail,
+  adminToken,
+  cerrarSesion,
+} = useAdminAuth();
 
   const {
     refs: {
@@ -1511,13 +1518,18 @@ await Swal.fire({
         scrollToRef(topRef, 120);
         break;
 
-      case "configuracion":
-        setSeccionActiva("configuracion");
-        scrollToRef(topRef, 120);
-        break;
+case "configuracion":
+  setSeccionActiva("configuracion");
+  scrollToRef(topRef, 120);
+  break;
 
-      default:
-        break;
+case "perfil":
+  setSeccionActiva("perfil");
+  scrollToRef(topRef, 120);
+  break;
+
+default:
+  break;
     }
   };
 
@@ -1634,6 +1646,12 @@ return (
 )}
 
           {seccionActiva === "configuracion" && <AdminConfiguracionSection />}
+{seccionActiva === "perfil" && (
+  <AdminPerfilSection
+    adminEmail={adminEmail}
+    adminToken={adminToken}
+  />
+)}
 
           {seccionActiva === "ganador" && (
             <div id="admin-ganador-anchor">

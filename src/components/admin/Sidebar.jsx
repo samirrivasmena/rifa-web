@@ -229,6 +229,25 @@ function IconLogout() {
   );
 }
 
+function IconPerfil() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
+      <circle
+        cx="12"
+        cy="8"
+        r="4"
+        stroke="currentColor"
+        strokeWidth="1.8"
+      />
+      <path
+        d="M4 21a8 8 0 0 1 16 0"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
 function IconConfig() {
   return (
     <svg viewBox="0 0 24 24" fill="none" className="adminpro-nav-icon">
@@ -350,6 +369,7 @@ export default function Sidebar({
     { id: "ranking", icon: <IconRanking />, label: "Ranking" },
     { id: "freeDrops", icon: <IconFreeDrop />, label: "Free Drops" },
     { id: "configuracion", icon: <IconConfig />, label: "Configuración" },
+    { id: "perfil", icon: <IconPerfil />, label: "Perfil y Seguridad" }, 
   ];
 
   /* =======================================================

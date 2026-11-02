@@ -12064,3 +12064,385 @@ input[type="number"]::-webkit-outer-spin-button {
     border-radius: 11px;
   }
 }
+/* =========================================================
+   PERFIL Y SEGURIDAD — ADMIN
+========================================================= */
+
+.admin-profile-page {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  color: var(--admin-text);
+}
+
+/* HEADER */
+
+.admin-profile-header {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 28px 30px;
+  border-radius: var(--admin-radius-xl);
+  border: 1px solid var(--admin-border);
+  background:
+    radial-gradient(
+      circle at 90% 10%,
+      rgba(168, 85, 247, 0.16),
+      transparent 30%
+    ),
+    linear-gradient(135deg, #17171d 0%, #111116 100%);
+  box-shadow: var(--admin-shadow);
+}
+
+.admin-profile-header > div:first-child {
+  min-width: 0;
+}
+
+.admin-profile-kicker {
+  display: block;
+  margin-bottom: 9px;
+  color: #a78bfa;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+}
+
+.admin-profile-header h2 {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(24px, 3vw, 32px);
+  line-height: 1.1;
+  font-weight: 900;
+  letter-spacing: -0.03em;
+}
+
+.admin-profile-header p {
+  margin: 10px 0 0;
+  color: var(--admin-text-soft);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.admin-profile-security-badge {
+  flex-shrink: 0;
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px;
+  border-radius: 999px;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  background: rgba(16, 185, 129, 0.1);
+  color: #6ee7b7;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+}
+
+/* GRID */
+
+.admin-profile-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+/* CARDS */
+
+.admin-profile-card {
+  min-width: 0;
+  padding: 24px;
+  border-radius: var(--admin-radius-lg);
+  border: 1px solid var(--admin-border);
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 255, 255, 0.025),
+      transparent 45%
+    ),
+    var(--admin-panel-2);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
+}
+
+.admin-profile-card-title {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding-bottom: 18px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.admin-profile-card-title > span {
+  width: 44px;
+  height: 44px;
+  flex: 0 0 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--admin-purple-soft);
+  border: 1px solid rgba(168, 85, 247, 0.14);
+  font-size: 19px;
+}
+
+.admin-profile-card-title > div {
+  min-width: 0;
+}
+
+.admin-profile-card-title h3 {
+  margin: 1px 0 5px;
+  color: #fff;
+  font-size: 17px;
+  font-weight: 900;
+}
+
+.admin-profile-card-title p {
+  margin: 0;
+  color: var(--admin-text-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+/* PERFIL */
+
+.admin-profile-user {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.admin-profile-avatar {
+  width: 58px;
+  height: 58px;
+  flex: 0 0 58px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: linear-gradient(
+    135deg,
+    var(--admin-purple-2),
+    #6366f1
+  );
+  color: #fff;
+  font-size: 21px;
+  font-weight: 900;
+  box-shadow: 0 12px 28px rgba(147, 51, 234, 0.24);
+}
+
+.admin-profile-user > div:last-child {
+  min-width: 0;
+}
+
+.admin-profile-user strong {
+  display: block;
+  color: #fff;
+  font-size: 16px;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+
+.admin-profile-user span {
+  display: block;
+  margin-top: 5px;
+  color: var(--admin-text-soft);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* FILAS */
+
+.admin-profile-info-row,
+.admin-profile-security-row {
+  width: 100%;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--admin-panel-3);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.admin-profile-info-row > div,
+.admin-profile-security-row > div {
+  min-width: 0;
+}
+
+.admin-profile-info-row small {
+  display: block;
+  margin-bottom: 7px;
+  color: var(--admin-text-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.admin-profile-info-row strong,
+.admin-profile-security-row strong {
+  display: block;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.admin-profile-security-row span:not(.admin-profile-status) {
+  display: block;
+  margin-top: 6px;
+  color: var(--admin-text-soft);
+  font-size: 12px;
+}
+
+/* ESTADOS */
+
+.admin-profile-status {
+  flex-shrink: 0;
+  min-height: 29px;
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  padding: 0 11px;
+  border-radius: 999px;
+  font-size: 9px !important;
+  font-weight: 900;
+  letter-spacing: 0.05em;
+}
+
+.admin-profile-status.success {
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  background: rgba(16, 185, 129, 0.1);
+  color: #34d399;
+}
+
+/* BOTONES */
+
+.admin-profile-security-row button,
+.admin-profile-danger-button {
+  flex-shrink: 0;
+  min-height: 40px;
+  padding: 0 15px;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  background: #26262f;
+  color: #fff;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+}
+
+.admin-profile-security-row button:disabled,
+.admin-profile-danger-button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+.admin-profile-danger-button {
+  width: 100%;
+  margin-top: 16px;
+  border-color: rgba(220, 38, 38, 0.18);
+  background: rgba(220, 38, 38, 0.09);
+  color: #fca5a5;
+}
+
+/* MENSAJES */
+
+.admin-profile-coming {
+  display: block;
+  margin-top: 13px;
+  color: var(--admin-text-muted);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.admin-profile-notice {
+  margin-top: 16px;
+  padding: 14px 15px;
+  border-radius: 14px;
+  border: 1px solid rgba(16, 185, 129, 0.14);
+  background: rgba(16, 185, 129, 0.07);
+  color: #a7f3d0;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+/* =========================================================
+   PERFIL — RESPONSIVE
+========================================================= */
+
+@media (max-width: 900px) {
+  .admin-profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .admin-profile-page {
+    gap: 14px;
+  }
+
+  .admin-profile-header {
+    padding: 21px 18px;
+    border-radius: 20px;
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .admin-profile-header h2 {
+    font-size: 23px;
+  }
+
+  .admin-profile-security-badge {
+    align-self: flex-start;
+  }
+
+  .admin-profile-grid {
+    gap: 14px;
+  }
+
+  .admin-profile-card {
+    padding: 18px;
+    border-radius: 18px;
+  }
+
+  .admin-profile-card-title {
+    gap: 11px;
+  }
+
+  .admin-profile-card-title > span {
+    width: 40px;
+    height: 40px;
+    flex-basis: 40px;
+  }
+
+  .admin-profile-info-row,
+  .admin-profile-security-row {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 13px;
+  }
+
+  .admin-profile-security-row button {
+    width: 100%;
+  }
+
+  .admin-profile-status {
+    align-self: flex-start;
+  }
+
+  .admin-profile-user {
+    align-items: flex-start;
+  }
+}
