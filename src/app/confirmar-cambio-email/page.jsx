@@ -1,9 +1,9 @@
 "use client";
 
+import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
 
-export default function ConfirmarCambioEmailPage() {
+function ConfirmarCambioEmailContenido() {
   const searchParams = useSearchParams();
   const [procesando, setProcesando] = useState(false);
 
@@ -15,7 +15,6 @@ export default function ConfirmarCambioEmailPage() {
     try {
       const url = new URL(valor);
 
-      // Solo permitimos enlaces HTTPS de Supabase.
       if (url.protocol !== "https:") {
         return "";
       }
@@ -37,9 +36,6 @@ export default function ConfirmarCambioEmailPage() {
     if (!confirmationUrl || procesando) return;
 
     setProcesando(true);
-
-    // Solo aquí, después del clic real del usuario,
-    // utilizamos el enlace de confirmación de Supabase.
     window.location.assign(confirmationUrl);
   };
 
@@ -138,8 +134,8 @@ export default function ConfirmarCambioEmailPage() {
                 lineHeight: "1.6",
               }}
             >
-              ✓ El enlace no será utilizado hasta que presiones
-              manualmente el botón.
+              ✓ El enlace no será utilizado hasta que presiones manualmente
+              el botón.
             </div>
 
             <button
@@ -203,5 +199,36 @@ export default function ConfirmarCambioEmailPage() {
         )}
       </div>
     </main>
+  );
+}
+
+function CargandoConfirmacion() {
+  return (
+    <main
+      style={{
+        minHeight: "100vh",
+        background:
+          "radial-gradient(circle at top, #211235 0%, #0b0b10 45%, #050507 100%)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: "24px",
+        color: "#fff",
+        fontFamily: "Arial, sans-serif",
+      }}
+    >
+      <div style={{ textAlign: "center" }}>
+        <div style={{ fontSize: "30px", marginBottom: "12px" }}>🔐</div>
+        <strong>Verificando enlace...</strong>
+      </div>
+    </main>
+  );
+}
+
+export default function ConfirmarCambioEmailPage() {
+  return (
+    <Suspense fallback={<CargandoConfirmacion />}>
+      <ConfirmarCambioEmailContenido />
+    </Suspense>
   );
 }
