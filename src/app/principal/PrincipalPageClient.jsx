@@ -1061,6 +1061,100 @@ if (e.key === "Escape") {
             transition: none;
           }
         }
+      
+        /* ETIQUETAS RESPONSIVE */
+        #eventos-disponibles .principal-badges-free-drop-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+          gap: 8px;
+          width: 100%;
+          align-items: stretch;
+          margin-bottom: 12px;
+        }
+
+        #eventos-disponibles .principal-badges-free-drop-row > div {
+          min-width: 0;
+        }
+
+        #eventos-disponibles .principal-badges-free-drop-row .principal-card-badge-left {
+          position: static !important;
+          inset: auto !important;
+          width: 100%;
+          margin: 0;
+        }
+
+        #eventos-disponibles .principal-badges-free-drop-row .principal-destacada-badge,
+        #eventos-disponibles .principal-badges-free-drop-row .principal-free-drop-label {
+          position: static !important;
+          inset: auto !important;
+          box-sizing: border-box;
+          display: flex !important;
+          align-items: center;
+          justify-content: center;
+          width: 100% !important;
+          min-width: 0 !important;
+          max-width: none !important;
+          height: 32px !important;
+          min-height: 32px !important;
+          padding: 0 5px !important;
+          margin: 0 !important;
+          border-radius: 999px;
+          font-size: 10px !important;
+          font-weight: 800;
+          line-height: 1;
+          white-space: nowrap;
+          text-align: center;
+        }
+
+        #eventos-disponibles .principal-badges-free-drop-row .principal-free-drop-label {
+          gap: 4px;
+          color: #374151;
+          border: 0;
+          pointer-events: none;
+        }
+
+        #eventos-disponibles .principal-free-drop-label strong {
+          font-weight: 900;
+        }
+
+        #eventos-disponibles .principal-free-drop-label--activo {
+          background: #dcfce7;
+        }
+        #eventos-disponibles .principal-free-drop-label--activo strong {
+          color: #15803d;
+        }
+
+        #eventos-disponibles .principal-free-drop-label--pausado {
+          background: #fef3c7;
+        }
+        #eventos-disponibles .principal-free-drop-label--pausado strong {
+          color: #a16207;
+        }
+
+        #eventos-disponibles .principal-free-drop-label--terminado {
+          background: #e5e7eb;
+        }
+        #eventos-disponibles .principal-free-drop-label--terminado strong {
+          color: #475569;
+        }
+
+        #eventos-disponibles .principal-free-drop-label--programado {
+          background: #dbeafe;
+        }
+        #eventos-disponibles .principal-free-drop-label--programado strong {
+          color: #1d4ed8;
+        }
+
+        @media (max-width: 480px) {
+          #eventos-disponibles .principal-badges-free-drop-row {
+            gap: 6px;
+          }
+          #eventos-disponibles .principal-badges-free-drop-row .principal-destacada-badge,
+          #eventos-disponibles .principal-badges-free-drop-row .principal-free-drop-label {
+            font-size: 9px !important;
+          }
+        }
+
       `}</style>
 
       <main className="principal-page" id="inicio">
@@ -1381,33 +1475,34 @@ const progreso = getRifaProgress(evento);
 
                     >
 
-                      {evento?.destacada && (
-
-                        <div className="principal-card-badge-left">
-
-                          <div className="principal-destacada-badge">
-
-                            ⭐ Destacada
-
+                      
+                      {(evento?.destacada || freeDropEtiqueta) && (
+                        <div className="principal-badges-free-drop-row">
+                          <div>
+                            {evento?.destacada && (
+                              <div className="principal-card-badge-left">
+                                <div className="principal-destacada-badge">
+                                  ? Destacada
+                                </div>
+                              </div>
+                            )}
                           </div>
 
+                          <div>
+                            {freeDropEtiqueta && (
+                              <span
+                                className={`principal-free-drop-label principal-free-drop-label--${freeDropEtiqueta.tipo}`}
+                                aria-label={`FREE DROP ${freeDropEtiqueta.texto}`}
+                              >
+                                <span>FREE DROP</span>
+                                <strong>{freeDropEtiqueta.texto}</strong>
+                              </span>
+                            )}
+                          </div>
                         </div>
-
                       )}
 
-
-
-                                            {freeDropEtiqueta && (
-                         <span
-                           className={`principal-free-drop-label principal-free-drop-label--${freeDropEtiqueta.tipo}`}
-                           aria-label={`FREE DROP ${freeDropEtiqueta.texto}`}
-                         >
-                           <span>FREE DROP</span>
-                           <strong>{freeDropEtiqueta.texto}</strong>
-                         </span>
-                       )}
-
-                      <RaffleDualImage
+<RaffleDualImage
 
                         principalSrc={evento?.portada_url}
 
