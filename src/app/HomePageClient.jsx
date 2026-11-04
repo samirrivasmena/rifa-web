@@ -126,22 +126,32 @@ const rifasInicialesSeguras = Array.isArray(initialRifas)
   : [];
 
 const rifaInicial =
-  rifasInicialesSeguras.find(
+  (rifaDesdeQuery
+    ? rifasInicialesSeguras.find(
+        (r) =>
+          String(r.id) === String(rifaDesdeQuery) &&
+          (r.publicada === true ||
+            r.publicada === 1 ||
+            r.publicada === "1" ||
+            r.publicada === "true")
+      ) || null
+    : null) ||
+  (!rifaDesdeQuery && rifasInicialesSeguras.find(
     (r) =>
       (r.publicada === true ||
         r.publicada === 1 ||
         r.publicada === "1" ||
         r.publicada === "true") &&
       String(r.estado || "").toLowerCase() === "activa"
-  ) ||
-  rifasInicialesSeguras.find(
+  )) ||
+  (!rifaDesdeQuery && rifasInicialesSeguras.find(
     (r) =>
       (r.publicada === true ||
         r.publicada === 1 ||
         r.publicada === "1" ||
         r.publicada === "true") &&
       String(r.estado || "").toLowerCase() === "agotada"
-  ) ||
+  )) ||
   null;
 
 const [rifaActiva, setRifaActiva] = useState(rifaInicial);
@@ -227,7 +237,10 @@ const siteKey =
 
     const cargarDatosRifas = async () => {
       try {
-        setLoadingRifa(true);
+        // Si ya hay datos del servidor, actualizar en segundo plano.
+        if (rifasInicialesSeguras.length === 0) {
+          setLoadingRifa(true);
+        }
 
         const res = await fetch("/api/rifas-publicas", {
           method: "GET",
@@ -241,7 +254,8 @@ const siteKey =
             data.error || "No se pudo cargar la lista de rifas"
           );
 
-          if (!cancelado) {
+          // Conservar los datos iniciales si falla la actualización.
+          if (!cancelado && rifasInicialesSeguras.length === 0) {
             setRifaActiva(null);
             setRifas([]);
           }
@@ -299,7 +313,7 @@ const siteKey =
       } catch (error) {
         console.error("Error cargando rifas:", error);
 
-        if (!cancelado) {
+        if (!cancelado && rifasInicialesSeguras.length === 0) {
           setRifaActiva(null);
           setRifas([]);
         }

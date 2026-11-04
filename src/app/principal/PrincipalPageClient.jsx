@@ -1258,11 +1258,15 @@ if (e.key === "Escape") {
 
                 <div className="principal-actions hero-actions">
 
-                  <Link href="/" className="principal-red-btn">
 
-                    {homeBotonComprar}
+<Link
+  href="/"
+  prefetch={true}
+  className="principal-red-btn"
+>
+  {homeBotonComprar}
+</Link>
 
-                  </Link>
 
 
 
@@ -1482,7 +1486,7 @@ const progreso = getRifaProgress(evento);
                             {evento?.destacada && (
                               <div className="principal-card-badge-left">
                                 <div className="principal-destacada-badge">
-                                  ? Destacada
+                                  {"\u2B50"} Destacada
                                 </div>
                               </div>
                             )}

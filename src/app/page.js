@@ -1,3 +1,4 @@
+
 import { Suspense } from "react";
 import HomePageClient from "./HomePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -167,24 +168,28 @@ export async function generateMetadata() {
 
 export default async function Page() {
   /* =======================================================
-     MODO MANTENIMIENTO GLOBAL
+     CARGA PARALELA OPTIMIZADA
+     Mantenimiento + Configuración + Rifas
   ======================================================= */
 
-  const modoMantenimiento =
-    await obtenerModoMantenimiento();
+  const [
+    modoMantenimiento,
+    config,
+    rifasIniciales,
+  ] = await Promise.all([
+    obtenerModoMantenimiento(),
+    obtenerConfiguracion(),
+    obtenerRifasIniciales(),
+  ]);
+
+  /* =======================================================
+     MODO MANTENIMIENTO GLOBAL
+     Conserva su funcionamiento original
+  ======================================================= */
 
   if (modoMantenimiento) {
     return <MaintenancePage />;
   }
-
-  /* =======================================================
-     CARGAR INFORMACIÓN PÚBLICA
-  ======================================================= */
-
-  const [config, rifasIniciales] = await Promise.all([
-    obtenerConfiguracion(),
-    obtenerRifasIniciales(),
-  ]);
 
   const nombreMarca =
     config?.nombre_marca || "Sorteos LSD";

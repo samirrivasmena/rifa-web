@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -8,7 +9,9 @@ import { useSiteConfig } from "@/hooks/useSiteConfig";
 import SiteLogo from "@/components/shared/SiteLogo";
 
 function mapHashToActive(hash) {
-  const clean = String(hash || "").replace("#", "").toLowerCase();
+  const clean = String(hash || "")
+    .replace("#", "")
+    .toLowerCase();
 
   if (!clean || clean === "inicio") return "inicio";
   if (clean.includes("eventos-disponibles")) return "eventos";
@@ -56,15 +59,82 @@ export default function PublicTopbar({
   const cerrarMenu = () => {
     setMobileMenuOpen(false);
     setHiddenOnMobile(false);
-
-    if (typeof document !== "undefined") {
-      document.body.style.overflow = "";
-    }
   };
 
   const marcarActivo = (id) => {
     setCurrentActive(id);
     cerrarMenu();
+  };
+
+  // Navegación rápida dentro de la página principal.
+  // Conserva los enlaces normales en otras páginas.
+  const navegarSeccion = (event, href, id) => {
+    if (pathname !== "/principal") {
+      marcarActivo(id);
+      return;
+    }
+
+    const hash = href.split("#")[1];
+
+    if (!hash) {
+      marcarActivo(id);
+      return;
+    }
+
+    const seccion = document.getElementById(hash);
+
+    if (!seccion) {
+      marcarActivo(id);
+      return;
+    }
+
+    event.preventDefault();
+    marcarActivo(id);
+
+    const reducirMovimiento = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    const offset = window.innerWidth <= 768 ? 84 : 108;
+
+    const posicion =
+      seccion.getBoundingClientRect().top +
+      window.scrollY -
+      (hash === "inicio" ? 0 : offset);
+
+    window.scrollTo({
+      top: Math.max(0, posicion),
+      behavior: reducirMovimiento ? "instant" : "smooth",
+    });
+
+    const nuevoHash = `#${hash}`;
+
+    if (window.location.hash !== nuevoHash) {
+      window.history.pushState(null, "", nuevoHash);
+    }
+  };
+
+  const irAlInicio = (event) => {
+    if (pathname !== "/principal") {
+      marcarActivo("inicio");
+      return;
+    }
+
+    event.preventDefault();
+    marcarActivo("inicio");
+
+    const reducirMovimiento = window.matchMedia(
+      "(prefers-reduced-motion: reduce)"
+    ).matches;
+
+    window.scrollTo({
+      top: 0,
+      behavior: reducirMovimiento ? "instant" : "smooth",
+    });
+
+    if (window.location.hash !== "#inicio") {
+      window.history.pushState(null, "", "#inicio");
+    }
   };
 
   useEffect(() => {
@@ -78,9 +148,14 @@ export default function PublicTopbar({
     };
 
     handleHashChange();
-    window.addEventListener("hashchange", handleHashChange);
 
-    return () => window.removeEventListener("hashchange", handleHashChange);
+    window.addEventListener("hashchange", handleHashChange);
+    window.addEventListener("popstate", handleHashChange);
+
+    return () => {
+      window.removeEventListener("hashchange", handleHashChange);
+      window.removeEventListener("popstate", handleHashChange);
+    };
   }, []);
 
   useEffect(() => {
@@ -108,7 +183,10 @@ export default function PublicTopbar({
 
       if (currentScrollY <= 20) {
         setHiddenOnMobile(false);
-      } else if (currentScrollY > lastScrollY && currentScrollY > 80) {
+      } else if (
+        currentScrollY > lastScrollY &&
+        currentScrollY > 80
+      ) {
         setHiddenOnMobile(true);
       } else if (currentScrollY < lastScrollY) {
         setHiddenOnMobile(false);
@@ -126,7 +204,10 @@ export default function PublicTopbar({
       handleScroll();
     };
 
-    window.addEventListener("scroll", handleScroll, { passive: true });
+    window.addEventListener("scroll", handleScroll, {
+      passive: true,
+    });
+
     window.addEventListener("resize", handleResize);
 
     return () => {
@@ -136,17 +217,18 @@ export default function PublicTopbar({
   }, [mobileMenuOpen]);
 
   useEffect(() => {
-    const handleEscape = (e) => {
-      if (e.key === "Escape") cerrarMenu();
+    const handleEscape = (event) => {
+      if (event.key === "Escape") cerrarMenu();
     };
 
     window.addEventListener("keydown", handleEscape);
-    return () => window.removeEventListener("keydown", handleEscape);
+
+    return () => {
+      window.removeEventListener("keydown", handleEscape);
+    };
   }, []);
 
   useEffect(() => {
-    if (typeof document === "undefined") return;
-
     if (mobileMenuOpen && window.innerWidth <= 768) {
       document.body.style.overflow = "hidden";
     } else {
@@ -160,13 +242,19 @@ export default function PublicTopbar({
 
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (!mobileMenuOpen) return;
-      if (!navRef.current) return;
+      if (!mobileMenuOpen || !navRef.current) return;
 
-      const menuButton = document.querySelector(".public-topbar-menu-btn");
+      const menuButton = document.querySelector(
+        ".public-topbar-menu-btn"
+      );
 
-      const clickedInsideNav = navRef.current.contains(event.target);
-      const clickedMenuButton = menuButton?.contains(event.target);
+      const clickedInsideNav = navRef.current.contains(
+        event.target
+      );
+
+      const clickedMenuButton = menuButton?.contains(
+        event.target
+      );
 
       if (!clickedInsideNav && !clickedMenuButton) {
         cerrarMenu();
@@ -177,18 +265,30 @@ export default function PublicTopbar({
     document.addEventListener("touchstart", handleClickOutside);
 
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("touchstart", handleClickOutside);
+      document.removeEventListener(
+        "mousedown",
+        handleClickOutside
+      );
+      document.removeEventListener(
+        "touchstart",
+        handleClickOutside
+      );
     };
   }, [mobileMenuOpen]);
 
   return (
-    <header className={`public-topbar ${hiddenOnMobile ? "mobile-hidden" : ""}`}>
+    <header
+      className={`public-topbar ${
+        hiddenOnMobile ? "mobile-hidden" : ""
+      }`}
+    >
       <div className="public-topbar-inner">
         <Link
           href={logoHref}
+          prefetch={true}
           className="public-topbar-logo-link"
-          onClick={() => marcarActivo("inicio")}
+          onClick={irAlInicio}
+          aria-label="Ir al inicio"
         >
           <SiteLogo
             src={logoUrl}
@@ -200,9 +300,15 @@ export default function PublicTopbar({
 
         <button
           type="button"
-          className={`public-topbar-menu-btn ${mobileMenuOpen ? "open" : ""}`}
-          onClick={() => setMobileMenuOpen((prev) => !prev)}
-          aria-label={mobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+          className={`public-topbar-menu-btn ${
+            mobileMenuOpen ? "open" : ""
+          }`}
+          onClick={() =>
+            setMobileMenuOpen((prev) => !prev)
+          }
+          aria-label={
+            mobileMenuOpen ? "Cerrar menú" : "Abrir menú"
+          }
           aria-expanded={mobileMenuOpen}
           aria-controls="public-topbar-nav"
         >
@@ -214,14 +320,16 @@ export default function PublicTopbar({
         <nav
           id="public-topbar-nav"
           ref={navRef}
-          className={`public-topbar-nav ${mobileMenuOpen ? "open" : ""}`}
+          className={`public-topbar-nav ${
+            mobileMenuOpen ? "open" : ""
+          }`}
         >
           <TopbarLink
             href={inicioHref}
             id="inicio"
             label={menuLabels.inicio}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <TopbarLink
@@ -229,7 +337,7 @@ export default function PublicTopbar({
             id="eventos"
             label={menuLabels.eventos}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <TopbarLink
@@ -237,7 +345,7 @@ export default function PublicTopbar({
             id="resultados"
             label={menuLabels.resultados}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <TopbarLink
@@ -245,7 +353,7 @@ export default function PublicTopbar({
             id="ganadores"
             label={menuLabels.ganadores}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <TopbarLink
@@ -253,7 +361,7 @@ export default function PublicTopbar({
             id="pagos"
             label={menuLabels.pagos}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <TopbarLink
@@ -261,7 +369,7 @@ export default function PublicTopbar({
             id="contacto"
             label={menuLabels.contacto}
             currentActive={currentActive}
-            marcarActivo={marcarActivo}
+            onNavigate={navegarSeccion}
           />
 
           <button
@@ -282,13 +390,24 @@ export default function PublicTopbar({
   );
 }
 
-function TopbarLink({ href, id, label, currentActive, marcarActivo }) {
+function TopbarLink({
+  href,
+  id,
+  label,
+  currentActive,
+  onNavigate,
+}) {
   return (
     <Link
       href={href}
-      className={`public-topbar-link ${currentActive === id ? "active" : ""}`}
-      onClick={() => marcarActivo(id)}
-      aria-current={currentActive === id ? "page" : undefined}
+      prefetch={true}
+      className={`public-topbar-link ${
+        currentActive === id ? "active" : ""
+      }`}
+      onClick={(event) => onNavigate(event, href, id)}
+      aria-current={
+        currentActive === id ? "page" : undefined
+      }
     >
       {label}
     </Link>
