@@ -1,3 +1,4 @@
+
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 /* =========================================================
@@ -60,6 +61,344 @@ function numeroSeguro(valor) {
 }
 
 /* =========================================================
+   NORMALIZAR ESTADO
+========================================================= */
+
+function normalizarEstadoFree(valor) {
+  return String(valor ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+/* =========================================================
+   BOOLEANO SEGURO
+========================================================= */
+
+function booleanoSeguro(valor) {
+  return (
+    valor === true ||
+    valor === 1 ||
+    valor === "1" ||
+    normalizarEstadoFree(valor) === "true"
+  );
+}
+
+/* =========================================================
+   FECHA PROGRAMADA FUTURA
+========================================================= */
+
+function esFechaFuturaValida(valor, ahoraMs) {
+  if (!valor) {
+    return false;
+  }
+
+  const fechaMs = new Date(valor).getTime();
+
+  return (
+    Number.isFinite(fechaMs) &&
+    fechaMs > ahoraMs
+  );
+}
+
+/* =========================================================
+   CUPOS DISPONIBLES DE UN FREE DROP
+========================================================= */
+
+function obtenerCuposDisponiblesDrop(drop) {
+  const total = Math.max(
+    numeroSeguro(drop?.cupos_total),
+    0
+  );
+
+  const usados = Math.max(
+    numeroSeguro(drop?.cupos_usados),
+    0
+  );
+
+  return Math.max(total - usados, 0);
+}
+
+/* =========================================================
+   ORDENAR FREE DROPS
+   MISMO ORDEN PRINCIPAL QUE LA API EXISTENTE
+========================================================= */
+
+function ordenarFreeDrops(drops = []) {
+  return [...drops].sort((a, b) => {
+    const numeroA = numeroSeguro(a?.numero_drop);
+    const numeroB = numeroSeguro(b?.numero_drop);
+
+    if (numeroA !== numeroB) {
+      return numeroB - numeroA;
+    }
+
+    const fechaA =
+      new Date(a?.created_at || 0).getTime() || 0;
+
+    const fechaB =
+      new Date(b?.created_at || 0).getTime() || 0;
+
+    return fechaB - fechaA;
+  });
+}
+
+/* =========================================================
+   CALCULAR ESTADO PÚBLICO DEL FREE DROP
+========================================================= */
+
+function calcularEstadoFreeDrop(
+  rifa,
+  settings,
+  drops = [],
+  ahoraMs = Date.now()
+) {
+  const estadoRifa = normalizarEstadoFree(
+    rifa?.estado
+  );
+
+  const estadoBase = {
+    estado: "sin_configurar",
+    etiqueta: null,
+    cupos_disponibles: 0,
+    drop_id: null,
+    fecha_inicio: null,
+  };
+
+  /* -------------------------------------------------------
+     1. RIFA FINALIZADA
+     TIENE PRIORIDAD SOBRE EL FREE DROP
+  ------------------------------------------------------- */
+
+  if (
+    [
+      "finalizada",
+      "finalizado",
+      "cerrada",
+      "cerrado",
+    ].includes(estadoRifa)
+  ) {
+    return {
+      ...estadoBase,
+      estado: "rifa_finalizada",
+    };
+  }
+
+  /* -------------------------------------------------------
+     2. RIFA AGOTADA
+  ------------------------------------------------------- */
+
+  if (
+    ["agotada", "agotado"].includes(estadoRifa) ||
+    booleanoSeguro(rifa?.sold_out)
+  ) {
+    return {
+      ...estadoBase,
+      estado: "rifa_agotada",
+    };
+  }
+
+  /* -------------------------------------------------------
+     3. RIFA NO DISPONIBLE
+  ------------------------------------------------------- */
+
+  if (
+    ![
+      "activa",
+      "disponible",
+      "publicada",
+    ].includes(estadoRifa)
+  ) {
+    return {
+      ...estadoBase,
+      estado: "rifa_no_disponible",
+    };
+  }
+
+  /* -------------------------------------------------------
+     4. SIN CONFIGURACIÓN
+  ------------------------------------------------------- */
+
+  if (!settings) {
+    return estadoBase;
+  }
+
+  /* -------------------------------------------------------
+     5. FREE DROPS DESACTIVADOS
+  ------------------------------------------------------- */
+
+  if (!booleanoSeguro(settings.enabled)) {
+    return {
+      ...estadoBase,
+      estado: "desactivado",
+      etiqueta: "FREE DROP DESACTIVADO",
+    };
+  }
+
+  /* -------------------------------------------------------
+     6. CAPACIDAD GENERAL
+  ------------------------------------------------------- */
+
+  const totalPermitido = Math.max(
+    numeroSeguro(settings.total_free_allowed),
+    0
+  );
+
+  const totalLiberado = Math.max(
+    numeroSeguro(settings.released_total),
+    0
+  );
+
+  const capacidadGeneralDisponible = Math.max(
+    totalPermitido - totalLiberado,
+    0
+  );
+
+  /* -------------------------------------------------------
+     7. ORDENAR FREE DROPS
+  ------------------------------------------------------- */
+
+  const lista = ordenarFreeDrops(drops);
+
+  const buscarEstado = (estado) =>
+    lista.find(
+      (drop) =>
+        normalizarEstadoFree(drop?.estado) === estado
+    ) || null;
+
+  const activo = buscarEstado("activo");
+  const pausado = buscarEstado("pausado");
+  const agotado = buscarEstado("agotado");
+
+  /* -------------------------------------------------------
+     8. PRÓXIMO FREE DROP PROGRAMADO
+  ------------------------------------------------------- */
+
+  const proximoProgramado =
+    lista
+      .filter(
+        (drop) =>
+          normalizarEstadoFree(drop?.estado) ===
+            "programado" &&
+          esFechaFuturaValida(
+            drop?.fecha_inicio,
+            ahoraMs
+          )
+      )
+      .sort(
+        (a, b) =>
+          new Date(a.fecha_inicio).getTime() -
+          new Date(b.fecha_inicio).getTime()
+      )[0] || null;
+
+  /* -------------------------------------------------------
+     9. SELECCIONAR DROP VISIBLE
+
+     PRIORIDAD:
+     ACTIVO > PAUSADO > AGOTADO > PROGRAMADO
+  ------------------------------------------------------- */
+
+  const dropVisible =
+    activo ||
+    pausado ||
+    agotado ||
+    proximoProgramado ||
+    null;
+
+  /* -------------------------------------------------------
+     10. SIN DROP VIGENTE
+  ------------------------------------------------------- */
+
+  if (!dropVisible) {
+    return {
+      ...estadoBase,
+      estado: "sin_drop",
+    };
+  }
+
+  const estadoDrop = normalizarEstadoFree(
+    dropVisible.estado
+  );
+
+  const cuposDisponibles =
+    obtenerCuposDisponiblesDrop(dropVisible);
+
+  const datosDrop = {
+    drop_id: dropVisible.id,
+    cupos_disponibles: cuposDisponibles,
+    fecha_inicio: dropVisible.fecha_inicio || null,
+  };
+
+  /* -------------------------------------------------------
+     11. DROP ACTIVO
+  ------------------------------------------------------- */
+
+  if (estadoDrop === "activo") {
+    if (
+      cuposDisponibles > 0 &&
+      capacidadGeneralDisponible > 0
+    ) {
+      return {
+        ...datosDrop,
+        estado: "activo",
+        etiqueta: "🎁 FREE DROP ACTIVO",
+      };
+    }
+
+    return {
+      ...datosDrop,
+      estado: "agotado",
+      etiqueta: "🎟️ FREE DROP AGOTADO",
+    };
+  }
+
+  /* -------------------------------------------------------
+     12. DROP PAUSADO
+  ------------------------------------------------------- */
+
+  if (estadoDrop === "pausado") {
+    return {
+      ...datosDrop,
+      estado: "pausado",
+      etiqueta: "⏸️ FREE DROP PAUSADO",
+    };
+  }
+
+  /* -------------------------------------------------------
+     13. DROP AGOTADO
+  ------------------------------------------------------- */
+
+  if (estadoDrop === "agotado") {
+    return {
+      ...datosDrop,
+      estado: "agotado",
+      etiqueta: "🎟️ FREE DROP AGOTADO",
+    };
+  }
+
+  /* -------------------------------------------------------
+     14. DROP PROGRAMADO
+  ------------------------------------------------------- */
+
+  if (estadoDrop === "programado") {
+    if (capacidadGeneralDisponible <= 0) {
+      return {
+        ...datosDrop,
+        estado: "agotado",
+        etiqueta: "🎟️ FREE DROP AGOTADO",
+      };
+    }
+
+    return {
+      ...datosDrop,
+      estado: "programado",
+      etiqueta: "🕒 PRÓXIMO FREE DROP",
+    };
+  }
+
+  return estadoBase;
+}
+
+/* =========================================================
    OBTENER RIFAS PÚBLICAS
 ========================================================= */
 
@@ -74,15 +413,12 @@ export async function obtenerRifasPublicas() {
   } = await supabaseAdmin
     .from("rifas")
     .select(CAMPOS_PUBLICOS_RIFA)
-    .in(
-      "estado",
-      [
-        "activa",
-        "finalizada",
-        "agotada",
-        "publicada",
-      ]
-    )
+    .in("estado", [
+      "activa",
+      "finalizada",
+      "agotada",
+      "publicada",
+    ])
     .eq("publicada", true)
     .order("created_at", {
       ascending: false,
@@ -99,10 +435,9 @@ export async function obtenerRifasPublicas() {
     );
   }
 
-  const rifas =
-    Array.isArray(rifasData)
-      ? rifasData
-      : [];
+  const rifas = Array.isArray(rifasData)
+    ? rifasData
+    : [];
 
   /* =======================================================
      2. SI NO HAY RIFAS
@@ -121,8 +456,103 @@ export async function obtenerRifasPublicas() {
   );
 
   /* =======================================================
-     4. RESUMEN DE TICKETS
-     PAGADOS + FREE + OCUPADOS + INVENTARIO
+     4. CARGAR CONFIGURACIÓN FREE DROP
+        Y DROPS EN CONSULTAS AGRUPADAS
+  ======================================================= */
+
+  const [
+    {
+      data: freeSettingsData,
+      error: freeSettingsError,
+    },
+    {
+      data: freeDropsData,
+      error: freeDropsError,
+    },
+  ] = await Promise.all([
+    supabaseAdmin
+      .from("free_drop_settings")
+      .select(`
+        rifa_id,
+        enabled,
+        total_free_allowed,
+        released_total
+      `)
+      .in("rifa_id", rifaIds),
+
+    supabaseAdmin
+      .from("free_drops")
+      .select(`
+        id,
+        rifa_id,
+        estado,
+        numero_drop,
+        cupos_total,
+        cupos_usados,
+        fecha_inicio,
+        created_at
+      `)
+      .in("rifa_id", rifaIds)
+      .in("estado", [
+        "activo",
+        "pausado",
+        "agotado",
+        "programado",
+      ]),
+  ]);
+
+  if (freeSettingsError || freeDropsError) {
+    console.error(
+      "Error cargando estados públicos Free Drop:",
+      freeSettingsError || freeDropsError
+    );
+
+    throw new Error(
+      "No se pudieron cargar los estados Free Drop"
+    );
+  }
+
+  /* =======================================================
+     5. MAPA DE CONFIGURACIÓN POR RIFA
+  ======================================================= */
+
+  const freeSettingsPorRifa = {};
+
+  for (const item of freeSettingsData || []) {
+    if (item?.rifa_id == null) {
+      continue;
+    }
+
+    freeSettingsPorRifa[
+      String(item.rifa_id)
+    ] = item;
+  }
+
+  /* =======================================================
+     6. MAPA DE DROPS POR RIFA
+  ======================================================= */
+
+  const freeDropsPorRifa = {};
+
+  for (const drop of freeDropsData || []) {
+    if (drop?.rifa_id == null) {
+      continue;
+    }
+
+    const key = String(drop.rifa_id);
+
+    if (!freeDropsPorRifa[key]) {
+      freeDropsPorRifa[key] = [];
+    }
+
+    freeDropsPorRifa[key].push(drop);
+  }
+
+  const ahoraFreeDropMs = Date.now();
+
+  /* =======================================================
+     7. RESUMEN DE TICKETS
+        PAGADOS + FREE + OCUPADOS + INVENTARIO
   ======================================================= */
 
   const {
@@ -151,7 +581,7 @@ export async function obtenerRifasPublicas() {
   }
 
   /* =======================================================
-     5. RESULTADOS DE SORTEOS
+     8. RESULTADOS DE SORTEOS
   ======================================================= */
 
   const {
@@ -186,242 +616,246 @@ export async function obtenerRifasPublicas() {
   }
 
   /* =======================================================
-     6. NORMALIZAR DATOS
+     9. NORMALIZAR DATOS
   ======================================================= */
 
-  const resumenTickets =
-    Array.isArray(resumenTicketsData)
-      ? resumenTicketsData
-      : [];
+  const resumenTickets = Array.isArray(
+    resumenTicketsData
+  )
+    ? resumenTicketsData
+    : [];
 
-  const sorteos =
-    Array.isArray(sorteosData)
-      ? sorteosData
-      : [];
+  const sorteos = Array.isArray(sorteosData)
+    ? sorteosData
+    : [];
 
   /* =======================================================
-     7. MAPA DE RESUMEN POR RIFA
+     10. MAPA DE RESUMEN POR RIFA
   ======================================================= */
 
-  const resumenPorRifa =
-    resumenTickets.reduce(
-      (acc, item) => {
-        if (item?.rifa_id == null) {
-          return acc;
-        }
-
-        acc[String(item.rifa_id)] = item;
-
+  const resumenPorRifa = resumenTickets.reduce(
+    (acc, item) => {
+      if (item?.rifa_id == null) {
         return acc;
-      },
-      {}
+      }
+
+      acc[String(item.rifa_id)] = item;
+
+      return acc;
+    },
+    {}
+  );
+
+  /* =======================================================
+     11. SORTEO MÁS RECIENTE POR RIFA
+  ======================================================= */
+
+  const sorteoPorRifa = sorteos.reduce(
+    (acc, sorteo) => {
+      const rifaKey = String(sorteo.rifa_id);
+
+      if (!acc[rifaKey]) {
+        acc[rifaKey] = sorteo;
+      }
+
+      return acc;
+    },
+    {}
+  );
+
+  /* =======================================================
+     12. CONSTRUIR RIFAS CON ESTADÍSTICAS
+  ======================================================= */
+
+  const rifasConStats = rifas.map((rifa) => {
+    const rifaKey = String(rifa.id);
+
+    const totalNumeros =
+      obtenerTotalNumeros(rifa);
+
+    const resumen =
+      resumenPorRifa[rifaKey] || {};
+
+    /* ---------------------------------------------------
+       PAGADOS
+    --------------------------------------------------- */
+
+    const ticketsPagados = numeroSeguro(
+      resumen.tickets_pagados
     );
 
-  /* =======================================================
-     8. SORTEO MÁS RECIENTE POR RIFA
-  ======================================================= */
+    /* ---------------------------------------------------
+       FREE
+    --------------------------------------------------- */
 
-  const sorteoPorRifa =
-    sorteos.reduce(
-      (acc, sorteo) => {
-        const rifaKey =
-          String(sorteo.rifa_id);
-
-        if (!acc[rifaKey]) {
-          acc[rifaKey] = sorteo;
-        }
-
-        return acc;
-      },
-      {}
+    const ticketsFree = numeroSeguro(
+      resumen.tickets_free
     );
 
-  /* =======================================================
-     9. CONSTRUIR RIFAS CON ESTADÍSTICAS
-  ======================================================= */
+    /* ---------------------------------------------------
+       OCUPADOS
+       Incluye pagados + free + otros ocupados
+    --------------------------------------------------- */
 
-  const rifasConStats =
-    rifas.map((rifa) => {
-      const rifaKey =
-        String(rifa.id);
+    const ticketsOcupados = numeroSeguro(
+      resumen.tickets_ocupados
+    );
 
-      const totalNumeros =
-        obtenerTotalNumeros(rifa);
+    /* ---------------------------------------------------
+       DISPONIBLES DEL INVENTARIO
+    --------------------------------------------------- */
 
-      const resumen =
-        resumenPorRifa[rifaKey] || {};
+    const disponiblesInventario =
+      numeroSeguro(
+        resumen.disponibles_inventario
+      );
 
-      /* ---------------------------------------------------
-         PAGADOS
-      --------------------------------------------------- */
+    /* ---------------------------------------------------
+       DISPONIBLES PÚBLICOS
+       TOTAL - OCUPADOS
+    --------------------------------------------------- */
 
-      const ticketsPagados =
-        numeroSeguro(
-          resumen.tickets_pagados
-        );
+    const ticketsDisponibles = Math.max(
+      totalNumeros - ticketsOcupados,
+      0
+    );
 
-      /* ---------------------------------------------------
-         FREE
-      --------------------------------------------------- */
+    /* ---------------------------------------------------
+       PORCENTAJE
+    --------------------------------------------------- */
 
-      const ticketsFree =
-        numeroSeguro(
-          resumen.tickets_free
-        );
+    const porcentajeVendido =
+      totalNumeros > 0
+        ? Number(
+            (
+              (ticketsOcupados / totalNumeros) *
+              100
+            ).toFixed(2)
+          )
+        : 0;
 
-      /* ---------------------------------------------------
-         OCUPADOS
-         Incluye pagados + free + otros ocupados
-      --------------------------------------------------- */
+    /* ---------------------------------------------------
+       AGOTADA
+    --------------------------------------------------- */
 
-      const ticketsOcupados =
-        numeroSeguro(
-          resumen.tickets_ocupados
-        );
+    const soldOut =
+      totalNumeros > 0 &&
+      ticketsOcupados >= totalNumeros;
 
-      /* ---------------------------------------------------
-         DISPONIBLES DEL INVENTARIO
-      --------------------------------------------------- */
+    /* ---------------------------------------------------
+       SORTEO
+    --------------------------------------------------- */
 
-      const disponiblesInventario =
-        numeroSeguro(
-          resumen.disponibles_inventario
-        );
+    const sorteo =
+      sorteoPorRifa[rifaKey] || null;
 
-      /* ---------------------------------------------------
-         DISPONIBLES PÚBLICOS
-         TOTAL - OCUPADOS
-      --------------------------------------------------- */
+    /* ---------------------------------------------------
+       ESTADO INTELIGENTE DEL FREE DROP
+    --------------------------------------------------- */
 
-      const ticketsDisponibles =
-        Math.max(
-          totalNumeros -
-            ticketsOcupados,
-          0
-        );
-
-      /* ---------------------------------------------------
-         PORCENTAJE
-      --------------------------------------------------- */
-
-      const porcentajeVendido =
-        totalNumeros > 0
-          ? Number(
-              (
-                (ticketsOcupados /
-                  totalNumeros) *
-                100
-              ).toFixed(2)
-            )
-          : 0;
-
-      /* ---------------------------------------------------
-         AGOTADA
-      --------------------------------------------------- */
-
-      const soldOut =
-        totalNumeros > 0 &&
-        ticketsOcupados >=
-          totalNumeros;
-
-      /* ---------------------------------------------------
-         SORTEO
-      --------------------------------------------------- */
-
-      const sorteo =
-        sorteoPorRifa[rifaKey] ||
-        null;
-
-      /* ---------------------------------------------------
-         RESPUESTA
-      --------------------------------------------------- */
-
-      return {
-        ...rifa,
-
-        sorteo,
-
-        numero_ganador:
-          sorteo?.numero_ganador ??
-          rifa.numero_ganador ??
-          null,
-
-        numero_oficial:
-          sorteo?.numero_oficial ??
-          null,
-
-        total_numeros:
-          totalNumeros,
-
-        /*
-         * IMPORTANTE:
-         *
-         * tickets_vendidos sigue representando
-         * TODOS los números ocupados.
-         *
-         * PAGADOS + FREE + OTROS OCUPADOS.
-         */
-
-        tickets_vendidos:
-          ticketsOcupados,
-
-        tickets_pagados:
-          ticketsPagados,
-
-        tickets_free:
-          ticketsFree,
-
-        tickets_ocupados:
-          ticketsOcupados,
-
-        tickets_disponibles:
-          ticketsDisponibles,
-
-        porcentaje_vendido:
-          porcentajeVendido,
-
-        sold_out:
-          soldOut,
-
-        stats: {
-          total:
-            totalNumeros,
-
-          vendidos:
-            ticketsOcupados,
-
-          disponibles:
-            ticketsDisponibles,
-
-          porcentaje:
-            porcentajeVendido,
-
-          soldOut,
-
-          ticketsVendidos:
-            ticketsOcupados,
-
-          porcentajeVendido,
-
-          pagados:
-            ticketsPagados,
-
-          free:
-            ticketsFree,
-
-          ocupados:
-            ticketsOcupados,
-
-          ticketsPagados,
-
-          ticketsFree,
-
-          ticketsOcupados,
-
-          disponiblesInventario,
+    const freeDropEstado =
+      calcularEstadoFreeDrop(
+        {
+          ...rifa,
+          sold_out: soldOut,
         },
-      };
-    });
+        freeSettingsPorRifa[rifaKey] || null,
+        freeDropsPorRifa[rifaKey] || [],
+        ahoraFreeDropMs
+      );
+
+    /* ---------------------------------------------------
+       RESPUESTA
+    --------------------------------------------------- */
+
+    return {
+      ...rifa,
+
+      /* -----------------------------------------------
+         NUEVO ESTADO PÚBLICO DEL FREE DROP
+      ----------------------------------------------- */
+
+      free_drop_estado: freeDropEstado,
+
+      /* -----------------------------------------------
+         RESULTADO DEL SORTEO
+      ----------------------------------------------- */
+
+      sorteo,
+
+      numero_ganador:
+        sorteo?.numero_ganador ??
+        rifa.numero_ganador ??
+        null,
+
+      numero_oficial:
+        sorteo?.numero_oficial ??
+        null,
+
+      /* -----------------------------------------------
+         TOTAL DE NÚMEROS
+      ----------------------------------------------- */
+
+      total_numeros: totalNumeros,
+
+      /*
+       * IMPORTANTE:
+       *
+       * tickets_vendidos representa TODOS
+       * los números ocupados.
+       *
+       * PAGADOS + FREE + OTROS OCUPADOS.
+       */
+
+      tickets_vendidos: ticketsOcupados,
+
+      tickets_pagados: ticketsPagados,
+
+      tickets_free: ticketsFree,
+
+      tickets_ocupados: ticketsOcupados,
+
+      tickets_disponibles: ticketsDisponibles,
+
+      porcentaje_vendido: porcentajeVendido,
+
+      sold_out: soldOut,
+
+      /* -----------------------------------------------
+         ESTADÍSTICAS ORIGINALES
+      ----------------------------------------------- */
+
+      stats: {
+        total: totalNumeros,
+
+        vendidos: ticketsOcupados,
+
+        disponibles: ticketsDisponibles,
+
+        porcentaje: porcentajeVendido,
+
+        soldOut,
+
+        ticketsVendidos: ticketsOcupados,
+
+        porcentajeVendido,
+
+        pagados: ticketsPagados,
+
+        free: ticketsFree,
+
+        ocupados: ticketsOcupados,
+
+        ticketsPagados,
+
+        ticketsFree,
+
+        ticketsOcupados,
+
+        disponiblesInventario,
+      },
+    };
+  });
 
   return rifasConStats;
 }

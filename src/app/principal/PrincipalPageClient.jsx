@@ -961,6 +961,107 @@ if (e.key === "Escape") {
   return (
 
     <>
+      <style jsx global>{`
+        /* Solo tarjetas de EVENTOS DISPONIBLES */
+        #eventos-disponibles .principal-events-list > .principal-event-card-mobile {
+          position: relative;
+          isolation: isolate;
+          overflow: hidden;
+          transition: transform 180ms ease, box-shadow 180ms ease;
+        }
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+          #eventos-disponibles .principal-events-list > .principal-event-card-mobile:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 14px 30px rgba(0, 0, 0, 0.12);
+          }
+        }
+        #eventos-disponibles .principal-event-content-mobile h3 {
+          overflow-wrap: anywhere;
+          line-height: 1.3;
+        }
+        #eventos-disponibles .principal-free-drop-label {
+          position: absolute;
+          top: 12px;
+          right: 12px;
+          z-index: 5;
+          max-width: calc(100% - 105px);
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          gap: 5px;
+          padding: 7px 12px;
+          border: 0;
+          border-radius: 999px;
+          background: #e9f9ef;
+          color: #374151;
+          font-size: 11px;
+          font-weight: 700;
+          line-height: 1.2;
+          white-space: nowrap;
+          box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+          pointer-events: none;
+        }
+        #eventos-disponibles .principal-free-drop-label strong {
+          font-weight: 800;
+        }
+        #eventos-disponibles .principal-free-drop-label--activo {
+          background: #e9f9ef;
+        }
+        #eventos-disponibles .principal-free-drop-label--activo strong {
+          color: #16a34a;
+        }
+        #eventos-disponibles .principal-free-drop-label--pausado {
+          background: #fff4d9;
+        }
+        #eventos-disponibles .principal-free-drop-label--pausado strong {
+          color: #b77900;
+        }
+        #eventos-disponibles .principal-free-drop-label--terminado {
+          background: #edf0f3;
+        }
+        #eventos-disponibles .principal-free-drop-label--terminado strong {
+          color: #64748b;
+        }
+        #eventos-disponibles .principal-free-drop-label--programado {
+          background: #eaf2ff;
+        }
+        #eventos-disponibles .principal-free-drop-label--programado strong {
+          color: #2563eb;
+        }
+        #eventos-disponibles .principal-event-quick-link {
+          min-height: 44px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          touch-action: manipulation;
+          transition: filter 150ms ease, transform 150ms ease;
+        }
+        @media (hover: hover) and (prefers-reduced-motion: no-preference) {
+          #eventos-disponibles .principal-event-quick-link:hover {
+            filter: brightness(1.08);
+          }
+        }
+        #eventos-disponibles .principal-event-quick-link:focus-visible {
+          outline: 3px solid var(--site-primary, #dc2626);
+          outline-offset: 3px;
+        }
+        @media (max-width: 480px) {
+          #eventos-disponibles .principal-free-drop-label {
+            top: 9px;
+            right: 9px;
+            max-width: calc(100% - 95px);
+            padding: 6px 9px;
+            gap: 4px;
+            font-size: 10px;
+          }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          #eventos-disponibles .principal-events-list > .principal-event-card-mobile,
+          #eventos-disponibles .principal-event-quick-link {
+            transition: none;
+          }
+        }
+      `}</style>
 
       <main className="principal-page" id="inicio">
 
@@ -1255,7 +1356,18 @@ if (e.key === "Escape") {
 
 
 
-                  const progreso = getRifaProgress(evento);
+                  const estadoFreeDrop = String(
+                    evento?.free_drop_estado?.estado || ""
+                  ).toLowerCase();
+
+                                     const freeDropEtiqueta = {
+                     activo: { texto: "ACTIVO", tipo: "activo" },
+                     pausado: { texto: "PAUSADO", tipo: "pausado" },
+                     agotado: { texto: "TERMINADO", tipo: "terminado" },
+                     programado: { texto: "PRÓXIMAMENTE", tipo: "programado" },
+                   }[estadoFreeDrop] || null;
+
+const progreso = getRifaProgress(evento);
 
 
 
@@ -1284,6 +1396,16 @@ if (e.key === "Escape") {
                       )}
 
 
+
+                                            {freeDropEtiqueta && (
+                         <span
+                           className={`principal-free-drop-label principal-free-drop-label--${freeDropEtiqueta.tipo}`}
+                           aria-label={`FREE DROP ${freeDropEtiqueta.texto}`}
+                         >
+                           <span>FREE DROP</span>
+                           <strong>{freeDropEtiqueta.texto}</strong>
+                         </span>
+                       )}
 
                       <RaffleDualImage
 
@@ -1353,7 +1475,8 @@ if (e.key === "Escape") {
 
                             href={`/evento/${evento.id}`}
 
-                            className="principal-red-btn small-btn"
+                            className="principal-red-btn small-btn principal-event-quick-link"
+                            prefetch={true}
 
                           >
 
