@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -12,21 +13,16 @@ export default function PublicMusicPlayer() {
   const { config } = useSiteConfig();
 
   const audioRef = useRef(null);
-  const userPausedRef = useRef(false);
 
   const [playing, setPlaying] = useState(false);
   const [muted, setMuted] = useState(false);
   const [volume, setVolume] = useState(0.35);
   const [ready, setReady] = useState(false);
   const [maintenanceMode, setMaintenanceMode] = useState(false);
-
-  // 0 = discreto
-  // 1 = mini reproductor
-  // 2 = reproductor completo
   const [panelState, setPanelState] = useState(0);
 
   // =========================================================
-  // NO MOSTRAR EN ZONAS ADMINISTRATIVAS
+  // RUTAS DONDE NO DEBE APARECER LA MÚSICA
   // =========================================================
 
   const esRutaAdmin =
@@ -34,13 +30,16 @@ export default function PublicMusicPlayer() {
     pathname?.startsWith("/admin-login") ||
     pathname?.startsWith("/admin-mfa-setup");
 
-  // =========================================================
-  // NO MOSTRAR EN /PRINCIPAL
-  // =========================================================
-
   const esRutaSinMusica =
     pathname === "/principal" ||
     pathname?.startsWith("/principal/");
+
+  const musicaDisponible =
+    !esRutaAdmin &&
+    !esRutaSinMusica &&
+    !maintenanceMode &&
+    Boolean(config?.musica_activa) &&
+    Boolean(config?.musica_url);
 
   // =========================================================
   // DETECTAR MODO MANTENIMIENTO
@@ -76,31 +75,6 @@ export default function PublicMusicPlayer() {
   }, []);
 
   // =========================================================
-  // DETENER AUDIO DONDE NO DEBE EXISTIR
-  // =========================================================
-
-  useEffect(() => {
-    if (!maintenanceMode && !esRutaSinMusica && !esRutaAdmin) {
-      return;
-    }
-
-    const audio = audioRef.current;
-
-    if (audio) {
-      audio.pause();
-
-      try {
-        audio.currentTime = 0;
-      } catch {
-        // Ignorar si el audio todavía no está preparado.
-      }
-    }
-
-    setPlaying(false);
-    setPanelState(0);
-  }, [maintenanceMode, esRutaSinMusica, esRutaAdmin]);
-
-  // =========================================================
   // CONFIGURACIÓN INICIAL DEL VISITANTE
   // =========================================================
 
@@ -113,7 +87,10 @@ export default function PublicMusicPlayer() {
       volumenInicial = 0.35;
     }
 
-    volumenInicial = Math.max(0, Math.min(1, volumenInicial));
+    volumenInicial = Math.max(
+      0,
+      Math.min(1, volumenInicial)
+    );
 
     try {
       const volumenGuardado = localStorage.getItem(VOLUME_KEY);
@@ -123,7 +100,10 @@ export default function PublicMusicPlayer() {
         const numero = Number(volumenGuardado);
 
         if (Number.isFinite(numero)) {
-          volumenInicial = Math.max(0, Math.min(1, numero));
+          volumenInicial = Math.max(
+            0,
+            Math.min(1, numero)
+          );
         }
       }
 
@@ -131,7 +111,7 @@ export default function PublicMusicPlayer() {
         setMuted(mutedGuardado === "true");
       }
     } catch {
-      // localStorage puede estar bloqueado.
+      // El almacenamiento local puede estar bloqueado.
     }
 
     setVolume(volumenInicial);
@@ -139,7 +119,7 @@ export default function PublicMusicPlayer() {
   }, [config]);
 
   // =========================================================
-  // SINCRONIZAR AUDIO
+  // SINCRONIZAR VOLUMEN Y CONFIGURACIÓN
   // =========================================================
 
   useEffect(() => {
@@ -150,109 +130,61 @@ export default function PublicMusicPlayer() {
     audio.volume = volume;
     audio.muted = muted;
     audio.loop = config?.musica_loop !== false;
-  }, [volume, muted, ready, config?.musica_loop]);
+  }, [
+    volume,
+    muted,
+    ready,
+    config?.musica_loop,
+  ]);
 
   // =========================================================
-  // AUTOPLAY INTELIGENTE
+  // DETENER AUDIO EN RUTAS PROHIBIDAS
+  // =========================================================
+
+  useEffect(() => {
+    if (musicaDisponible) return;
+
+    const audio = audioRef.current;
+
+    if (audio) {
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+    }
+
+    setPlaying(false);
+    setPanelState(0);
+  }, [musicaDisponible]);
+
+  // =========================================================
+  // DETENER AUDIO SI CAMBIA LA CANCIÓN
   // =========================================================
 
   useEffect(() => {
     const audio = audioRef.current;
 
+    if (!audio) return;
+
+    const urlActual = audio.getAttribute("src");
+
     if (
-      !audio ||
-      !ready ||
-      esRutaAdmin ||
-      esRutaSinMusica ||
-      maintenanceMode ||
-      !config?.musica_activa ||
-      !config?.musica_url ||
-      !config?.musica_autoplay
+      urlActual &&
+      urlActual !== config?.musica_url
     ) {
-      return;
+      audio.pause();
+      audio.removeAttribute("src");
+      audio.load();
+      setPlaying(false);
     }
-
-    let cancelado = false;
-
-    const intentarReproducir = async () => {
-      if (
-        userPausedRef.current ||
-        cancelado ||
-        maintenanceMode ||
-        esRutaSinMusica ||
-        esRutaAdmin
-      ) {
-        return;
-      }
-
-      try {
-        await audio.play();
-
-        if (!cancelado) {
-          setPlaying(true);
-        }
-      } catch {
-        // Algunos navegadores bloquean el autoplay con sonido.
-        if (!cancelado) {
-          setPlaying(false);
-        }
-      }
-    };
-
-    intentarReproducir();
-
-    const iniciarTrasInteraccion = () => {
-      if (
-        !audio.paused ||
-        userPausedRef.current ||
-        maintenanceMode ||
-        esRutaSinMusica ||
-        esRutaAdmin ||
-        !config?.musica_autoplay
-      ) {
-        return;
-      }
-
-      intentarReproducir();
-    };
-
-    window.addEventListener(
-      "pointerdown",
-      iniciarTrasInteraccion,
-      { once: true }
-    );
-
-    window.addEventListener(
-      "keydown",
-      iniciarTrasInteraccion,
-      { once: true }
-    );
-
-    return () => {
-      cancelado = true;
-
-      window.removeEventListener(
-        "pointerdown",
-        iniciarTrasInteraccion
-      );
-
-      window.removeEventListener(
-        "keydown",
-        iniciarTrasInteraccion
-      );
-    };
-  }, [
-    ready,
-    esRutaAdmin,
-    esRutaSinMusica,
-    maintenanceMode,
-    config?.musica_activa,
-    config?.musica_url,
-    config?.musica_autoplay,
-  ]);
+  }, [config?.musica_url]);
 
   // =========================================================
-  // PLAY / PAUSA
+  // AHORRO DE TRANSFERENCIA SUPABASE
+  //
+  // No existe autoplay.
+  // No se asigna src al cargar la página.
+  // No se precarga metadata.
+  // Solo se solicita la canción al pulsar PLAY.
   // =========================================================
 
   const togglePlay = async () => {
@@ -260,22 +192,31 @@ export default function PublicMusicPlayer() {
 
     if (
       !audio ||
-      maintenanceMode ||
-      esRutaSinMusica ||
-      esRutaAdmin
+      !ready ||
+      !musicaDisponible ||
+      !config?.musica_url
     ) {
       return;
     }
 
     if (!audio.paused) {
-      userPausedRef.current = true;
       audio.pause();
       setPlaying(false);
       return;
     }
 
     try {
-      userPausedRef.current = false;
+      if (
+        audio.getAttribute("src") !==
+        config.musica_url
+      ) {
+        audio.src = config.musica_url;
+      }
+
+      audio.volume = volume;
+      audio.muted = muted;
+      audio.loop = config?.musica_loop !== false;
+
       await audio.play();
       setPlaying(true);
     } catch (error) {
@@ -289,7 +230,7 @@ export default function PublicMusicPlayer() {
   };
 
   // =========================================================
-  // MUTE
+  // SILENCIAR / ACTIVAR SONIDO
   // =========================================================
 
   const toggleMute = () => {
@@ -297,24 +238,32 @@ export default function PublicMusicPlayer() {
 
     setMuted(nuevoMuted);
 
+    const audio = audioRef.current;
+
+    if (audio) {
+      audio.muted = nuevoMuted;
+    }
+
     try {
       localStorage.setItem(
         MUTED_KEY,
         String(nuevoMuted)
       );
     } catch {
-      // Ignorar si localStorage no está disponible.
+      // Ignorar.
     }
   };
 
   // =========================================================
-  // VOLUMEN
+  // CONTROL DE VOLUMEN
   // =========================================================
 
   const cambiarVolumen = (event) => {
     const nuevoVolumen = Number(event.target.value);
 
-    if (!Number.isFinite(nuevoVolumen)) return;
+    if (!Number.isFinite(nuevoVolumen)) {
+      return;
+    }
 
     const volumenSeguro = Math.max(
       0,
@@ -337,7 +286,10 @@ export default function PublicMusicPlayer() {
       setMuted(false);
 
       try {
-        localStorage.setItem(MUTED_KEY, "false");
+        localStorage.setItem(
+          MUTED_KEY,
+          "false"
+        );
       } catch {
         // Ignorar.
       }
@@ -354,33 +306,26 @@ export default function PublicMusicPlayer() {
   };
 
   // =========================================================
-  // CAMBIAR ESTADO DEL PANEL
+  // CAMBIAR ESTADO DEL REPRODUCTOR
   //
-  // 0 -> 1
-  // 1 -> 2
-  // 2 -> 0
+  // 0 = DISCRETO
+  // 1 = MINI REPRODUCTOR
+  // 2 = REPRODUCTOR COMPLETO
   // =========================================================
 
   const cambiarEstadoPanel = () => {
     setPanelState((estadoActual) => {
       if (estadoActual === 0) return 1;
       if (estadoActual === 1) return 2;
-
       return 0;
     });
   };
 
   // =========================================================
-  // NO RENDERIZAR
+  // NO MOSTRAR EN RUTAS PROHIBIDAS
   // =========================================================
 
-  if (
-    esRutaAdmin ||
-    esRutaSinMusica ||
-    maintenanceMode ||
-    !config?.musica_activa ||
-    !config?.musica_url
-  ) {
+  if (!musicaDisponible) {
     return null;
   }
 
@@ -391,15 +336,14 @@ export default function PublicMusicPlayer() {
     config?.musica_nombre?.trim() || "Música";
 
   // =========================================================
-  // RENDER
+  // INTERFAZ DEL REPRODUCTOR
   // =========================================================
 
   return (
     <>
       <audio
         ref={audioRef}
-        src={config.musica_url}
-        preload="metadata"
+        preload="none"
         loop={config?.musica_loop !== false}
         onPlay={() => setPlaying(true)}
         onPause={() => setPlaying(false)}
@@ -547,6 +491,10 @@ export default function PublicMusicPlayer() {
       )}
 
       <style jsx>{`
+        /* ================================================
+           REPRODUCTOR PRINCIPAL
+        ================================================ */
+
         .public-music-player {
           position: fixed;
           top: 130px;
@@ -563,6 +511,10 @@ export default function PublicMusicPlayer() {
             transform 0.28s ease,
             opacity 0.28s ease;
         }
+
+        /* ================================================
+           PESTAÑA LATERAL
+        ================================================ */
 
         .public-music-tab {
           position: relative;
@@ -638,6 +590,10 @@ export default function PublicMusicPlayer() {
           opacity: 1;
         }
 
+        /* ================================================
+           CUERPO DEL REPRODUCTOR
+        ================================================ */
+
         .public-music-body {
           display: flex;
           align-items: center;
@@ -677,6 +633,10 @@ export default function PublicMusicPlayer() {
           }
         }
 
+        /* ================================================
+           BOTONES
+        ================================================ */
+
         .public-music-main-button,
         .public-music-mute {
           border: 0;
@@ -710,6 +670,10 @@ export default function PublicMusicPlayer() {
 
           font-size: 13px;
         }
+
+        /* ================================================
+           INFORMACIÓN DE LA CANCIÓN
+        ================================================ */
 
         .public-music-info {
           width: 130px;
@@ -807,6 +771,10 @@ export default function PublicMusicPlayer() {
           color: rgba(255, 255, 255, 0.62);
         }
 
+        /* ================================================
+           CONTROLES DE VOLUMEN
+        ================================================ */
+
         .public-music-controls {
           display: flex;
           align-items: center;
@@ -856,6 +824,10 @@ export default function PublicMusicPlayer() {
 
           color: rgba(255, 255, 255, 0.7);
         }
+
+        /* ================================================
+           VERSIÓN PARA TELÉFONOS
+        ================================================ */
 
         @media (max-width: 640px) {
           .public-music-player {
@@ -944,6 +916,10 @@ export default function PublicMusicPlayer() {
             width: 48px;
           }
         }
+
+        /* ================================================
+           ACCESIBILIDAD
+        ================================================ */
 
         @media (prefers-reduced-motion: reduce) {
           .public-music-title-track {
