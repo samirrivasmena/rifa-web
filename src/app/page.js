@@ -198,6 +198,19 @@ export default async function Page() {
     config?.logo_url || `${siteUrl}/icon`;
 
   /* =======================================================
+     DIAGNÓSTICO TEMPORAL DEL LOGO
+     Aparece en la terminal de Next.js
+     No modifica la base de datos
+  ======================================================= */
+
+  if (process.env.NODE_ENV === "development") {
+    console.log(
+      "LOGO ACTUAL DESDE SUPABASE:",
+      logoUrl
+    );
+  }
+
+  /* =======================================================
      SCHEMA.ORG
   ======================================================= */
 
