@@ -1157,7 +1157,43 @@ font-weight: 900 !important;
   }
 }
 
-        
+      
+/* ETIQUETAS MÁS VISIBLES - EVENTOS DISPONIBLES */
+
+#eventos-disponibles
+.principal-badges-free-drop-row
+.principal-destacada-badge,
+
+#eventos-disponibles
+.principal-badges-free-drop-row
+.principal-free-drop-label {
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0 !important;
+}
+
+/* TEXTO FREE DROP Y ACTIVO */
+#eventos-disponibles
+.principal-free-drop-label span,
+
+#eventos-disponibles
+.principal-free-drop-label strong {
+  font-size: inherit !important;
+  font-weight: 900 !important;
+}
+
+/* TELÉFONOS */
+@media (max-width: 480px) {
+  #eventos-disponibles
+  .principal-badges-free-drop-row
+  .principal-destacada-badge,
+
+  #eventos-disponibles
+  .principal-badges-free-drop-row
+  .principal-free-drop-label {
+    font-size: 11px !important;
+  }
+}
       `}</style>
 
       <main className="principal-page" id="inicio">
