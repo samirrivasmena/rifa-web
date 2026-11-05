@@ -1099,8 +1099,8 @@ if (e.key === "Escape") {
           padding: 0 5px !important;
           margin: 0 !important;
           border-radius: 999px;
-          font-size: 10px !important;
-          font-weight: 800;
+font-size: 13px !important;
+font-weight: 900 !important;
           line-height: 1;
           white-space: nowrap;
           text-align: center;
@@ -1145,49 +1145,19 @@ if (e.key === "Escape") {
           color: #1d4ed8;
         }
 
-        @media (max-width: 480px) {
-          #eventos-disponibles .principal-badges-free-drop-row {
-            gap: 6px;
-          }
-          #eventos-disponibles .principal-badges-free-drop-row .principal-destacada-badge,
-          #eventos-disponibles .principal-badges-free-drop-row .principal-free-drop-label {
-            font-size: 9px !important;
-          }
-        }
-
-        /* ==========================================
-   ETIQUETAS DESTACADA Y FREE DROP
-   TEXTO MÁS VISIBLE
-========================================== */
-
-#eventos-disponibles .principal-badges-free-drop-row
-.principal-destacada-badge,
-
-#eventos-disponibles .principal-badges-free-drop-row
-.principal-free-drop-label {
-  font-size: 12px !important;
-  font-weight: 900 !important;
-  letter-spacing: 0.15px;
-}
-
-/* FREE DROP ACTIVO MÁS GRUESO */
-#eventos-disponibles .principal-badges-free-drop-row
-.principal-free-drop-label strong {
-  font-weight: 900 !important;
-}
-
-/* TELÉFONOS */
 @media (max-width: 480px) {
-  #eventos-disponibles .principal-badges-free-drop-row
-  .principal-destacada-badge,
+  #eventos-disponibles .principal-badges-free-drop-row {
+    gap: 6px;
+  }
 
-  #eventos-disponibles .principal-badges-free-drop-row
-  .principal-free-drop-label {
-    font-size: 10px !important;
+  #eventos-disponibles .principal-badges-free-drop-row .principal-destacada-badge,
+  #eventos-disponibles .principal-badges-free-drop-row .principal-free-drop-label {
+    font-size: 11px !important;
     font-weight: 900 !important;
-    letter-spacing: 0;
   }
 }
+
+        
       `}</style>
 
       <main className="principal-page" id="inicio">
