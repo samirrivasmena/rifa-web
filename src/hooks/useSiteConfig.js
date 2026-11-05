@@ -1,3 +1,4 @@
+
 "use client";
 
 import {
@@ -10,7 +11,7 @@ const STORAGE_KEY = "site-config-updated";
 const CHANNEL_NAME = "site-config-channel";
 
 // ============================================================
-// ESTADO COMPARTIDO ENTRE TODAS LAS INSTANCIAS DEL HOOK
+// ESTADO COMPARTIDO
 // ============================================================
 
 let sharedConfig = null;
@@ -24,33 +25,19 @@ let broadcastChannel = null;
 const subscribers = new Set();
 
 // ============================================================
-// APLICAR CONFIGURACIÓN INICIAL DEL SERVIDOR
-// ============================================================
-
-function aplicarConfigInicial(initialConfig) {
-  if (!initialConfig) {
-    return;
-  }
-
-  if (!sharedConfig) {
-    sharedConfig = initialConfig;
-    sharedLoading = false;
-    sharedError = null;
-  }
-}
-
-// ============================================================
 // NOTIFICAR A TODOS LOS COMPONENTES
 // ============================================================
 
 function notifySubscribers() {
+  const estado = {
+    config: sharedConfig,
+    loadingConfig: sharedLoading,
+    errorConfig: sharedError,
+  };
+
   subscribers.forEach((callback) => {
     try {
-      callback({
-        config: sharedConfig,
-        loadingConfig: sharedLoading,
-        errorConfig: sharedError,
-      });
+      callback(estado);
     } catch (error) {
       console.error(
         "Error notificando configuración:",
@@ -61,7 +48,7 @@ function notifySubscribers() {
 }
 
 // ============================================================
-// ACTUALIZAR CONFIGURACIÓN COMPARTIDA
+// APLICAR CONFIGURACIÓN
 // ============================================================
 
 function setSharedConfig(value) {
@@ -73,21 +60,33 @@ function setSharedConfig(value) {
 }
 
 // ============================================================
-// CARGAR CONFIGURACIÓN
+// CONFIGURACIÓN INICIAL DEL SERVIDOR
+// ============================================================
+
+function aplicarConfigInicial(initialConfig) {
+  if (!initialConfig) {
+    return;
+  }
+
+  // La configuración recibida del servidor debe poder
+  // reemplazar una configuración anterior de otra página.
+  if (sharedConfig !== initialConfig) {
+    setSharedConfig(initialConfig);
+  }
+}
+
+// ============================================================
+// CARGAR CONFIGURACIÓN PÚBLICA
 // ============================================================
 
 async function cargarConfigCompartida({
   force = false,
   silent = false,
 } = {}) {
-  // Si ya existe una petición en curso,
-  // todos los componentes esperan la misma.
   if (requestPromise) {
     return requestPromise;
   }
 
-  // Si ya tenemos configuración y no estamos
-  // forzando una actualización, no consultamos otra vez.
   if (!force && sharedConfig) {
     return sharedConfig;
   }
@@ -105,11 +104,6 @@ async function cargarConfigCompartida({
         {
           method: "GET",
           cache: "no-store",
-          headers: {
-            "Cache-Control":
-              "no-cache, no-store, max-age=0",
-            Pragma: "no-cache",
-          },
         }
       );
 
@@ -118,14 +112,13 @@ async function cargarConfigCompartida({
       if (!res.ok || !data?.ok) {
         throw new Error(
           data?.error ||
-            "No se pudo cargar la configuración"
+          "No se pudo cargar la configuración"
         );
       }
 
-      sharedConfig =
-        data.configuracion || null;
-
-      sharedError = null;
+      setSharedConfig(
+        data.configuracion || null
+      );
 
       return sharedConfig;
     } catch (error) {
@@ -175,43 +168,15 @@ function instalarListenersGlobales() {
 
   listenersInstalled = true;
 
-  // ----------------------------------------------------------
-  // VOLVER A LA PESTAÑA
-  // ----------------------------------------------------------
-
-  const handleVisibilityChange = () => {
-    // No recargamos la configuración simplemente
-    // por volver a esta pestaña.
-    //
-    // Los cambios reales del Admin ya se sincronizan
-    // mediante:
-    // - site-config-updated
-    // - storage
-    // - BroadcastChannel
-  };
-
-  // ----------------------------------------------------------
-  // EVENTO INTERNO DEL ADMIN
-  // ----------------------------------------------------------
-
   const handleSiteConfigUpdated = () => {
     recargarConfigGlobal();
   };
-
-  // ----------------------------------------------------------
-  // LOCALSTORAGE ENTRE PESTAÑAS
-  // ----------------------------------------------------------
 
   const handleStorage = (event) => {
     if (event.key === STORAGE_KEY) {
       recargarConfigGlobal();
     }
   };
-
-  document.addEventListener(
-    "visibilitychange",
-    handleVisibilityChange
-  );
 
   window.addEventListener(
     "site-config-updated",
@@ -222,10 +187,6 @@ function instalarListenersGlobales() {
     "storage",
     handleStorage
   );
-
-  // ----------------------------------------------------------
-  // BROADCAST CHANNEL
-  // ----------------------------------------------------------
 
   if ("BroadcastChannel" in window) {
     broadcastChannel =
@@ -243,19 +204,12 @@ function instalarListenersGlobales() {
 }
 
 // ============================================================
-// HOOK
+// HOOK PRINCIPAL
 // ============================================================
 
 export function useSiteConfig(initialConfig = null) {
-  // Si esta página recibió configuración directamente
-  // desde el servidor, la usamos desde el primer render.
-  aplicarConfigInicial(initialConfig);
-
   const [state, setState] = useState(() => ({
-    config:
-      sharedConfig ||
-      initialConfig ||
-      null,
+    config: sharedConfig || initialConfig || null,
 
     loadingConfig:
       sharedConfig || initialConfig
@@ -270,10 +224,6 @@ export function useSiteConfig(initialConfig = null) {
   // ==========================================================
 
   useEffect(() => {
-    // Por seguridad, volvemos a aplicar la configuración
-    // inicial si todavía no existe una compartida.
-    aplicarConfigInicial(initialConfig);
-
     const actualizar = (nuevoEstado) => {
       setState(nuevoEstado);
     };
@@ -282,26 +232,21 @@ export function useSiteConfig(initialConfig = null) {
 
     instalarListenersGlobales();
 
-    // Sincronizamos inmediatamente esta instancia
-    // con el estado compartido actual.
-    actualizar({
-      config:
-        sharedConfig ||
-        initialConfig ||
-        null,
+    // Aplicar configuración actual recibida del servidor.
+    if (initialConfig) {
+      aplicarConfigInicial(initialConfig);
+    } else {
+      actualizar({
+        config: sharedConfig,
+        loadingConfig: sharedLoading,
+        errorConfig: sharedError,
+      });
+    }
 
-      loadingConfig:
-        sharedConfig || initialConfig
-          ? false
-          : sharedLoading,
-
-      errorConfig: sharedError,
-    });
-
-    // Si ya recibimos configuración del servidor,
-    // cargarConfigCompartida() reutiliza sharedConfig
-    // y NO provoca una petición duplicada.
-    cargarConfigCompartida();
+    // Si no existe configuración, consultarla una sola vez.
+    if (!sharedConfig) {
+      cargarConfigCompartida();
+    }
 
     return () => {
       subscribers.delete(actualizar);
@@ -309,11 +254,7 @@ export function useSiteConfig(initialConfig = null) {
   }, [initialConfig]);
 
   // ==========================================================
-  // SET CONFIG
-  // ==========================================================
-  //
-  // Conservamos setConfig para no romper ningún componente
-  // que ya lo esté utilizando.
+  // ACTUALIZAR CONFIGURACIÓN
   // ==========================================================
 
   const setConfig = useCallback((value) => {
@@ -321,14 +262,13 @@ export function useSiteConfig(initialConfig = null) {
       setSharedConfig(
         value(sharedConfig)
       );
-      return;
+    } else {
+      setSharedConfig(value);
     }
-
-    setSharedConfig(value);
   }, []);
 
   // ==========================================================
-  // RECARGAR CONFIG
+  // RECARGAR CONFIGURACIÓN
   // ==========================================================
 
   const recargarConfig = useCallback(() => {
@@ -336,7 +276,7 @@ export function useSiteConfig(initialConfig = null) {
   }, []);
 
   // ==========================================================
-  // RESPUESTA DEL HOOK
+  // RESPUESTA
   // ==========================================================
 
   return {
