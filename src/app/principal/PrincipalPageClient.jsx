@@ -1155,6 +1155,39 @@ if (e.key === "Escape") {
           }
         }
 
+        /* ==========================================
+   ETIQUETAS DESTACADA Y FREE DROP
+   TEXTO MÁS VISIBLE
+========================================== */
+
+#eventos-disponibles .principal-badges-free-drop-row
+.principal-destacada-badge,
+
+#eventos-disponibles .principal-badges-free-drop-row
+.principal-free-drop-label {
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.15px;
+}
+
+/* FREE DROP ACTIVO MÁS GRUESO */
+#eventos-disponibles .principal-badges-free-drop-row
+.principal-free-drop-label strong {
+  font-weight: 900 !important;
+}
+
+/* TELÉFONOS */
+@media (max-width: 480px) {
+  #eventos-disponibles .principal-badges-free-drop-row
+  .principal-destacada-badge,
+
+  #eventos-disponibles .principal-badges-free-drop-row
+  .principal-free-drop-label {
+    font-size: 10px !important;
+    font-weight: 900 !important;
+    letter-spacing: 0;
+  }
+}
       `}</style>
 
       <main className="principal-page" id="inicio">
