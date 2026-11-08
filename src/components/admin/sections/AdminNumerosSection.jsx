@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -19,13 +20,20 @@ export default function AdminNumerosSection({
   const [loadingTickets, setLoadingTickets] = useState(true);
   const [intentos, setIntentos] = useState(0);
 
+  const requestIdRef = useRef(0);
+
   useEffect(() => {
     setIntentos(0);
+    setTicketsRifa([]);
+    setLoadingTickets(true);
   }, [rifaSeleccionada?.id]);
 
   useEffect(() => {
     let mounted = true;
     let retryTimeout = null;
+
+    const controller = new AbortController();
+    const requestId = ++requestIdRef.current;
 
     const leerRespuestaSegura = async (res) => {
       const raw = await res.text();
@@ -49,12 +57,20 @@ export default function AdminNumerosSection({
       }
 
       try {
-        setLoadingTickets(true);
+        if (mounted) {
+          setLoadingTickets(true);
+        }
 
         const headers = await getAdminAuthHeaders();
 
+        if (!mounted || controller.signal.aborted) {
+          return;
+        }
+
         if (!headers.Authorization) {
-          console.warn("Todavía no hay token admin listo para sincronizar tickets");
+          console.warn(
+            "Todavía no hay token admin listo para cargar tickets"
+          );
 
           if (mounted && intentos < 6) {
             retryTimeout = setTimeout(() => {
@@ -68,38 +84,15 @@ export default function AdminNumerosSection({
           return;
         }
 
-        // 1) Sincroniza tickets
-        const syncRes = await fetch(
-          `/api/sincronizar-rifa?rifaId=${encodeURIComponent(rifaId)}`,
-          {
-            method: "GET",
-            headers,
-            cache: "no-store",
-          }
-        );
-
-        const syncData = await leerRespuestaSegura(syncRes);
-
-        if (!syncRes.ok) {
-          console.error(
-            syncData.error ||
-              syncData.raw ||
-              "No se pudo sincronizar la rifa antes de cargar tickets"
-          );
-
-          if (mounted) {
-            setTicketsRifa([]);
-          }
-          return;
-        }
-
-        // 2) Carga tickets ya sincronizados
+        // Solo consultamos los tickets.
+        // No ejecutamos sincronización automática.
         const res = await fetch(
           `/api/admin-tickets-rifa?rifaId=${encodeURIComponent(rifaId)}`,
           {
             method: "GET",
             headers,
             cache: "no-store",
+            signal: controller.signal,
           }
         );
 
@@ -107,23 +100,37 @@ export default function AdminNumerosSection({
 
         if (!res.ok) {
           console.error(
-            data.error || data.raw || "No se pudieron cargar los tickets de la rifa"
+            data.error ||
+              data.raw ||
+              "No se pudieron cargar los tickets de la rifa"
           );
 
-          if (mounted) {
+          if (mounted && requestId === requestIdRef.current) {
             setTicketsRifa([]);
           }
+
           return;
         }
 
-        if (mounted) {
-          setTicketsRifa(Array.isArray(data.tickets) ? data.tickets : []);
+        if (mounted && requestId === requestIdRef.current) {
+          setTicketsRifa(
+            Array.isArray(data.tickets) ? data.tickets : []
+          );
         }
       } catch (error) {
+        if (error?.name === "AbortError") {
+          return;
+        }
+
         console.error("Error cargando tickets de la rifa:", error);
-        if (mounted) setTicketsRifa([]);
+
+        if (mounted && requestId === requestIdRef.current) {
+          setTicketsRifa([]);
+        }
       } finally {
-        if (mounted) setLoadingTickets(false);
+        if (mounted && requestId === requestIdRef.current) {
+          setLoadingTickets(false);
+        }
       }
     };
 
@@ -131,7 +138,11 @@ export default function AdminNumerosSection({
 
     return () => {
       mounted = false;
-      if (retryTimeout) clearTimeout(retryTimeout);
+      controller.abort();
+
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
   }, [rifaSeleccionada?.id, intentos]);
 
@@ -153,7 +164,7 @@ export default function AdminNumerosSection({
 
         {loadingTickets && (
           <div className="adminpro-top-info">
-            Sincronizando y cargando números de la rifa...
+            Cargando números de la rifa...
           </div>
         )}
       </div>

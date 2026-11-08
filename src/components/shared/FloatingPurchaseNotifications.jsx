@@ -1,11 +1,26 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
 import "./floating-purchase-notifications.css";
 
+/* =========================================================
+   CONFIGURACIÓN
+========================================================= */
+
 const STORAGE_KEY =
   "sorteoslsd_ultima_compra_notificacion_mostrada";
+
+// Consulta periódica cada 60 segundos.
+const INTERVALO_CONSULTA = 60 * 1000;
+
+// Evita consultas repetidas por focus y visibilitychange.
+const INTERVALO_MINIMO = 10 * 1000;
+
+// Duración de la notificación.
+const TIEMPO_SALIDA = 2500;
+const TIEMPO_CIERRE = 3000;
 
 export default function FloatingPurchaseNotifications() {
   const { config } = useSiteConfig();
@@ -13,24 +28,24 @@ export default function FloatingPurchaseNotifications() {
   const [notificacion, setNotificacion] = useState(null);
   const [saliendo, setSaliendo] = useState(false);
 
-  // Deslizamiento táctil
-  const [desplazamientoX, setDesplazamientoX] = useState(0);
-  const [arrastrando, setArrastrando] = useState(false);
+  /* =======================================================
+     ESTADOS DEL DESLIZAMIENTO TÁCTIL
+  ======================================================= */
 
-  /*
-   * Guarda en memoria la última aprobación mostrada.
-   *
-   * También usamos sessionStorage para evitar que
-   * la misma compra vuelva a aparecer al:
-   *
-   * - recargar la página
-   * - cambiar entre páginas del sitio
-   * - desmontar y volver a montar el componente
-   *
-   * sessionStorage dura solamente durante
-   * la sesión/pestaña actual del navegador.
-   */
+  const [desplazamientoX, setDesplazamientoX] =
+    useState(0);
+
+  const [arrastrando, setArrastrando] =
+    useState(false);
+
+  /* =======================================================
+     REFERENCIAS
+  ======================================================= */
+
   const ultimaCompraMostrada = useRef(null);
+
+  const ultimaConsulta = useRef(0);
+  const consultaEnCurso = useRef(false);
 
   const timerSalir = useRef(null);
   const timerCerrar = useRef(null);
@@ -38,11 +53,39 @@ export default function FloatingPurchaseNotifications() {
   const touchStartX = useRef(null);
   const touchActualX = useRef(0);
 
+  /* =======================================================
+     CERRAR NOTIFICACIÓN
+  ======================================================= */
+
+  const cerrarNotificacion = () => {
+    clearTimeout(timerSalir.current);
+    clearTimeout(timerCerrar.current);
+
+    touchStartX.current = null;
+    touchActualX.current = 0;
+
+    setArrastrando(false);
+    setDesplazamientoX(0);
+    setSaliendo(true);
+
+    // Respaldo por si no termina la animación CSS.
+    timerCerrar.current = setTimeout(() => {
+      setNotificacion(null);
+      setSaliendo(false);
+      setDesplazamientoX(0);
+      setArrastrando(false);
+    }, 500);
+  };
+
+  /* =======================================================
+     CONSULTAR ÚLTIMA COMPRA APROBADA
+  ======================================================= */
+
   useEffect(() => {
     let activo = true;
 
     /*
-     * Recuperamos la última notificación mostrada
+     * Recuperar la última notificación mostrada
      * durante esta sesión del navegador.
      */
     try {
@@ -54,12 +97,36 @@ export default function FloatingPurchaseNotifications() {
 
     async function cargarUltimaCompra() {
       /*
-       * No consultamos mientras la pestaña está oculta.
-       * Así evitamos consumir recursos innecesariamente.
+       * No consultar cuando la pestaña está oculta.
        */
       if (document.visibilityState !== "visible") {
         return;
       }
+
+      /*
+       * Evitar solicitudes simultáneas.
+       */
+      if (consultaEnCurso.current) {
+        return;
+      }
+
+      /*
+       * Evitar consultas demasiado cercanas.
+       *
+       * Esto controla las solicitudes que se disparan
+       * al recuperar el foco de la ventana.
+       */
+      const ahora = Date.now();
+
+      if (
+        ahora - ultimaConsulta.current <
+        INTERVALO_MINIMO
+      ) {
+        return;
+      }
+
+      ultimaConsulta.current = ahora;
+      consultaEnCurso.current = true;
 
       try {
         const res = await fetch(
@@ -87,9 +154,7 @@ export default function FloatingPurchaseNotifications() {
         }
 
         /*
-         * Si esta aprobación ya fue mostrada
-         * durante la sesión actual, no repetimos
-         * la notificación.
+         * Evitar mostrar una aprobación repetida.
          */
         if (
           ultimaCompraMostrada.current ===
@@ -99,7 +164,7 @@ export default function FloatingPurchaseNotifications() {
         }
 
         /*
-         * Marcamos esta aprobación como mostrada.
+         * Guardar el identificador público.
          */
         ultimaCompraMostrada.current =
           ultimaCompra.id;
@@ -110,23 +175,25 @@ export default function FloatingPurchaseNotifications() {
             ultimaCompra.id
           );
         } catch {
-          /*
-           * Si sessionStorage no está disponible,
-           * el useRef continúa evitando duplicados
-           * mientras el componente siga montado.
-           */
+          // useRef sigue evitando duplicados.
         }
+
+        /*
+         * Preparar nueva notificación.
+         */
+        clearTimeout(timerSalir.current);
+        clearTimeout(timerCerrar.current);
+
+        touchStartX.current = null;
+        touchActualX.current = 0;
 
         setSaliendo(false);
         setDesplazamientoX(0);
         setArrastrando(false);
         setNotificacion(ultimaCompra);
 
-        clearTimeout(timerSalir.current);
-        clearTimeout(timerCerrar.current);
-
         /*
-         * Comienza animación de salida.
+         * Iniciar animación de salida.
          */
         timerSalir.current = setTimeout(() => {
           if (!activo) {
@@ -134,12 +201,10 @@ export default function FloatingPurchaseNotifications() {
           }
 
           setSaliendo(true);
-        }, 2500);
+        }, TIEMPO_SALIDA);
 
         /*
-         * Respaldo:
-         * eliminamos la notificación aunque por algún
-         * motivo la animación no termine correctamente.
+         * Cierre de respaldo.
          */
         timerCerrar.current = setTimeout(() => {
           if (!activo) {
@@ -150,46 +215,45 @@ export default function FloatingPurchaseNotifications() {
           setSaliendo(false);
           setDesplazamientoX(0);
           setArrastrando(false);
-        }, 3000);
+        }, TIEMPO_CIERRE);
       } catch (error) {
-        console.log(
+        console.error(
           "Error cargando última compra:",
           error
         );
+      } finally {
+        consultaEnCurso.current = false;
       }
     }
 
-    /*
-     * Primera consulta al entrar a la página.
-     */
+    /* =====================================================
+       CONSULTA INICIAL
+    ===================================================== */
+
     cargarUltimaCompra();
 
-    /*
-     * Actualización cada 30 segundos.
-     *
-     * Evitamos consultas demasiado frecuentes,
-     * pero reducimos el retraso respecto a los
-     * 60 segundos anteriores.
-     */
+    /* =====================================================
+       CONSULTA PERIÓDICA CADA 60 SEGUNDOS
+    ===================================================== */
+
     const intervalo = setInterval(() => {
       cargarUltimaCompra();
-    }, 30000);
+    }, INTERVALO_CONSULTA);
 
-    /*
-     * Si el usuario regresa a esta pestaña,
-     * comprobamos inmediatamente si existe
-     * una nueva compra aprobada.
-     */
+    /* =====================================================
+       DETECTAR REGRESO A LA PESTAÑA
+    ===================================================== */
+
     const manejarVisibilidad = () => {
       if (document.visibilityState === "visible") {
         cargarUltimaCompra();
       }
     };
 
-    /*
-     * También comprobamos cuando la ventana
-     * recupera el foco.
-     */
+    /* =====================================================
+       DETECTAR FOCO DE LA VENTANA
+    ===================================================== */
+
     const manejarFocus = () => {
       cargarUltimaCompra();
     };
@@ -203,6 +267,10 @@ export default function FloatingPurchaseNotifications() {
       "focus",
       manejarFocus
     );
+
+    /* =====================================================
+       LIMPIEZA
+    ===================================================== */
 
     return () => {
       activo = false;
@@ -223,21 +291,10 @@ export default function FloatingPurchaseNotifications() {
     };
   }, []);
 
-  /*
-   * Cerrar notificación manualmente.
-   */
-  const cerrarNotificacion = () => {
-    clearTimeout(timerSalir.current);
-    clearTimeout(timerCerrar.current);
+  /* =======================================================
+     GESTOS TÁCTILES
+  ======================================================= */
 
-    setArrastrando(false);
-    setDesplazamientoX(0);
-    setSaliendo(true);
-  };
-
-  /*
-   * Comienza el gesto táctil.
-   */
   const handleTouchStart = (e) => {
     if (saliendo) {
       return;
@@ -258,9 +315,6 @@ export default function FloatingPurchaseNotifications() {
     setArrastrando(true);
   };
 
-  /*
-   * Mueve la notificación siguiendo el dedo.
-   */
   const handleTouchMove = (e) => {
     if (
       touchStartX.current === null ||
@@ -279,15 +333,10 @@ export default function FloatingPurchaseNotifications() {
       touch.clientX - touchStartX.current;
 
     touchActualX.current = diferencia;
+
     setDesplazamientoX(diferencia);
   };
 
-  /*
-   * Cuando el usuario levanta el dedo:
-   *
-   * - Si movió suficiente -> cerramos.
-   * - Si no -> vuelve suavemente al centro.
-   */
   const handleTouchEnd = () => {
     if (touchStartX.current === null) {
       return;
@@ -301,10 +350,7 @@ export default function FloatingPurchaseNotifications() {
     setArrastrando(false);
 
     /*
-     * DESLIZÓ HACIA LA IZQUIERDA
-     *
-     * Si supera 60px, no lo devolvemos
-     * al centro. Lo enviamos fuera.
+     * Deslizar hacia la izquierda para cerrar.
      */
     if (distancia <= -60) {
       clearTimeout(timerSalir.current);
@@ -313,18 +359,34 @@ export default function FloatingPurchaseNotifications() {
       setDesplazamientoX(distancia);
       setSaliendo(true);
 
+      timerCerrar.current = setTimeout(() => {
+        setNotificacion(null);
+        setSaliendo(false);
+        setDesplazamientoX(0);
+        setArrastrando(false);
+      }, 500);
+
       return;
     }
 
     /*
-     * Si no llegó a 60px,
-     * vuelve al centro.
+     * Si el gesto fue corto, regresar al centro.
      */
     setDesplazamientoX(0);
+
+    clearTimeout(timerSalir.current);
+    clearTimeout(timerCerrar.current);
 
     timerSalir.current = setTimeout(() => {
       setSaliendo(true);
     }, 1800);
+
+    timerCerrar.current = setTimeout(() => {
+      setNotificacion(null);
+      setSaliendo(false);
+      setDesplazamientoX(0);
+      setArrastrando(false);
+    }, 2300);
   };
 
   const handleTouchCancel = () => {
@@ -335,15 +397,18 @@ export default function FloatingPurchaseNotifications() {
     setDesplazamientoX(0);
   };
 
+  /* =======================================================
+     NO MOSTRAR SI NO EXISTE NOTIFICACIÓN
+  ======================================================= */
+
   if (!notificacion) {
     return null;
   }
 
-  /*
-   * Mientras se arrastra usamos una variable CSS.
-   * Esto permite mantener separado el centrado
-   * de la tarjeta de su movimiento horizontal.
-   */
+  /* =======================================================
+     COLORES Y DESLIZAMIENTO
+  ======================================================= */
+
   const estiloDeslizamiento = {
     "--purchase-swipe-x":
       `${desplazamientoX}px`,
@@ -352,6 +417,10 @@ export default function FloatingPurchaseNotifications() {
       config?.notificaciones_color_acento ||
       "#dc2626",
   };
+
+  /* =======================================================
+     INTERFAZ ORIGINAL
+  ======================================================= */
 
   return (
     <div
@@ -373,6 +442,8 @@ export default function FloatingPurchaseNotifications() {
           e.animationName ===
             "purchaseToastOutLeft"
         ) {
+          clearTimeout(timerCerrar.current);
+
           setNotificacion(null);
           setSaliendo(false);
           setDesplazamientoX(0);
@@ -401,13 +472,6 @@ export default function FloatingPurchaseNotifications() {
           🔴 ULTIMA COMPRA
         </div>
 
-        {/*
-         * El nombre YA viene anonimizado
-         * desde el servidor.
-         *
-         * Ejemplo:
-         * Samir ***
-         */}
         <strong>
           {notificacion.nombre || "Cliente ***"}
         </strong>

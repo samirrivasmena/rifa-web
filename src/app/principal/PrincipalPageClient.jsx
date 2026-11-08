@@ -546,6 +546,12 @@ if (e.key === "Escape") {
 
   useEffect(() => {
 
+    // Las rifas ya llegaron desde el servidor: evitar una segunda consulta.
+    // Si no llegaron eventos, conservar la carga de respaldo existente.
+    if (Array.isArray(initialRifas) && initialRifas.length > 0) {
+      return;
+    }
+
     const cargarRifas = async () => {
 
       try {

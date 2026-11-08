@@ -1,18 +1,20 @@
-﻿import PrincipalPageClient from "./PrincipalPageClient";
-import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
-import MaintenancePage from "@/components/public/MaintenancePage";
+
+import { cache } from "react";
+import PrincipalPageClient from "./PrincipalPageClient";
 import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
 import { obtenerConfiguracionPublica } from "@/lib/configuracion/obtenerConfiguracionPublica";
+import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
+import MaintenancePage from "@/components/public/MaintenancePage";
 
 /* =========================================================
-   RENDER DINÃMICO
+   RENDER DINÁMICO
 ========================================================= */
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 /* =========================================================
-   CONFIGURACIÃ“N GENERAL
+   CONFIGURACIÓN GENERAL
 ========================================================= */
 
 const siteUrl =
@@ -20,21 +22,22 @@ const siteUrl =
   "https://www.sorteoslsd.com";
 
 /* =========================================================
-   OBTENER CONFIGURACIÃ“N SEGURA
+   OBTENER CONFIGURACIÓN SEGURA
+   CACHE POR RENDERIZACIÓN CON REACT
 ========================================================= */
 
-async function obtenerConfiguracion() {
+const obtenerConfiguracion = cache(async () => {
   try {
     return await obtenerConfiguracionPublica();
   } catch (error) {
     console.error(
-      "Error obteniendo configuraciÃ³n de /principal:",
+      "Error obteniendo configuración de /principal:",
       error
     );
 
     return null;
   }
-}
+});
 
 /* =========================================================
    METADATA
@@ -92,18 +95,28 @@ export async function generateMetadata() {
 }
 
 /* =========================================================
-   PÃGINA
+   PÁGINA
 ========================================================= */
 
 export default async function Page() {
+  /* =======================================================
+     VERIFICAR MODO MANTENIMIENTO
+  ======================================================= */
+
   const modoMantenimiento =
     await obtenerModoMantenimiento();
 
   if (modoMantenimiento) {
     return <MaintenancePage />;
   }
+
+  /* =======================================================
+     OBTENER CONFIGURACIÓN Y RIFAS
+  ======================================================= */
+
   const [config, rifasIniciales] = await Promise.all([
     obtenerConfiguracion(),
+
     obtenerRifasPublicas().catch((error) => {
       console.error(
         "Error cargando rifas iniciales de /principal:",
@@ -174,10 +187,9 @@ export default async function Page() {
   return (
     <div style={coloresIniciales}>
       <PrincipalPageClient
-  initialConfig={config}
-  initialRifas={rifasIniciales}
-/>
+        initialConfig={config}
+        initialRifas={rifasIniciales}
+      />
     </div>
   );
 }
-

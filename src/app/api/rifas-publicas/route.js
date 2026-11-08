@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
 
@@ -6,15 +7,50 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 /* =========================================================
-   HEADERS — SIN CACHÉ
+   CONFIGURACIÓN DE CACHÉ
 ========================================================= */
 
+const CACHE_DURATION_MS = 15 * 1000;
+
 const NO_CACHE_HEADERS = {
-  "Cache-Control":
-    "no-store, no-cache, must-revalidate, proxy-revalidate",
-  Pragma: "no-cache",
-  Expires: "0",
+  "Cache-Control": "no-store",
 };
+
+let cachedRifas = null;
+let cacheExpiresAt = 0;
+let pendingRequest = null;
+
+/* =========================================================
+   OBTENER RIFAS CON CACHÉ TEMPORAL
+========================================================= */
+
+async function obtenerRifasConCache() {
+  const ahora = Date.now();
+
+  if (cachedRifas !== null && ahora < cacheExpiresAt) {
+    return cachedRifas;
+  }
+
+  // Evita repetir consultas simultáneas en el mismo proceso.
+  if (pendingRequest) {
+    return pendingRequest;
+  }
+
+  pendingRequest = (async () => {
+    const rifas = await obtenerRifasPublicas();
+
+    cachedRifas = rifas;
+    cacheExpiresAt = Date.now() + CACHE_DURATION_MS;
+
+    return rifas;
+  })();
+
+  try {
+    return await pendingRequest;
+  } finally {
+    pendingRequest = null;
+  }
+}
 
 /* =========================================================
    GET — RIFAS PÚBLICAS
@@ -22,7 +58,7 @@ const NO_CACHE_HEADERS = {
 
 export async function GET() {
   try {
-    const rifas = await obtenerRifasPublicas();
+    const rifas = await obtenerRifasConCache();
 
     return NextResponse.json(
       {
@@ -34,20 +70,7 @@ export async function GET() {
       }
     );
   } catch (error) {
-    /*
-     * IMPORTANTE:
-     *
-     * El error completo solamente se registra
-     * en el servidor.
-     *
-     * No enviamos error.message al navegador
-     * porque esta es una API pública.
-     */
-
-    console.error(
-      "rifas-publicas error:",
-      error
-    );
+    console.error("rifas-publicas error:", error);
 
     return NextResponse.json(
       {

@@ -1,20 +1,19 @@
-import { NextResponse } from "next/server";
 
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const runtime = "nodejs";
 
-// ============================================================
-// CAMPOS PÚBLICOS DE UNA RIFA
-//
-// IMPORTANTE:
-// Esta API es pública.
-//
-// No usamos select("*") para evitar que una columna interna
-// agregada en el futuro quede expuesta automáticamente.
-// ============================================================
+/* ============================================================
+   CAMPOS PÚBLICOS DE LA RIFA
+
+   Esta API es pública.
+
+   Seleccionamos solamente campos permitidos para evitar
+   exponer columnas internas de Supabase.
+============================================================ */
 
 const CAMPOS_PUBLICOS_RIFA = `
   id,
@@ -35,9 +34,50 @@ const CAMPOS_PUBLICOS_RIFA = `
   destacada
 `;
 
-// ============================================================
-// TOTAL DE NÚMEROS
-// ============================================================
+/* ============================================================
+   CAMPOS DE LA VISTA OPTIMIZADA
+
+   Esta vista ya existe en Supabase.
+
+   No necesitamos crear tablas ni modificar tickets.
+============================================================ */
+
+const CAMPOS_RESUMEN = `
+  rifa_id,
+  tickets_pagados,
+  tickets_free,
+  tickets_ocupados,
+  disponibles_inventario
+`;
+
+/* ============================================================
+   RESPUESTA JSON SIN CACHÉ
+
+   Conservamos el comportamiento original para que las
+   estadísticas puedan reflejar las compras recientes.
+============================================================ */
+
+function responderJSON(data, status = 200) {
+  return NextResponse.json(data, {
+    status,
+    headers: {
+      "Cache-Control":
+        "no-store, no-cache, must-revalidate, proxy-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
+    },
+  });
+}
+
+/* ============================================================
+   CALCULAR TOTAL DE NÚMEROS
+
+   Mantiene exactamente las prioridades anteriores:
+
+   1. numero_inicio / numero_fin
+   2. cantidad_numeros
+   3. formato
+============================================================ */
 
 function obtenerTotalNumeros(rifa = {}) {
   const inicio = Number(rifa?.numero_inicio);
@@ -51,9 +91,7 @@ function obtenerTotalNumeros(rifa = {}) {
     return fin - inicio + 1;
   }
 
-  const cantidad = Number(
-    rifa?.cantidad_numeros
-  );
+  const cantidad = Number(rifa?.cantidad_numeros);
 
   if (
     Number.isFinite(cantidad) &&
@@ -67,606 +105,288 @@ function obtenerTotalNumeros(rifa = {}) {
     : 10000;
 }
 
-// ============================================================
-// NORMALIZAR TEXTO
-// ============================================================
+/* ============================================================
+   CONVERTIR ESTADÍSTICAS A NÚMEROS SEGUROS
+============================================================ */
 
-function normalizarTexto(valor) {
-  return String(valor ?? "")
-    .trim()
-    .toLowerCase();
-}
+function numeroSeguro(valor) {
+  const numero = Number(valor);
 
-// ============================================================
-// IDENTIFICAR TICKET FREE
-// ============================================================
-
-function esTicketFree(ticket = {}) {
-  return (
-    ticket?.free_drop_id != null ||
-    ticket?.free_drop_participation_id != null ||
-    normalizarTexto(ticket?.tipo) === "free"
-  );
-}
-
-// ============================================================
-// IDENTIFICAR TICKET PAGADO
-// ============================================================
-
-function esTicketPagado(ticket = {}) {
-  return (
-    ticket?.compra_id != null &&
-    !esTicketFree(ticket)
-  );
-}
-
-// ============================================================
-// IDENTIFICAR TICKET DISPONIBLE
-// ============================================================
-
-function esTicketDisponible(ticket = {}) {
-  return (
-    ticket?.compra_id == null &&
-    ticket?.free_drop_id == null &&
-    ticket?.free_drop_participation_id == null &&
-    normalizarTexto(ticket?.tipo) !== "free" &&
-    normalizarTexto(ticket?.estado) ===
-      "disponible"
-  );
-}
-
-// ============================================================
-// AGREGAR NÚMERO A SET
-// ============================================================
-
-function agregarNumero(
-  set,
-  numeroTicket
-) {
-  if (
-    numeroTicket == null ||
-    numeroTicket === ""
-  ) {
-    return;
+  if (!Number.isFinite(numero)) {
+    return 0;
   }
 
-  set.add(String(numeroTicket));
+  return Math.max(0, Math.trunc(numero));
 }
 
-// ============================================================
-// GET
-// ============================================================
+/* ============================================================
+   GET - RESUMEN PÚBLICO DE RIFA
+============================================================ */
 
 export async function GET(req) {
   try {
-    const { searchParams } =
-      new URL(req.url);
+    const { searchParams } = new URL(req.url);
 
-    const rifaId =
-      searchParams.get("rifaId");
+    const rifaId = searchParams.get("rifaId");
 
-    let rifa = null;
+    /* ========================================================
+       1. CONSULTAR RIFA PUBLICADA
 
-    // ========================================================
-    // 1. CARGAR RIFA
-    // ========================================================
+       Si recibimos rifaId:
+       Consultamos exactamente esa rifa.
 
-    /*
-     * Si recibimos rifaId cargamos exactamente esa rifa.
-     *
-     * EventoDetallePageClient depende de poder consultar
-     * un evento específico.
-     *
-     * SEGURIDAD:
-     * Esta es una API pública, por lo tanto solamente
-     * permitimos consultar rifas publicadas.
-     */
+       Si no recibimos rifaId:
+       Consultamos la rifa publicada más reciente.
+
+       SEGURIDAD:
+       Nunca devolvemos rifas no publicadas.
+    ======================================================== */
+
+    let consultaRifa = supabaseAdmin
+      .from("rifas")
+      .select(CAMPOS_PUBLICOS_RIFA)
+      .eq("publicada", true);
 
     if (rifaId) {
-      const {
-        data,
-        error,
-      } = await supabaseAdmin
-        .from("rifas")
-        .select(
-          CAMPOS_PUBLICOS_RIFA
-        )
-        .eq("id", rifaId)
-        .eq("publicada", true)
-        .maybeSingle();
-
-      if (error) {
-        console.error(
-          "Error cargando rifa:",
-          error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "No se pudo cargar la rifa",
-          },
-          {
-            status: 500,
-            headers: {
-              "Cache-Control":
-                "no-store, no-cache, must-revalidate, proxy-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          }
-        );
-      }
-
-      rifa = data || null;
+      consultaRifa = consultaRifa.eq(
+        "id",
+        rifaId
+      );
     } else {
-      /*
-       * Cuando no llega rifaId:
-       *
-       * Conservamos el comportamiento existente:
-       * usar la rifa publicada más reciente.
-       */
-
-      const {
-        data,
-        error,
-      } = await supabaseAdmin
-        .from("rifas")
-        .select(
-          CAMPOS_PUBLICOS_RIFA
-        )
-        .eq("publicada", true)
-        .order(
-          "created_at",
-          {
-            ascending: false,
-          }
-        )
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error(
-          "Error cargando rifa activa:",
-          error
-        );
-
-        return NextResponse.json(
-          {
-            error:
-              "No se pudo cargar la rifa activa",
-          },
-          {
-            status: 500,
-            headers: {
-              "Cache-Control":
-                "no-store, no-cache, must-revalidate, proxy-revalidate",
-              Pragma: "no-cache",
-              Expires: "0",
-            },
-          }
-        );
-      }
-
-      rifa = data || null;
-    }
-
-    // ========================================================
-    // 2. SI NO EXISTE RIFA PÚBLICA
-    // ========================================================
-
-    if (!rifa) {
-      return NextResponse.json(
+      consultaRifa = consultaRifa.order(
+        "created_at",
         {
-          ok: true,
-          rifa: null,
-        },
-        {
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
+          ascending: false,
         }
       );
     }
 
-    // ========================================================
-    // 3. TOTAL DE NÚMEROS
-    // ========================================================
+    const {
+      data: rifa,
+      error: rifaError,
+    } = await consultaRifa
+      .limit(1)
+      .maybeSingle();
 
-    const totalNumeros =
-      obtenerTotalNumeros(rifa);
+    if (rifaError) {
+      console.error(
+        "Error cargando rifa:",
+        rifaError
+      );
 
-    // ========================================================
-    // 4. INVENTARIO DE TICKETS
-    // ========================================================
+      return responderJSON(
+        {
+          error: rifaId
+            ? "No se pudo cargar la rifa"
+            : "No se pudo cargar la rifa activa",
+        },
+        500
+      );
+    }
 
-    /*
-     * Cargamos únicamente los campos necesarios.
-     *
-     * Necesitamos distinguir correctamente:
-     *
-     * - tickets pagados
-     * - tickets FREE
-     * - tickets disponibles
-     * - tickets bloqueados/reservados
-     *
-     * Estos tickets NO se devuelven individualmente
-     * al navegador.
-     */
+    /* ========================================================
+       2. SI NO EXISTE UNA RIFA PUBLICADA
+
+       Conservamos la respuesta original.
+    ======================================================== */
+
+    if (!rifa) {
+      return responderJSON({
+        ok: true,
+        rifa: null,
+      });
+    }
+
+    /* ========================================================
+       3. TOTAL DE NÚMEROS DE LA RIFA
+    ======================================================== */
+
+    const totalNumeros = obtenerTotalNumeros(rifa);
+
+    /* ========================================================
+       4. CONSULTAR ESTADÍSTICAS OPTIMIZADAS
+
+       ANTES:
+       Se descargaban registros individuales de tickets.
+
+       AHORA:
+       Supabase calcula los conteos y devuelve una fila.
+
+       La vista distingue:
+
+       - Tickets pagados
+       - Tickets Free Drop
+       - Tickets ocupados
+       - Inventario disponible
+
+       No modificamos datos ni asignaciones.
+    ======================================================== */
 
     const {
-      data: ticketsData,
-      error: ticketsError,
+      data: resumen,
+      error: resumenError,
     } = await supabaseAdmin
-      .from("tickets")
-      .select(`
-        id,
-        numero_ticket,
-        compra_id,
-        estado,
-        tipo,
-        free_drop_id,
-        free_drop_participation_id,
-        rifa_id,
-        asignado_at
-      `)
-      .eq(
-        "rifa_id",
-        rifa.id
-      );
+      .from("resumen_publico_tickets_por_rifa")
+      .select(CAMPOS_RESUMEN)
+      .eq("rifa_id", rifa.id)
+      .maybeSingle();
 
-    if (ticketsError) {
+    if (resumenError) {
       console.error(
-        "Error cargando tickets:",
-        ticketsError
+        "Error cargando resumen de tickets:",
+        resumenError
       );
 
-      return NextResponse.json(
+      return responderJSON(
         {
           error:
             "No se pudieron obtener los tickets de la rifa",
         },
-        {
-          status: 500,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
-        }
+        500
       );
     }
 
-    const tickets =
-      Array.isArray(ticketsData)
-        ? ticketsData
-        : [];
+    /* ========================================================
+       5. ESTADÍSTICAS DE TICKETS
 
-    // ========================================================
-    // 5. SETS DE NÚMEROS
-    // ========================================================
+       Conservamos los nombres que utiliza el frontend.
+    ======================================================== */
 
-    /*
-     * Usamos Sets para contar números únicos
-     * y no simplemente cantidad de filas.
-     */
+    const ticketsPagados = numeroSeguro(
+      resumen?.tickets_pagados
+    );
 
-    const numerosPagados =
-      new Set();
+    const ticketsFree = numeroSeguro(
+      resumen?.tickets_free
+    );
 
-    const numerosFree =
-      new Set();
+    const ticketsOcupados = numeroSeguro(
+      resumen?.tickets_ocupados
+    );
 
-    const numerosOcupados =
-      new Set();
+    const disponiblesInventario = numeroSeguro(
+      resumen?.disponibles_inventario
+    );
 
-    const numerosDisponiblesInventario =
-      new Set();
+    /* ========================================================
+       6. DISPONIBILIDAD MATEMÁTICA
 
-    // ========================================================
-    // 6. CLASIFICAR TICKETS
-    // ========================================================
+       Mantenemos el cálculo original:
 
-    for (const ticket of tickets) {
-      if (
-        ticket?.numero_ticket == null ||
-        ticket?.numero_ticket === ""
-      ) {
-        continue;
-      }
+       TOTAL - NÚMEROS OCUPADOS
 
-      /*
-       * FREE tiene prioridad.
-       *
-       * No dependemos solamente de:
-       *
-       * estado = "asignado"
-       *
-       * Si existe:
-       *
-       * - tipo = "free"
-       * - free_drop_id
-       * - free_drop_participation_id
-       *
-       * el número pertenece al flujo FREE
-       * y no debe aparecer disponible para compra.
-       *
-       * Esto también cubre FREE reservados.
-       */
+       No reemplazamos este cálculo por
+       disponibles_inventario porque representa
+       una métrica diferente.
+    ======================================================== */
 
-      if (esTicketFree(ticket)) {
-        agregarNumero(
-          numerosFree,
-          ticket.numero_ticket
-        );
+    const ticketsDisponibles = Math.max(
+      totalNumeros - ticketsOcupados,
+      0
+    );
 
-        agregarNumero(
-          numerosOcupados,
-          ticket.numero_ticket
-        );
+    /* ========================================================
+       7. COMPATIBILIDAD CON EL FRONTEND
 
-        continue;
-      }
+       El campo tickets_vendidos representa ocupación
+       total, incluyendo Free Drop y bloqueados.
 
-      /*
-       * Ticket perteneciente
-       * a una compra normal.
-       */
+       Se mantiene para no romper componentes existentes.
+    ======================================================== */
 
-      if (
-        esTicketPagado(ticket)
-      ) {
-        agregarNumero(
-          numerosPagados,
-          ticket.numero_ticket
-        );
+    const ticketsVendidos = ticketsOcupados;
 
-        agregarNumero(
-          numerosOcupados,
-          ticket.numero_ticket
-        );
-
-        continue;
-      }
-
-      /*
-       * Un ticket solamente es realmente
-       * disponible cuando:
-       *
-       * - no tiene compra
-       * - no tiene referencias FREE
-       * - no es tipo FREE
-       * - estado = disponible
-       */
-
-      if (
-        esTicketDisponible(ticket)
-      ) {
-        agregarNumero(
-          numerosDisponiblesInventario,
-          ticket.numero_ticket
-        );
-
-        continue;
-      }
-
-      /*
-       * Cualquier fila restante no cumple
-       * las condiciones estrictas para
-       * considerarse disponible.
-       *
-       * Por seguridad del inventario,
-       * se considera ocupada/bloqueada.
-       */
-
-      agregarNumero(
-        numerosOcupados,
-        ticket.numero_ticket
-      );
-    }
-
-    // ========================================================
-    // 7. ESTADÍSTICAS
-    // ========================================================
-
-    const ticketsPagados =
-      numerosPagados.size;
-
-    const ticketsFree =
-      numerosFree.size;
-
-    const ticketsOcupados =
-      numerosOcupados.size;
-
-    /*
-     * Disponibilidad matemática pública:
-     *
-     * TOTAL - todos los números
-     * realmente ocupados.
-     */
-
-    const ticketsDisponibles =
-      Math.max(
-        totalNumeros -
-          ticketsOcupados,
-        0
-      );
-
-    /*
-     * Conservamos tickets_vendidos como
-     * alias de ocupación total porque el
-     * frontend existente utiliza este campo
-     * para mostrar el progreso general.
-     *
-     * El desglose real queda disponible en:
-     *
-     * - tickets_pagados
-     * - tickets_free
-     * - tickets_ocupados
-     */
-
-    const ticketsVendidos =
-      ticketsOcupados;
+    /* ========================================================
+       8. PORCENTAJE VENDIDO
+    ======================================================== */
 
     const porcentajeVendido =
       totalNumeros > 0
         ? Number(
             (
-              (ticketsOcupados /
-                totalNumeros) *
+              (ticketsOcupados / totalNumeros) *
               100
             ).toFixed(2)
           )
         : 0;
 
+    /* ========================================================
+       9. RIFA AGOTADA
+    ======================================================== */
+
     const soldOut =
       totalNumeros > 0 &&
-      ticketsOcupados >=
-        totalNumeros;
+      ticketsOcupados >= totalNumeros;
 
-    // ========================================================
-    // 8. RESPUESTA PÚBLICA
-    // ========================================================
+    /* ========================================================
+       10. RESPUESTA PÚBLICA COMPLETA
 
-    return NextResponse.json(
-      {
-        ok: true,
+       Conservamos todos los campos originales para
+       EventoDetallePageClient y demás componentes.
+    ======================================================== */
 
-        rifa: {
-          /*
-           * Aquí solamente existen los campos
-           * incluidos en CAMPOS_PUBLICOS_RIFA.
-           *
-           * Ya no puede filtrarse automáticamente
-           * una futura columna interna de la tabla.
-           */
+    return responderJSON({
+      ok: true,
 
-          ...rifa,
+      rifa: {
+        ...rifa,
 
-          total_numeros:
-            totalNumeros,
+        // Total de números
+        total_numeros: totalNumeros,
 
-          /*
-           * CAMPOS EXISTENTES.
-           *
-           * Se conservan para no romper
-           * EventoDetallePageClient ni otros
-           * componentes existentes.
-           */
+        // Campos originales
+        tickets_vendidos: ticketsVendidos,
+        tickets_disponibles: ticketsDisponibles,
+        porcentaje_vendido: porcentajeVendido,
+        sold_out: soldOut,
 
-          tickets_vendidos:
-            ticketsVendidos,
+        // Desglose de tickets
+        tickets_pagados: ticketsPagados,
+        tickets_free: ticketsFree,
+        tickets_ocupados: ticketsOcupados,
 
-          tickets_disponibles:
-            ticketsDisponibles,
+        /* ====================================================
+           STATS - COMPATIBILIDAD COMPLETA
+        ==================================================== */
 
-          porcentaje_vendido:
-            porcentajeVendido,
+        stats: {
+          total: totalNumeros,
 
-          sold_out:
-            soldOut,
+          // Compatibilidad anterior
+          vendidos: ticketsVendidos,
+          ocupados: ticketsOcupados,
+          disponibles: ticketsDisponibles,
+          porcentaje: porcentajeVendido,
 
-          /*
-           * DESGLOSE.
-           */
+          soldOut,
 
-          tickets_pagados:
-            ticketsPagados,
+          ticketsVendidos,
+          ticketsOcupados,
+          porcentajeVendido,
 
-          tickets_free:
-            ticketsFree,
+          // Desglose explícito
+          pagados: ticketsPagados,
+          free: ticketsFree,
 
-          tickets_ocupados:
-            ticketsOcupados,
+          ticketsPagados,
+          ticketsFree,
 
-          // ==================================================
-          // STATS
-          // ==================================================
-
-          stats: {
-            total:
-              totalNumeros,
-
-            /*
-             * Compatibilidad anterior.
-             */
-
-            vendidos:
-              ticketsVendidos,
-
-            ocupados:
-              ticketsOcupados,
-
-            disponibles:
-              ticketsDisponibles,
-
-            porcentaje:
-              porcentajeVendido,
-
-            soldOut,
-
-            ticketsVendidos,
-
-            ticketsOcupados,
-
-            porcentajeVendido,
-
-            /*
-             * Desglose explícito.
-             */
-
-            pagados:
-              ticketsPagados,
-
-            free:
-              ticketsFree,
-
-            ticketsPagados,
-
-            ticketsFree,
-
-            /*
-             * Diagnóstico del inventario físico.
-             */
-
-            disponiblesInventario:
-              numerosDisponiblesInventario.size,
-          },
+          // Inventario físico disponible
+          disponiblesInventario,
         },
       },
-      {
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      }
-    );
+    });
   } catch (error) {
     console.error(
       "rifa-resumen error:",
       error
     );
 
-    return NextResponse.json(
+    return responderJSON(
       {
-        error:
-          "Error interno del servidor",
+        error: "Error interno del servidor",
       },
-      {
-        status: 500,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
-      }
+      500
     );
   }
 }

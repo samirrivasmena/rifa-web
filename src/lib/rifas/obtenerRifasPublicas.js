@@ -456,19 +456,15 @@ export async function obtenerRifasPublicas() {
   );
 
   /* =======================================================
-     4. CARGAR CONFIGURACIÓN FREE DROP
-        Y DROPS EN CONSULTAS AGRUPADAS
+     4. CONSULTAS AGRUPADAS EN PARALELO
+     No altera el cálculo ni la respuesta pública.
   ======================================================= */
 
   const [
-    {
-      data: freeSettingsData,
-      error: freeSettingsError,
-    },
-    {
-      data: freeDropsData,
-      error: freeDropsError,
-    },
+    { data: freeSettingsData, error: freeSettingsError },
+    { data: freeDropsData, error: freeDropsError },
+    { data: resumenTicketsData, error: resumenTicketsError },
+    { data: sorteosData, error: sorteosError },
   ] = await Promise.all([
     supabaseAdmin
       .from("free_drop_settings")
@@ -499,6 +495,34 @@ export async function obtenerRifasPublicas() {
         "agotado",
         "programado",
       ]),
+
+    supabaseAdmin
+      .from("resumen_publico_tickets_por_rifa")
+      .select(`
+        rifa_id,
+        tickets_pagados,
+        tickets_free,
+        tickets_ocupados,
+        disponibles_inventario
+      `)
+      .in("rifa_id", rifaIds),
+
+    supabaseAdmin
+      .from("sorteos")
+      .select(
+        [
+          "id",
+          "rifa_id",
+          "numero_ganador",
+          "numero_oficial",
+          "fecha_sorteo",
+          "fuente",
+        ].join(",")
+      )
+      .in("rifa_id", rifaIds)
+      .order("fecha_sorteo", {
+        ascending: false,
+      }),
   ]);
 
   if (freeSettingsError || freeDropsError) {
@@ -509,6 +533,28 @@ export async function obtenerRifasPublicas() {
 
     throw new Error(
       "No se pudieron cargar los estados Free Drop"
+    );
+  }
+
+  if (resumenTicketsError) {
+    console.error(
+      "Error cargando resumen público de tickets:",
+      resumenTicketsError
+    );
+
+    throw new Error(
+      "No se pudo cargar el resumen de tickets"
+    );
+  }
+
+  if (sorteosError) {
+    console.error(
+      "Error cargando sorteos:",
+      sorteosError
+    );
+
+    throw new Error(
+      "No se pudieron cargar los sorteos"
     );
   }
 
@@ -551,69 +597,9 @@ export async function obtenerRifasPublicas() {
   const ahoraFreeDropMs = Date.now();
 
   /* =======================================================
-     7. RESUMEN DE TICKETS
-        PAGADOS + FREE + OCUPADOS + INVENTARIO
+     7 Y 8. RESUMEN DE TICKETS Y SORTEOS
+     Ya cargados en paralelo en el bloque 4.
   ======================================================= */
-
-  const {
-    data: resumenTicketsData,
-    error: resumenTicketsError,
-  } = await supabaseAdmin
-    .from("resumen_publico_tickets_por_rifa")
-    .select(`
-      rifa_id,
-      tickets_pagados,
-      tickets_free,
-      tickets_ocupados,
-      disponibles_inventario
-    `)
-    .in("rifa_id", rifaIds);
-
-  if (resumenTicketsError) {
-    console.error(
-      "Error cargando resumen público de tickets:",
-      resumenTicketsError
-    );
-
-    throw new Error(
-      "No se pudo cargar el resumen de tickets"
-    );
-  }
-
-  /* =======================================================
-     8. RESULTADOS DE SORTEOS
-  ======================================================= */
-
-  const {
-    data: sorteosData,
-    error: sorteosError,
-  } = await supabaseAdmin
-    .from("sorteos")
-    .select(
-      [
-        "id",
-        "rifa_id",
-        "numero_ganador",
-        "numero_oficial",
-        "fecha_sorteo",
-        "fuente",
-      ].join(",")
-    )
-    .in("rifa_id", rifaIds)
-    .order("fecha_sorteo", {
-      ascending: false,
-    });
-
-  if (sorteosError) {
-    console.error(
-      "Error cargando sorteos:",
-      sorteosError
-    );
-
-    throw new Error(
-      "No se pudieron cargar los sorteos"
-    );
-  }
 
   /* =======================================================
      9. NORMALIZAR DATOS

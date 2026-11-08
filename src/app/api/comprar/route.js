@@ -1295,85 +1295,65 @@ if (!esAppPay) {
     // INVENTARIO
     // -------------------------------------------------------
 
-    const generacion =
-      await generarTicketsSiNoExisten(
-        rifaIdLimpio,
-        rifa,
-        totalNumeros
+
+    // =========================================================
+    // INVENTARIO OPTIMIZADO
+    // =========================================================
+    // No generamos miles de tickets al registrar una compra.
+    // La asignación ocurre cuando el administrador la aprueba.
+    // Consultamos las estadísticas directamente en PostgreSQL.
+
+    const { data: estadisticas, error: estadisticasError } =
+      await supabaseAdmin.rpc("get_rifa_stats", {
+        p_rifa_id: rifaIdLimpio,
+      });
+
+    if (estadisticasError) {
+      console.error(
+        "Error consultando estadísticas de rifa:",
+        estadisticasError
       );
 
-    if (!generacion.ok) {
-      return errorResponse(
-        generacion.error,
-        500
-      );
-    }
-
-    /*
-     * Necesitamos consultar:
-     *
-     * compra_id
-     * free_drop_id
-     * free_drop_participation_id
-     * tipo
-     * estado
-     *
-     * para determinar la disponibilidad real.
-     */
-
-    const inventario =
-      await obtenerInventarioRifa(
-        rifaIdLimpio
-      );
-
-    if (!inventario.ok) {
       return errorResponse(
         "No se pudo validar la disponibilidad de tickets",
         500
       );
     }
 
-    const ticketsInventario =
-      inventario.tickets;
+    const stats = Array.isArray(estadisticas)
+      ? estadisticas[0]
+      : estadisticas;
 
-    /*
-     * DISPONIBILIDAD REAL:
-     *
-     * compra_id                  = NULL
-     * free_drop_id               = NULL
-     * free_drop_participation_id = NULL
-     * tipo                       != free
-     * estado                     = disponible
-     */
+    if (!stats) {
+      return errorResponse(
+        "No se encontraron estadísticas de la rifa",
+        500
+      );
+    }
 
-    const ticketsLibres =
-      contarNumerosUnicosDisponibles(
-        ticketsInventario
+    const ticketsOcupados = Number(stats.tickets_vendidos);
+    const ticketsLibres = Number(stats.tickets_disponibles);
+
+    if (
+      !Number.isSafeInteger(ticketsOcupados) ||
+      !Number.isSafeInteger(ticketsLibres) ||
+      ticketsOcupados < 0 ||
+      ticketsLibres < 0 ||
+      ticketsOcupados + ticketsLibres !== totalNumeros
+    ) {
+      console.error(
+        "Estadísticas de rifa inconsistentes:",
+        stats
       );
 
-    /*
-     * OCUPACIÓN REAL:
-     *
-     * Incluye compras normales y FREE.
-     */
-
-    const ticketsOcupados =
-      contarNumerosUnicosOcupados(
-        ticketsInventario
+      return errorResponse(
+        "No se pudo validar el inventario de tickets",
+        500
       );
+    }
 
-    /*
-     * Por compatibilidad con el frontend mantenemos
-     * el nombre ticketsVendidos.
-     *
-     * Representa la ocupación real de la rifa.
-     */
-
-    const ticketsVendidos =
-      Math.min(
-        ticketsOcupados,
-        totalNumeros
-      );
+    // Mantener compatibilidad con la respuesta del frontend.
+    const ticketsVendidos = ticketsOcupados;
 
     // -------------------------------------------------------
     // SOLD OUT

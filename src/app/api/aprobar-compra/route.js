@@ -1,27 +1,33 @@
-import { NextResponse } from "next/server";
-import { randomInt } from "crypto";
 
+import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 import { sendCompraAprobadaEmail } from "../../../lib/sendCompraAprobadaEmail";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
-/* =========================================================
-   URL BASE
-========================================================= */
+function errorResponse(error, status = 400) {
+  return NextResponse.json({ error }, { status });
+}
 
 function getBaseUrl(req) {
   const envUrl = process.env.NEXT_PUBLIC_SITE_URL;
 
   if (envUrl) {
-    return envUrl.startsWith("http")
-      ? envUrl.replace(/\/$/, "")
-      : `https://${envUrl.replace(/\/$/, "")}`;
+    return (
+      envUrl.startsWith("http")
+        ? envUrl
+        : `https://${envUrl}`
+    ).replace(/\/$/, "");
   }
 
-  const protoRaw = req.headers.get("x-forwarded-proto") || "https";
-  const proto = protoRaw.split(",")[0].trim();
+  const proto = (
+    req.headers.get("x-forwarded-proto") || "https"
+  )
+    .split(",")[0]
+    .trim();
 
   const host =
     req.headers.get("x-forwarded-host") ||
@@ -31,394 +37,41 @@ function getBaseUrl(req) {
   return `${proto}://${host}`.replace(/\/$/, "");
 }
 
-/* =========================================================
-   HELPERS GENERALES
-========================================================= */
-
-function limpiarTexto(valor) {
-  return String(valor || "").trim();
-}
-
 function normalizarTexto(valor) {
-  return String(valor ?? "")
-    .trim()
-    .toLowerCase();
+  return String(valor ?? "").trim().toLowerCase();
 }
 
 function limpiarTelefonoWhatsapp(valor) {
-  const soloNumeros = String(valor || "").replace(/\D/g, "");
+  const numeros = String(valor || "").replace(/\D/g, "");
 
-  if (!soloNumeros) {
-    return "";
-  }
-
-  if (soloNumeros.length === 10) {
-    return `1${soloNumeros}`;
-  }
-
-  return soloNumeros;
+  return numeros.length === 10
+    ? `1${numeros}`
+    : numeros;
 }
-
-function validarId(valor) {
-  const id = limpiarTexto(valor);
-
-  return (
-    Boolean(id) &&
-    /^[a-zA-Z0-9_-]+$/.test(id) &&
-    id.length <= 100
-  );
-}
-
-function errorResponse(mensaje, status = 400) {
-  return NextResponse.json(
-    {
-      error: mensaje,
-    },
-    {
-      status,
-    }
-  );
-}
-
-/* =========================================================
-   PROTECCIÓN FREE
-========================================================= */
-
-/**
- * Detecta si un ticket pertenece al sistema FREE.
- *
- * No dependemos únicamente de tipo = free.
- * También comprobamos las relaciones FREE.
- */
-function esTicketFree(ticket = {}) {
-  const tipo = normalizarTexto(ticket?.tipo);
-
-  return Boolean(
-    (ticket?.free_drop_id !== null &&
-      ticket?.free_drop_id !== undefined) ||
-      (ticket?.free_drop_participation_id !== null &&
-        ticket?.free_drop_participation_id !== undefined) ||
-      tipo === "free"
-  );
-}
-
-/**
- * Un ticket solamente puede asignarse a una
- * compra normal cuando está completamente libre.
- */
-function esTicketDisponible(ticket = {}) {
-  const sinCompra =
-    ticket?.compra_id === null ||
-    ticket?.compra_id === undefined;
-
-  const sinFreeDrop =
-    ticket?.free_drop_id === null ||
-    ticket?.free_drop_id === undefined;
-
-  const sinParticipacionFree =
-    ticket?.free_drop_participation_id === null ||
-    ticket?.free_drop_participation_id === undefined;
-
-  const tipo = normalizarTexto(ticket?.tipo);
-  const estado = normalizarTexto(ticket?.estado);
-
-  return (
-    sinCompra &&
-    sinFreeDrop &&
-    sinParticipacionFree &&
-    tipo !== "free" &&
-    estado === "disponible"
-  );
-}
-
-function esTicketOcupado(ticket = {}) {
-  return !esTicketDisponible(ticket);
-}
-
-/**
- * Cuenta números únicos ocupados.
- *
- * Incluye:
- * - compra normal
- * - FREE
- * - reservado
- * - asignado
- * - vendido
- * - cualquier ticket que no esté realmente disponible
- */
-function contarNumerosUnicosOcupados(tickets = []) {
-  return new Set(
-    tickets
-      .filter(esTicketOcupado)
-      .map((ticket) => Number(ticket?.numero_ticket))
-      .filter(Number.isFinite)
-  ).size;
-}
-
-/* =========================================================
-   SELECCIÓN ALEATORIA
-========================================================= */
-
-function tomarNumerosAleatorios(disponibles, cantidad) {
-  const pool = [...disponibles];
-  const seleccionados = [];
-
-  for (let i = 0; i < cantidad; i++) {
-    const idx = randomInt(0, pool.length);
-
-    seleccionados.push(
-      pool.splice(idx, 1)[0]
-    );
-  }
-
-  return seleccionados;
-}
-
-/* =========================================================
-   CONFIGURACIÓN DE RIFA
-========================================================= */
-
-function obtenerTotalNumeros(rifa = {}) {
-  const inicio = Number(rifa?.numero_inicio);
-  const fin = Number(rifa?.numero_fin);
-
-  if (
-    Number.isFinite(inicio) &&
-    Number.isFinite(fin) &&
-    fin >= inicio
-  ) {
-    return fin - inicio + 1;
-  }
-
-  const cantidad = Number(rifa?.cantidad_numeros);
-
-  if (
-    Number.isFinite(cantidad) &&
-    cantidad > 0
-  ) {
-    return cantidad;
-  }
-
-  return String(rifa?.formato) === "3digitos"
-    ? 1000
-    : 10000;
-}
-
-function obtenerRangoNumeros(rifa = {}, totalNumeros = 0) {
-  const inicioRaw = Number(rifa?.numero_inicio);
-  const finRaw = Number(rifa?.numero_fin);
-
-  const inicio = Number.isFinite(inicioRaw)
-    ? inicioRaw
-    : 0;
-
-  const fin = Number.isFinite(finRaw)
-    ? finRaw
-    : inicio + Math.max(totalNumeros - 1, 0);
-
-  return {
-    inicio,
-    fin,
-  };
-}
-
-function construirListaNumeros(inicio, fin) {
-  const lista = [];
-
-  for (let n = inicio; n <= fin; n++) {
-    lista.push(n);
-  }
-
-  return lista;
-}
-
-/* =========================================================
-   ASEGURAR INVENTARIO BASE
-========================================================= */
-
-async function asegurarTicketsBase(rifa) {
-  const totalNumeros = obtenerTotalNumeros(rifa);
-
-  const { inicio, fin } = obtenerRangoNumeros(
-    rifa,
-    totalNumeros
-  );
-
-  const esperados = construirListaNumeros(
-    inicio,
-    fin
-  );
-
-  /*
-   * Cargamos también los campos relacionados
-   * con FREE para nunca considerar esos números libres.
-   */
-  const {
-    data: existentes,
-    error: errorExistentes,
-  } = await supabaseAdmin
-    .from("tickets")
-    .select(`
-      id,
-      numero_ticket,
-      compra_id,
-      rifa_id,
-      tipo,
-      estado,
-      free_drop_id,
-      free_drop_participation_id
-    `)
-    .eq("rifa_id", rifa.id);
-
-  if (errorExistentes) {
-    return {
-      ok: false,
-      error:
-        errorExistentes.message ||
-        "No se pudieron leer los tickets existentes",
-    };
-  }
-
-  const ticketsExistentes = Array.isArray(existentes)
-    ? existentes
-    : [];
-
-  const setExistentes = new Set(
-    ticketsExistentes
-      .map((ticket) => Number(ticket.numero_ticket))
-      .filter(Number.isFinite)
-  );
-
-  /*
-   * Conservamos la funcionalidad existente:
-   * si falta físicamente algún número del inventario,
-   * lo crea como disponible.
-   */
-  const faltantes = esperados.filter(
-    (numero) => !setExistentes.has(numero)
-  );
-
-  if (faltantes.length > 0) {
-    const batchSize = 500;
-
-    for (
-      let i = 0;
-      i < faltantes.length;
-      i += batchSize
-    ) {
-      const batch = faltantes
-        .slice(i, i + batchSize)
-        .map((numero) => ({
-          rifa_id: rifa.id,
-          numero_ticket: numero,
-          compra_id: null,
-          tipo: null,
-          estado: "disponible",
-          free_drop_id: null,
-          free_drop_participation_id: null,
-        }));
-
-      const { error: insertError } =
-        await supabaseAdmin
-          .from("tickets")
-          .insert(batch);
-
-      if (insertError) {
-        return {
-          ok: false,
-          error:
-            insertError.message ||
-            "No se pudieron crear los tickets faltantes",
-        };
-      }
-    }
-  }
-
-  /*
-   * Recargamos el inventario completo.
-   */
-  const {
-    data: ticketsReload,
-    error: errorReload,
-  } = await supabaseAdmin
-    .from("tickets")
-    .select(`
-      id,
-      numero_ticket,
-      compra_id,
-      rifa_id,
-      tipo,
-      estado,
-      free_drop_id,
-      free_drop_participation_id
-    `)
-    .eq("rifa_id", rifa.id)
-    .order("numero_ticket", {
-      ascending: true,
-    });
-
-  if (errorReload) {
-    return {
-      ok: false,
-      error:
-        errorReload.message ||
-        "No se pudieron recargar los tickets",
-    };
-  }
-
-  return {
-    ok: true,
-    tickets: Array.isArray(ticketsReload)
-      ? ticketsReload
-      : [],
-  };
-}
-
-/* =========================================================
-   DATOS CLIENTE
-========================================================= */
 
 async function obtenerDatosCliente(compra) {
-  let nombreCliente = "cliente";
-  let emailDestino = "";
-  let telefonoCliente = "";
+  let nombreCliente = compra.nombre_cliente || "cliente";
+  let emailDestino = compra.email_cliente || "";
+  let telefonoCliente = compra.telefono_cliente || "";
 
-  if (compra?.usuario_id) {
-    try {
-      const {
-        data: usuario,
-        error: usuarioError,
-      } = await supabaseAdmin
-        .from("usuarios")
-        .select("nombre, email, telefono")
-        .eq("id", compra.usuario_id)
-        .maybeSingle();
+  if (compra.usuario_id) {
+    const { data, error } = await supabaseAdmin
+      .from("usuarios")
+      .select("nombre, email, telefono")
+      .eq("id", compra.usuario_id)
+      .maybeSingle();
 
-      if (usuarioError) {
-        console.warn(
-          "No se pudo leer el usuario asociado:",
-          usuarioError.message
-        );
-      }
-
-      if (usuario) {
-        nombreCliente =
-          usuario.nombre ||
-          nombreCliente;
-
-        emailDestino =
-          usuario.email ||
-          emailDestino;
-
-        telefonoCliente =
-          usuario.telefono ||
-          telefonoCliente;
-      }
-    } catch (error) {
+    if (error) {
       console.warn(
-        "Error obteniendo datos del cliente:",
+        "No se pudo consultar el usuario:",
         error.message
       );
+    }
+
+    if (data) {
+      nombreCliente = data.nombre || nombreCliente;
+      emailDestino = data.email || emailDestino;
+      telefonoCliente = data.telefono || telefonoCliente;
     }
   }
 
@@ -429,93 +82,49 @@ async function obtenerDatosCliente(compra) {
   };
 }
 
-/* =========================================================
-   ROLLBACK
-========================================================= */
+// Cuenta tickets sin descargar todas las filas.
+async function contarTickets(rifaId, filtro) {
+  let query = supabaseAdmin
+    .from("tickets")
+    .select("id", {
+      count: "exact",
+      head: true,
+    })
+    .eq("rifa_id", rifaId);
 
-async function rollbackAprobacion({
-  compraId,
-  estadoAnteriorCompra,
-  rifaIdOriginal,
-  ticketIds = [],
-}) {
-  const errores = [];
-
-  if (ticketIds.length > 0) {
-    /*
-     * Solamente revertimos tickets que continúan
-     * perteneciendo a ESTA compra.
-     *
-     * IMPORTANTE:
-     * También restauramos estado = disponible.
-     *
-     * No tocamos FREE.
-     */
-    const {
-      error: revertTicketsError,
-    } = await supabaseAdmin
-      .from("tickets")
-      .update({
-        compra_id: null,
-        estado: "disponible",
-      })
-      .in("id", ticketIds)
-      .eq("compra_id", compraId);
-
-    if (revertTicketsError) {
-      errores.push(
-        revertTicketsError.message ||
-          "No se pudieron revertir los tickets"
-      );
-    }
+  if (filtro === "pagados") {
+    query = query.not("compra_id", "is", null);
   }
 
-  const {
-    error: rollbackCompraError,
-  } = await supabaseAdmin
-    .from("compras")
-    .update({
-      estado_pago: estadoAnteriorCompra,
-      rifa_id: rifaIdOriginal || null,
-    })
-    .eq("id", compraId);
-
-  if (rollbackCompraError) {
-    errores.push(
-      rollbackCompraError.message ||
-        "No se pudo revertir la compra"
+  if (filtro === "free") {
+    query = query.or(
+      "free_drop_id.not.is.null," +
+      "free_drop_participation_id.not.is.null," +
+      "tipo.eq.free"
     );
   }
 
-  return errores;
+  const { count, error } = await query;
+
+  if (error || count === null) {
+    throw new Error(
+      `Error contando tickets ${filtro}: ${
+        error?.message || "sin resultado"
+      }`
+    );
+  }
+
+  return count;
 }
 
-/* =========================================================
-   POST
-========================================================= */
-
 export async function POST(req) {
-  /*
-   * Solo administrador.
-   */
   const auth = await requireAdmin(req);
 
   if (!auth.ok) {
-    return NextResponse.json(
-      {
-        error: auth.error,
-      },
-      {
-        status: auth.status,
-      }
-    );
+    return errorResponse(auth.error, auth.status);
   }
 
   try {
-    /* -----------------------------------------------------
-       BODY
-    ----------------------------------------------------- */
-
     let body;
 
     try {
@@ -527,23 +136,22 @@ export async function POST(req) {
       );
     }
 
-    const { compraId } = body;
+    const compraId = String(
+      body?.compraId || ""
+    ).trim();
 
-    const compraIdLimpio = limpiarTexto(
-      compraId
-    );
-
-    if (!validarId(compraIdLimpio)) {
+    if (
+      !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+        compraId
+      )
+    ) {
       return errorResponse(
-        "Falta el ID de la compra",
+        "ID de compra inválido",
         400
       );
     }
 
-    /* -----------------------------------------------------
-       COMPRA
-    ----------------------------------------------------- */
-
+    // CONSULTAR COMPRA
     const {
       data: compra,
       error: compraError,
@@ -552,21 +160,19 @@ export async function POST(req) {
       .select(`
         id,
         usuario_id,
+        nombre_cliente,
+        email_cliente,
+        telefono_cliente,
         estado_pago,
         cantidad_tickets,
         monto_total,
         rifa_id,
         referencia
       `)
-      .eq("id", compraIdLimpio)
+      .eq("id", compraId)
       .maybeSingle();
 
     if (compraError) {
-      console.error(
-        "Error consultando compra:",
-        compraError
-      );
-
       return errorResponse(
         "No se pudo consultar la compra",
         500
@@ -580,644 +186,302 @@ export async function POST(req) {
       );
     }
 
-    const estadoCompra = normalizarTexto(
-      compra.estado_pago
-    );
-
-    if (estadoCompra === "aprobado") {
-      return errorResponse(
-        "La compra ya fue aprobada",
-        400
-      );
-    }
-
-    if (estadoCompra === "rechazado") {
-      return errorResponse(
-        "La compra fue rechazada y no puede aprobarse",
-        400
-      );
-    }
-
-    /*
-     * Solamente permitimos aprobar compras pendientes.
-     */
-    if (estadoCompra !== "pendiente") {
-      return errorResponse(
-        "La compra no está pendiente",
-        400
-      );
-    }
-
-    const cantidadTickets =
-      Number(compra.cantidad_tickets) || 0;
-
     if (
-      !Number.isInteger(cantidadTickets) ||
-      cantidadTickets <= 0
+      normalizarTexto(compra.estado_pago) !==
+      "pendiente"
     ) {
       return errorResponse(
-        "La compra no tiene una cantidad válida de tickets",
+        compra.estado_pago === "aprobado"
+          ? "La compra ya fue aprobada"
+          : "La compra no está pendiente",
+        409
+      );
+    }
+
+    const cantidad = Number(
+      compra.cantidad_tickets
+    );
+
+    if (
+      !Number.isInteger(cantidad) ||
+      cantidad < 1 ||
+      cantidad > 100
+    ) {
+      return errorResponse(
+        "La función de aprobación admite entre 1 y 100 tickets por compra",
         400
       );
     }
 
-    const estadoAnteriorCompra =
-      compra.estado_pago || "pendiente";
-
-    const rifaIdOriginal =
-      compra.rifa_id || null;
-
-    /* -----------------------------------------------------
-       RIFA
-    ----------------------------------------------------- */
-
-    let rifaId = compra.rifa_id;
-
-    if (!rifaId) {
-      const {
-        data: rifaActiva,
-        error: rifaActivaError,
-      } = await supabaseAdmin
-        .from("rifas")
-        .select("*")
-        .eq("estado", "activa")
-        .limit(1)
-        .maybeSingle();
-
-      if (rifaActivaError) {
-        console.error(
-          "Error buscando rifa activa:",
-          rifaActivaError
-        );
-
-        return errorResponse(
-          "No se pudo buscar una rifa activa",
-          500
-        );
-      }
-
-      if (!rifaActiva) {
-        return errorResponse(
-          "No hay una rifa activa disponible",
-          400
-        );
-      }
-
-      rifaId = rifaActiva.id;
+    // La función SQL requiere una rifa asociada.
+    if (!compra.rifa_id) {
+      return errorResponse(
+        "La compra no tiene una rifa asociada. Revísala antes de aprobar.",
+        409
+      );
     }
 
+    // CONSULTAR RIFA
     const {
       data: rifa,
       error: rifaError,
     } = await supabaseAdmin
       .from("rifas")
       .select("*")
-      .eq("id", rifaId)
+      .eq("id", compra.rifa_id)
       .maybeSingle();
 
-    if (rifaError) {
-      console.error(
-        "Error consultando rifa:",
-        rifaError
-      );
-
+    if (rifaError || !rifa) {
       return errorResponse(
         "No se pudo consultar la rifa asociada",
         500
       );
     }
 
-    if (!rifa) {
-      return errorResponse(
-        "La rifa asociada no existe",
-        404
-      );
-    }
-
-    const estadoRifa = normalizarTexto(
-      rifa.estado
-    );
-
     if (
       ![
         "activa",
         "disponible",
         "publicada",
-      ].includes(estadoRifa)
+      ].includes(normalizarTexto(rifa.estado))
     ) {
       return errorResponse(
-        "La rifa no está disponible para aprobar compras automáticamente",
-        400
+        "La rifa no está disponible para aprobar compras",
+        409
       );
     }
 
     const totalNumeros =
-      obtenerTotalNumeros(rifa);
+      Number(rifa.numero_fin) -
+      Number(rifa.numero_inicio) +
+      1;
 
-    if (totalNumeros <= 0) {
+    if (
+      !Number.isSafeInteger(totalNumeros) ||
+      totalNumeros <= 0
+    ) {
       return errorResponse(
-        "La rifa no tiene una cantidad válida de números",
-        400
-      );
-    }
-
-    /* -----------------------------------------------------
-       INVENTARIO
-    ----------------------------------------------------- */
-
-    const aseguracion =
-      await asegurarTicketsBase(rifa);
-
-    if (!aseguracion.ok) {
-      return errorResponse(
-        aseguracion.error,
+        "Rango de números inválido",
         500
       );
     }
 
-    const ticketsActuales =
-      Array.isArray(aseguracion.tickets)
-        ? aseguracion.tickets
-        : [];
-
-    /*
-     * Un ticket libre debe:
-     *
-     * - no tener compra
-     * - no pertenecer a FREE
-     * - estar en estado disponible
-     */
-    const ticketsLibresAntes =
-      ticketsActuales.filter(
-        esTicketDisponible
-      );
-
-    const ticketsOcupadosAntes =
-      contarNumerosUnicosOcupados(
-        ticketsActuales
-      );
-
-    /*
-     * Estadísticas separadas para diagnóstico.
-     */
-    const ticketsPagadosAntes =
-      new Set(
-        ticketsActuales
-          .filter(
-            (ticket) =>
-              ticket?.compra_id !== null &&
-              ticket?.compra_id !== undefined
-          )
-          .map((ticket) =>
-            Number(ticket.numero_ticket)
-          )
-          .filter(Number.isFinite)
-      ).size;
-
-    const ticketsFreeAntes =
-      new Set(
-        ticketsActuales
-          .filter(esTicketFree)
-          .map((ticket) =>
-            Number(ticket.numero_ticket)
-          )
-          .filter(Number.isFinite)
-      ).size;
-
-    /* -----------------------------------------------------
-       AGOTADA
-    ----------------------------------------------------- */
-
-    if (
-      ticketsLibresAntes.length <= 0 ||
-      ticketsOcupadosAntes >= totalNumeros
-    ) {
-      const {
-        error: updateAgotadaError,
-      } = await supabaseAdmin
-        .from("rifas")
-        .update({
-          estado: "agotada",
-        })
-        .eq("id", rifa.id);
-
-      if (updateAgotadaError) {
-        console.error(
-          "Error marcando rifa como agotada:",
-          updateAgotadaError
-        );
-      }
-
-      return errorResponse(
-        "La rifa ya alcanzó el 100% y no tiene números disponibles",
-        409
-      );
-    }
-
-    const disponiblesRestantesAntes =
-      ticketsLibresAntes.length;
-
-    if (
-      cantidadTickets >
-      disponiblesRestantesAntes
-    ) {
-      return errorResponse(
-        `No hay suficientes números disponibles. Solo quedan ${disponiblesRestantesAntes} ticket(s)`,
-        409
-      );
-    }
-
-    /* -----------------------------------------------------
-       SELECCIÓN ALEATORIA
-    ----------------------------------------------------- */
-
-    const seleccionados =
-      tomarNumerosAleatorios(
-        ticketsLibresAntes,
-        cantidadTickets
-      );
-
-    const idsTicketsAsignar =
-      seleccionados.map(
-        (ticket) => ticket.id
-      );
-
-    if (
-      idsTicketsAsignar.length !==
-      cantidadTickets
-    ) {
-      return errorResponse(
-        "No se pudieron seleccionar todos los tickets requeridos",
-        409
-      );
-    }
-
-    /* -----------------------------------------------------
-       ASIGNACIÓN PROTEGIDA
-    ----------------------------------------------------- */
-
-    /*
-     * Segunda defensa:
-     *
-     * Aunque los tickets estaban disponibles cuando
-     * los leímos, volvemos a comprobarlo en el UPDATE.
-     *
-     * Así evitamos sobrescribir:
-     *
-     * - una compra
-     * - un FREE
-     * - una reserva
-     * - un ticket que cambió de estado
-     *
-     * Al asignarlo a una compra normal:
-     *
-     * disponible -> asignado
-     */
+    // APROBACIÓN ATÓMICA EN SUPABASE
+    // Asigna tickets y aprueba la compra juntos.
     const {
-      data: ticketsActualizados,
-      error: asignarTicketsError,
-    } = await supabaseAdmin
-      .from("tickets")
-      .update({
-        compra_id: compra.id,
-        estado: "asignado",
-      })
-      .in("id", idsTicketsAsignar)
-      .is("compra_id", null)
-      .is("free_drop_id", null)
-      .is("free_drop_participation_id", null)
-      .eq("estado", "disponible")
-      .or("tipo.is.null,tipo.neq.free")
-      .select(`
-        id,
-        numero_ticket,
-        compra_id,
-        rifa_id,
-        tipo,
-        estado,
-        free_drop_id,
-        free_drop_participation_id
-      `);
-
-    if (asignarTicketsError) {
-      console.error(
-        "Error asignando tickets:",
-        asignarTicketsError
-      );
-
-      return errorResponse(
-        asignarTicketsError.message ||
-          "No se pudieron asignar los tickets",
-        500
-      );
-    }
-
-    const actualizados =
-      Array.isArray(ticketsActualizados)
-        ? ticketsActualizados
-        : [];
-
-    /*
-     * Si otro proceso tomó uno de los tickets
-     * entre SELECT y UPDATE, la cantidad actualizada
-     * será menor.
-     *
-     * En ese caso revertimos solamente los que
-     * esta operación alcanzó a asignar.
-     */
-    if (
-      actualizados.length !==
-      cantidadTickets
-    ) {
-      if (actualizados.length > 0) {
-        await supabaseAdmin
-          .from("tickets")
-          .update({
-            compra_id: null,
-            estado: "disponible",
-          })
-          .in(
-            "id",
-            actualizados.map(
-              (ticket) => ticket.id
-            )
-          )
-          .eq(
-            "compra_id",
-            compra.id
-          );
+      data: asignados,
+      error: rpcError,
+    } = await supabaseAdmin.rpc(
+      "aprobar_compra_segura",
+      {
+        p_compra_id: compra.id,
       }
-
-      return errorResponse(
-        "Uno o más tickets dejaron de estar disponibles o pertenecen a FREE. Intenta aprobar la compra nuevamente.",
-        409
-      );
-    }
-
-    /*
-     * Verificación extra.
-     *
-     * Nunca aceptamos como resultado un ticket FREE.
-     */
-    const resultadoInvalido =
-      actualizados.some((ticket) =>
-        esTicketFree(ticket)
-      );
-
-    if (resultadoInvalido) {
-      await supabaseAdmin
-        .from("tickets")
-        .update({
-          compra_id: null,
-          estado: "disponible",
-        })
-        .in(
-          "id",
-          actualizados.map(
-            (ticket) => ticket.id
-          )
-        )
-        .eq(
-          "compra_id",
-          compra.id
-        );
-
-      return errorResponse(
-        "La asignación fue cancelada porque se detectó un ticket FREE.",
-        409
-      );
-    }
-
-    const nuevosTickets =
-      actualizados.map((ticket) => ({
-        id: ticket.id,
-        numero_ticket:
-          ticket.numero_ticket,
-        compra_id: compra.id,
-        rifa_id: rifa.id,
-        tipo: ticket.tipo,
-        estado: ticket.estado,
-        free_drop_id:
-          ticket.free_drop_id,
-        free_drop_participation_id:
-          ticket.free_drop_participation_id,
-      }));
-
-    /* -----------------------------------------------------
-       APROBAR COMPRA
-    ----------------------------------------------------- */
-
-const {
-  data: compraActualizada,
-  error: aprobarCompraError,
-} = await supabaseAdmin
-  .from("compras")
-  .update({
-    estado_pago: "aprobado",
-    rifa_id: rifa.id,
-    aprobado_at: new Date().toISOString(),
-  })
-  .eq("id", compra.id)
-  .eq(
-    "estado_pago",
-    estadoAnteriorCompra
-  )
-  .select(
-    "id, estado_pago, rifa_id, aprobado_at"
-  )
-  .maybeSingle();
-
-    if (
-      aprobarCompraError ||
-      !compraActualizada
-    ) {
-      console.error(
-        "Error aprobando compra:",
-        aprobarCompraError
-      );
-
-      const rollbackErrors =
-        await rollbackAprobacion({
-          compraId: compra.id,
-          estadoAnteriorCompra,
-          rifaIdOriginal,
-          ticketIds:
-            nuevosTickets.map(
-              (ticket) => ticket.id
-            ),
-        });
-
-      return errorResponse(
-        `No se pudo aprobar la compra. ${
-          rollbackErrors.length
-            ? "Hubo un problema al revertir cambios."
-            : ""
-        }`,
-        500
-      );
-    }
-
-    /* -----------------------------------------------------
-       RECALCULAR ESTADÍSTICAS REALES
-    ----------------------------------------------------- */
-
-    const {
-      data: ticketsFinalesData,
-      error: ticketsFinalesError,
-    } = await supabaseAdmin
-      .from("tickets")
-      .select(`
-        id,
-        numero_ticket,
-        compra_id,
-        rifa_id,
-        tipo,
-        estado,
-        free_drop_id,
-        free_drop_participation_id
-      `)
-      .eq("rifa_id", rifa.id);
-
-    let ticketsFinales =
-      Array.isArray(ticketsFinalesData)
-        ? ticketsFinalesData
-        : [];
-
-    /*
-     * Si por algún motivo falla la consulta final,
-     * calculamos usando el estado anterior más
-     * los tickets recién asignados.
-     */
-    if (ticketsFinalesError) {
-      console.warn(
-        "No se pudieron recalcular las estadísticas finales:",
-        ticketsFinalesError.message
-      );
-
-      ticketsFinales =
-        ticketsActuales.map(
-          (ticket) => {
-            if (
-              idsTicketsAsignar.includes(
-                ticket.id
-              )
-            ) {
-              return {
-                ...ticket,
-                compra_id: compra.id,
-                estado: "asignado",
-              };
-            }
-
-            return ticket;
-          }
-        );
-    }
-
-    const ticketsVendidosDespues =
-      contarNumerosUnicosOcupados(
-        ticketsFinales
-      );
-
-    const ticketsPagadosDespues =
-      new Set(
-        ticketsFinales
-          .filter(
-            (ticket) =>
-              ticket?.compra_id !== null &&
-              ticket?.compra_id !== undefined
-          )
-          .map((ticket) =>
-            Number(ticket.numero_ticket)
-          )
-          .filter(Number.isFinite)
-      ).size;
-
-    const ticketsFreeDespues =
-      new Set(
-        ticketsFinales
-          .filter(esTicketFree)
-          .map((ticket) =>
-            Number(ticket.numero_ticket)
-          )
-          .filter(Number.isFinite)
-      ).size;
-
-    const ticketsDisponiblesDespues =
-      new Set(
-        ticketsFinales
-          .filter(esTicketDisponible)
-          .map((ticket) =>
-            Number(ticket.numero_ticket)
-          )
-          .filter(Number.isFinite)
-      ).size;
-
-    const rifaCompleta =
-      ticketsDisponiblesDespues <= 0 ||
-      ticketsVendidosDespues >=
-        totalNumeros;
-
-    /* -----------------------------------------------------
-       MARCAR RIFA AGOTADA
-    ----------------------------------------------------- */
-
-    let advertenciaRifa = null;
-
-    if (rifaCompleta) {
-      const {
-        error: updateRifaError,
-      } = await supabaseAdmin
-        .from("rifas")
-        .update({
-          estado: "agotada",
-        })
-        .eq("id", rifa.id);
-
-      if (updateRifaError) {
-        console.error(
-          "Error actualizando rifa a agotada:",
-          updateRifaError
-        );
-
-        advertenciaRifa =
-          "La compra se aprobó, pero no se pudo marcar la rifa como agotada: " +
-          (
-            updateRifaError.message ||
-            "error desconocido"
-          );
-      }
-    }
-
-    /* -----------------------------------------------------
-       EMAIL
-    ----------------------------------------------------- */
-
-    const baseUrl = getBaseUrl(req);
-
-    const {
-      nombreCliente,
-      emailDestino,
-      telefonoCliente,
-    } = await obtenerDatosCliente(
-      compra
     );
 
+    if (rpcError) {
+      console.error(
+        "aprobar_compra_segura:",
+        rpcError
+      );
+
+      const mensaje = rpcError.message || "";
+
+      if (
+        mensaje.includes("TICKETS_INSUFICIENTES")
+      ) {
+        return errorResponse(
+          "No hay suficientes números disponibles para aprobar esta compra",
+          409
+        );
+      }
+
+      if (
+        mensaje.includes("COMPRA_NO_PENDIENTE")
+      ) {
+        return errorResponse(
+          "Esta compra ya fue procesada por otra operación",
+          409
+        );
+      }
+
+      if (
+        mensaje.includes("RIFA_NO_DISPONIBLE")
+      ) {
+        return errorResponse(
+          "La rifa no está disponible",
+          409
+        );
+      }
+
+      if (
+        mensaje.includes("CANTIDAD_INVALIDA")
+      ) {
+        return errorResponse(
+          "Cantidad de tickets inválida (máximo 100)",
+          400
+        );
+      }
+
+      if (
+        mensaje.includes("COMPRA_SIN_RIFA")
+      ) {
+        return errorResponse(
+          "La compra no tiene rifa asociada",
+          409
+        );
+      }
+
+      return errorResponse(
+        "No se pudo aprobar la compra de forma segura",
+        500
+      );
+    }
+
+    const filas = Array.isArray(asignados)
+      ? asignados
+      : [];
+
+    // No revertimos manualmente:
+    // PostgreSQL ya confirmó la transacción.
+    if (filas.length !== cantidad) {
+      console.error(
+        "Resultado inesperado de aprobar_compra_segura:",
+        compra.id,
+        filas.length,
+        cantidad
+      );
+
+      return errorResponse(
+        "La compra pudo aprobarse, pero la respuesta de tickets fue inesperada. Verifica el estado antes de reintentar.",
+        500
+      );
+    }
+
+    const nuevosTickets = filas.map(
+      (fila) => ({
+        id: fila.ticket_id,
+        numero_ticket: fila.numero_ticket,
+        compra_id: compra.id,
+        rifa_id: fila.rifa_id,
+        tipo: null,
+        estado: "asignado",
+        free_drop_id: null,
+        free_drop_participation_id: null,
+      })
+    );
+
+    // ESTADÍSTICAS
+    let advertenciaRifa = null;
+
+    let ticketsVendidosDespues = null;
+    let ticketsPagadosDespues = null;
+    let ticketsFreeDespues = null;
+    let ticketsDisponiblesDespues = null;
+
+    let rifaCompleta = false;
+
+    try {
+      const {
+        data: statsData,
+        error: statsError,
+      } = await supabaseAdmin.rpc(
+        "get_rifa_stats",
+        {
+          p_rifa_id: rifa.id,
+        }
+      );
+
+      if (statsError) {
+        throw statsError;
+      }
+
+      const stats = Array.isArray(statsData)
+        ? statsData[0]
+        : statsData;
+
+      if (!stats) {
+        throw new Error("Sin estadísticas");
+      }
+
+      ticketsVendidosDespues = Number(
+        stats.tickets_vendidos
+      );
+
+      ticketsDisponiblesDespues = Number(
+        stats.tickets_disponibles
+      );
+
+      rifaCompleta =
+        stats.sold_out === true;
+
+      [
+        ticketsPagadosDespues,
+        ticketsFreeDespues,
+      ] = await Promise.all([
+        contarTickets(rifa.id, "pagados"),
+        contarTickets(rifa.id, "free"),
+      ]);
+
+      if (rifaCompleta) {
+        const { error } = await supabaseAdmin
+          .from("rifas")
+          .update({
+            estado: "agotada",
+          })
+          .eq("id", rifa.id);
+
+        if (error) {
+          advertenciaRifa =
+            "La compra se aprobó, pero no se pudo marcar la rifa como agotada: " +
+            error.message;
+        }
+      }
+    } catch (error) {
+      console.warn(
+        "Compra aprobada; error obteniendo estadísticas:",
+        error
+      );
+
+      advertenciaRifa =
+        "La compra se aprobó, pero no se pudieron actualizar todas las estadísticas.";
+    }
+
+    // NÚMEROS ASIGNADOS
+    const numerosTickets = nuevosTickets
+      .map((ticket) =>
+        Number(ticket.numero_ticket)
+      )
+      .sort((a, b) => a - b);
+
     const padLength =
-      String(rifa.formato) ===
-      "3digitos"
+      rifa.formato === "3digitos"
         ? 3
         : 4;
 
-    const numerosTickets =
-      nuevosTickets
-        .map((ticket) =>
-          Number(
-            ticket.numero_ticket
-          )
-        )
-        .sort((a, b) => a - b);
+    // DATOS DEL CLIENTE
+    let nombreCliente =
+      compra.nombre_cliente || "cliente";
 
+    let emailDestino =
+      compra.email_cliente || "";
+
+    let telefonoCliente =
+      compra.telefono_cliente || "";
+
+    try {
+      ({
+        nombreCliente,
+        emailDestino,
+        telefonoCliente,
+      } = await obtenerDatosCliente(compra));
+    } catch (error) {
+      console.warn(
+        "Compra aprobada; no se pudieron obtener todos los datos del cliente:",
+        error
+      );
+    }
+
+    // ENVIAR CORREO
     try {
       if (emailDestino) {
         await sendCompraAprobadaEmail({
@@ -1231,29 +495,32 @@ const {
             rifa.portada_url ||
             rifa.portada_scroll_url ||
             "",
-fechaEvento: new Intl.DateTimeFormat("en-CA", {
-  timeZone: "America/Chicago",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-}).format(new Date()),
+          fechaEvento:
+            new Intl.DateTimeFormat(
+              "en-CA",
+              {
+                timeZone:
+                  "America/Chicago",
+                year: "numeric",
+                month: "2-digit",
+                day: "2-digit",
+              }
+            ).format(new Date()),
           horaEvento:
             rifa.hora_sorteo ||
             rifa.hora ||
             rifa.hora_rifa ||
             "",
           tickets:
-            compra.cantidad_tickets ||
-            0,
+            compra.cantidad_tickets || 0,
           numerosTickets,
-          totalPagar:
-            Number(
-              compra.monto_total ?? 0
-            ),
+          totalPagar: Number(
+            compra.monto_total ?? 0
+          ),
           eventoUrl:
-            `${baseUrl}/evento/${rifa.id}`,
+            `${getBaseUrl(req)}/evento/${rifa.id}`,
           verificarUrl:
-            `${baseUrl}/principal`,
+            `${getBaseUrl(req)}/principal`,
           padLength,
         });
       } else {
@@ -1261,20 +528,14 @@ fechaEvento: new Intl.DateTimeFormat("en-CA", {
           `La compra ${compra.id} fue aprobada pero no tiene email destino`
         );
       }
-    } catch (emailError) {
-      /*
-       * Un error de email NO revierte la compra.
-       */
+    } catch (error) {
       console.error(
-        "No se pudo enviar el correo:",
-        emailError
+        "Compra aprobada; no se pudo enviar el correo:",
+        error
       );
     }
 
-    /* -----------------------------------------------------
-       WHATSAPP
-    ----------------------------------------------------- */
-
+    // WHATSAPP
     const telefonoWhatsapp =
       limpiarTelefonoWhatsapp(
         telefonoCliente
@@ -1284,9 +545,7 @@ fechaEvento: new Intl.DateTimeFormat("en-CA", {
       numerosTickets
         .map(
           (numero) =>
-            `• ${String(
-              numero
-            ).padStart(
+            `• ${String(numero).padStart(
               padLength,
               "0"
             )}`
@@ -1294,16 +553,11 @@ fechaEvento: new Intl.DateTimeFormat("en-CA", {
         .join("\n");
 
     const mensajeWhatsapp =
-      `🎉 Felicidades ${nombreCliente}
-
-Tu compra fue aprobada.
-
-🎟️ Rifa: ${rifa.nombre || "Rifa"}
-
-🎫 Tickets:
-${numerosWhatsapp}
-
-Gracias por participar en Sorteos LSD.`;
+      `🎉 Felicidades ${nombreCliente}\n\n` +
+      `Tu compra fue aprobada.\n\n` +
+      `🎟️ Rifa: ${rifa.nombre || "Rifa"}\n\n` +
+      `🎫 Tickets:\n${numerosWhatsapp}\n\n` +
+      "Gracias por participar en Sorteos LSD.";
 
     const whatsappUrl =
       telefonoWhatsapp
@@ -1312,10 +566,7 @@ Gracias por participar en Sorteos LSD.`;
           )}`
         : null;
 
-    /* -----------------------------------------------------
-       RESPUESTA
-    ----------------------------------------------------- */
-
+    // RESPUESTA AL ADMINISTRADOR
     return NextResponse.json({
       ok: true,
 
@@ -1325,58 +576,22 @@ Gracias por participar en Sorteos LSD.`;
       advertenciaRifa,
 
       whatsapp: {
-        telefono:
-          telefonoWhatsapp,
-        mensaje:
-          mensajeWhatsapp,
-        url:
-          whatsappUrl,
+        telefono: telefonoWhatsapp,
+        mensaje: mensajeWhatsapp,
+        url: whatsappUrl,
       },
 
-      tickets:
-        nuevosTickets.map(
-          (ticket) => ({
-            id:
-              ticket.id,
-            numero_ticket:
-              ticket.numero_ticket,
-            compra_id:
-              ticket.compra_id,
-            rifa_id:
-              ticket.rifa_id,
-            tipo:
-              ticket.tipo,
-            estado:
-              ticket.estado,
-            free_drop_id:
-              ticket.free_drop_id,
-            free_drop_participation_id:
-              ticket.free_drop_participation_id,
-          })
-        ),
+      tickets: nuevosTickets,
 
       rifa: {
-        id:
-          rifa.id,
+        id: rifa.id,
+        nombre: rifa.nombre,
+        formato: rifa.formato,
 
-        nombre:
-          rifa.nombre,
+        estado: rifaCompleta
+          ? "agotada"
+          : rifa.estado,
 
-        formato:
-          rifa.formato,
-
-        estado:
-          rifaCompleta
-            ? "agotada"
-            : rifa.estado,
-
-        /*
-         * Conservamos tickets_vendidos por
-         * compatibilidad con el frontend.
-         *
-         * Representa ocupación total:
-         * PAGADOS + FREE.
-         */
         tickets_vendidos:
           ticketsVendidosDespues,
 
@@ -1396,33 +611,19 @@ Gracias por participar en Sorteos LSD.`;
           totalNumeros,
 
         porcentaje_vendido:
-          totalNumeros > 0
-            ? Number(
+          ticketsVendidosDespues === null
+            ? null
+            : Number(
                 (
-                  (
-                    ticketsVendidosDespues /
-                    totalNumeros
-                  ) *
+                  (ticketsVendidosDespues /
+                    totalNumeros) *
                   100
                 ).toFixed(2)
-              )
-            : 0,
+              ),
       },
 
       diagnostico: {
-        antes: {
-          ocupados:
-            ticketsOcupadosAntes,
-
-          pagados:
-            ticketsPagadosAntes,
-
-          free:
-            ticketsFreeAntes,
-
-          disponibles:
-            disponiblesRestantesAntes,
-        },
+        antes: null,
 
         despues: {
           ocupados:
