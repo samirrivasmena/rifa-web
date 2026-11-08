@@ -1,96 +1,40 @@
 
-import { Suspense } from "react";
+import { Suspense, cache } from "react";
 import HomePageClient from "./HomePageClient";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { obtenerConfiguracionPublica } from "@/lib/configuracion/obtenerConfiguracionPublica";
 import { obtenerRifasPublicas } from "@/lib/rifas/obtenerRifasPublicas";
 import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
 import MaintenancePage from "@/components/public/MaintenancePage";
 
-/* =========================================================
-   RENDER DINÁMICO
-   Evita que Vercel conserve colores/configuración anteriores
-========================================================= */
-
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
-/* =========================================================
-   CONFIGURACIÓN GENERAL
-========================================================= */
 
 const siteUrl =
   process.env.NEXT_PUBLIC_SITE_URL ||
   "https://www.sorteoslsd.com";
 
 /* =========================================================
-   OBTENER CONFIGURACIÓN
+   CONFIGURACIÓN PÚBLICA COMPARTIDA POR SOLICITUD
 ========================================================= */
 
-async function obtenerConfiguracion() {
+const obtenerConfiguracion = cache(async () => {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("configuracion_sitio")
-      .select(
-        `
-        logo_url,
-        nombre_marca,
-        seo_titulo,
-        seo_descripcion,
-        seo_imagen,
-        color_primario,
-        color_secundario,
-        color_fondo,
-        color_texto,
-        color_boton,
-        color_tarjeta,
-        color_borde,
-        color_alerta,
-        color_exito,
-        color_error,
-        color_hover,
-        color_progreso,
-        color_progreso_fondo,
-        color_punticos
-        `
-      )
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error(
-        "Error cargando configuración SEO:",
-        error
-      );
-
-      return null;
-    }
-
-    return data || null;
+    return await obtenerConfiguracionPublica();
   } catch (error) {
-    console.error(
-      "Error cargando configuración SEO:",
-      error
-    );
-
+    console.error("Error cargando configuración:", error);
     return null;
   }
-}
+});
 
 /* =========================================================
-   OBTENER RIFAS PÚBLICAS INICIALES
-   DIRECTAMENTE DESDE SUPABASE
+   RIFAS INICIALES
 ========================================================= */
 
 async function obtenerRifasIniciales() {
   try {
     return await obtenerRifasPublicas();
   } catch (error) {
-    console.error(
-      "Error cargando rifas iniciales:",
-      error
-    );
-
+    console.error("Error cargando rifas iniciales:", error);
     return [];
   }
 }
@@ -120,9 +64,7 @@ export async function generateMetadata() {
 
   return {
     metadataBase: new URL(siteUrl),
-
     title: titulo,
-
     description: descripcion,
 
     verification: {
@@ -141,14 +83,12 @@ export async function generateMetadata() {
       description: descripcion,
       url: siteUrl,
       siteName: nombreMarca,
-
       images: [
         {
           url: imagenCompartir,
           alt: nombreMarca,
         },
       ],
-
       locale: "es_US",
       type: "website",
     },
@@ -163,15 +103,10 @@ export async function generateMetadata() {
 }
 
 /* =========================================================
-   PÁGINA
+   HOME
 ========================================================= */
 
 export default async function Page() {
-  /* =======================================================
-     CARGA PARALELA OPTIMIZADA
-     Mantenimiento + Configuración + Rifas
-  ======================================================= */
-
   const [
     modoMantenimiento,
     config,
@@ -181,11 +116,6 @@ export default async function Page() {
     obtenerConfiguracion(),
     obtenerRifasIniciales(),
   ]);
-
-  /* =======================================================
-     MODO MANTENIMIENTO GLOBAL
-     Conserva su funcionamiento original
-  ======================================================= */
 
   if (modoMantenimiento) {
     return <MaintenancePage />;
@@ -197,12 +127,6 @@ export default async function Page() {
   const logoUrl =
     config?.logo_url || `${siteUrl}/icon`;
 
-  /* =======================================================
-     DIAGNÓSTICO TEMPORAL DEL LOGO
-     Aparece en la terminal de Next.js
-     No modifica la base de datos
-  ======================================================= */
-
   if (process.env.NODE_ENV === "development") {
     console.log(
       "LOGO ACTUAL DESDE SUPABASE:",
@@ -210,9 +134,9 @@ export default async function Page() {
     );
   }
 
-  /* =======================================================
+  /* =========================================================
      SCHEMA.ORG
-  ======================================================= */
+  ========================================================= */
 
   const organizationSchema = {
     "@context": "https://schema.org",
@@ -222,9 +146,9 @@ export default async function Page() {
     logo: logoUrl,
   };
 
-  /* =======================================================
+  /* =========================================================
      COLORES INICIALES
-  ======================================================= */
+  ========================================================= */
 
   const coloresIniciales = {
     "--site-primary":
@@ -275,10 +199,6 @@ export default async function Page() {
       "#dc2626",
   };
 
-  /* =======================================================
-     RENDER
-  ======================================================= */
-
   return (
     <>
       <script
@@ -286,7 +206,7 @@ export default async function Page() {
         dangerouslySetInnerHTML={{
           __html: JSON.stringify(
             organizationSchema
-          ),
+          ).replace(/</g, "\\u003c"),
         }}
       />
 
