@@ -166,6 +166,9 @@ const [rifas, setRifas] = useState(rifasInicialesSeguras);
 
   const fileInputRef = useRef(null);
 
+const rifaQueryInicialRef = useRef(rifaDesdeQuery);
+const rutaRifaCambioRef = useRef(false);
+
   const purchaseTurnstileContainerRef = useRef(null);
 const purchaseTurnstileWidgetIdRef = useRef(null);
 
@@ -232,12 +235,28 @@ const siteKey =
     };
   }, []);
 
-  useEffect(() => {
-    let cancelado = false;
 
-    const cargarDatosRifas = async () => {
-      try {
-        // Si ya hay datos del servidor, actualizar en segundo plano.
+useEffect(() => {
+  let cancelado = false;
+
+  // Detectar navegación a otra rifa sin recargar HOME.
+  if (rifaQueryInicialRef.current !== rifaDesdeQuery) {
+    rutaRifaCambioRef.current = true;
+  }
+
+  const cargarDatosRifas = async () => {
+    try {
+      const usarDatosIniciales =
+        !rutaRifaCambioRef.current &&
+        rifasInicialesSeguras.length > 0;
+
+      let lista;
+
+      if (usarDatosIniciales) {
+        // Reutilizar las rifas que ya entregó page.js.
+        // No repetir la solicitud a /api/rifas-publicas.
+        lista = rifasInicialesSeguras;
+      } else {
         if (rifasInicialesSeguras.length === 0) {
           setLoadingRifa(true);
         }
@@ -254,7 +273,6 @@ const siteKey =
             data.error || "No se pudo cargar la lista de rifas"
           );
 
-          // Conservar los datos iniciales si falla la actualización.
           if (!cancelado && rifasInicialesSeguras.length === 0) {
             setRifaActiva(null);
             setRifas([]);
@@ -263,73 +281,72 @@ const siteKey =
           return;
         }
 
-        const lista = Array.isArray(data.rifas)
+        lista = Array.isArray(data.rifas)
           ? data.rifas
           : [];
+      }
 
-        const listaEnriquecida =
-          await enriquecerListaRifasConResumen(lista);
+      // Conservar el enriquecimiento de estadísticas.
+      const listaEnriquecida =
+        await enriquecerListaRifasConResumen(lista);
 
-        if (cancelado) return;
+      if (cancelado) return;
 
-        setRifas(listaEnriquecida);
+      setRifas(listaEnriquecida);
 
-        // Si viene una rifa específica en la URL
-        if (rifaDesdeQuery) {
-          const rifaEncontrada = listaEnriquecida.find(
-            (r) =>
-              String(r.id) === String(rifaDesdeQuery) &&
-              esPublicada(r.publicada)
+      if (rifaDesdeQuery) {
+        const rifaEncontrada = listaEnriquecida.find(
+          (r) =>
+            String(r.id) === String(rifaDesdeQuery) &&
+            esPublicada(r.publicada)
+        );
+
+        if (!rifaEncontrada) {
+          console.warn(
+            "No se encontró la rifa solicitada en la URL"
           );
-
-          if (!rifaEncontrada) {
-            console.warn(
-              "No se encontró la rifa solicitada en la URL"
-            );
-            setRifaActiva(null);
-            return;
-          }
-
-          setRifaActiva(rifaEncontrada);
+          setRifaActiva(null);
           return;
         }
 
-        // Rifa principal:
-        // primero ACTIVA y, si no existe, AGOTADA.
-        const rifaPrincipal =
-          listaEnriquecida.find(
-            (r) =>
-              esPublicada(r.publicada) &&
-              String(r.estado || "").toLowerCase() === "activa"
-          ) ||
-          listaEnriquecida.find(
-            (r) =>
-              esPublicada(r.publicada) &&
-              String(r.estado || "").toLowerCase() === "agotada"
-          ) ||
-          null;
-
-        setRifaActiva(rifaPrincipal);
-      } catch (error) {
-        console.error("Error cargando rifas:", error);
-
-        if (!cancelado && rifasInicialesSeguras.length === 0) {
-          setRifaActiva(null);
-          setRifas([]);
-        }
-      } finally {
-        if (!cancelado) {
-          setLoadingRifa(false);
-        }
+        setRifaActiva(rifaEncontrada);
+        return;
       }
-    };
 
-    cargarDatosRifas();
+      const rifaPrincipal =
+        listaEnriquecida.find(
+          (r) =>
+            esPublicada(r.publicada) &&
+            String(r.estado || "").toLowerCase() === "activa"
+        ) ||
+        listaEnriquecida.find(
+          (r) =>
+            esPublicada(r.publicada) &&
+            String(r.estado || "").toLowerCase() === "agotada"
+        ) ||
+        null;
 
-    return () => {
-      cancelado = true;
-    };
-  }, [rifaDesdeQuery]);
+      setRifaActiva(rifaPrincipal);
+    } catch (error) {
+      console.error("Error cargando rifas:", error);
+
+      if (!cancelado && rifasInicialesSeguras.length === 0) {
+        setRifaActiva(null);
+        setRifas([]);
+      }
+    } finally {
+      if (!cancelado) {
+        setLoadingRifa(false);
+      }
+    }
+  };
+
+  cargarDatosRifas();
+
+  return () => {
+    cancelado = true;
+  };
+}, [rifaDesdeQuery]);
   useEffect(() => {
   if (typeof window === "undefined") return;
 

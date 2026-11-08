@@ -153,12 +153,18 @@ export default function AdminGanadoresSection({
     try {
       setLoading(true);
 
-      const res = await fetch(
-        "/api/historial-ganadores",
-        {
-          cache: "no-store",
-        }
-      );
+const headers = await getAdminAuthHeaders();
+
+const res = await fetch(
+  "/api/historial-ganadores",
+  {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      ...headers,
+    },
+  }
+);
 
       const data = await res.json();
 
