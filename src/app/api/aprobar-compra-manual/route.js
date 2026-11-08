@@ -116,80 +116,38 @@ async function obtenerDatosCliente(compra) {
 }
 
 /* =========================================================
-   ESTADÍSTICAS SIN DESCARGAR TICKETS
+   ESTADÍSTICAS OPTIMIZADAS CON UNA RPC
 ========================================================= */
 
-async function contarTickets(query) {
-  const { count, error } = await query;
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return Number(count ?? 0);
-}
-
 async function obtenerEstadisticas(rifaId, totalNumeros) {
-  const base = () =>
-    supabaseAdmin
-      .from("tickets")
-      .select("id", {
-        count: "exact",
-        head: true,
-      })
-      .eq("rifa_id", rifaId);
-
-  const filtroOcupados = [
-    "estado.neq.disponible",
-    "compra_id.not.is.null",
-    "free_drop_id.not.is.null",
-    "free_drop_participation_id.not.is.null",
-    "tipo.eq.free",
-  ].join(",");
-
-  const [ocupados, pagados, free] =
-    await Promise.all([
-      contarTickets(
-        base().or(filtroOcupados)
-      ),
-
-      contarTickets(
-        base().not("compra_id", "is", null)
-      ),
-
-      contarTickets(
-        base().or(
-          [
-            "free_drop_id.not.is.null",
-            "free_drop_participation_id.not.is.null",
-            "tipo.eq.free",
-          ].join(",")
-        )
-      ),
-    ]);
-
-  const disponibles = Math.max(
-    0,
-    totalNumeros - ocupados
+  const { data, error } = await supabaseAdmin.rpc(
+    "get_rifa_stats_detalladas",
+    {
+      p_rifa_id: rifaId,
+    }
   );
 
+  if (error) {
+    throw new Error(
+      `Error obteniendo estadísticas: ${error.message}`
+    );
+  }
+
+  const stats = Array.isArray(data) ? data[0] : data;
+
+  if (!stats) {
+    throw new Error(
+      "No se encontraron estadísticas de la rifa."
+    );
+  }
+
   return {
-    ocupados,
-    pagados,
-    free,
-    disponibles,
-    soldOut:
-      totalNumeros > 0 &&
-      ocupados >= totalNumeros,
-    porcentaje:
-      totalNumeros > 0
-        ? Number(
-            (
-              (ocupados / totalNumeros) *
-              100
-            ).toFixed(2)
-          )
-        : 0,
+    ocupados: Number(stats.tickets_vendidos),
+    pagados: Number(stats.tickets_pagados),
+    free: Number(stats.tickets_free),
+    disponibles: Number(stats.tickets_disponibles),
+    soldOut: stats.sold_out === true,
+    porcentaje: Number(stats.porcentaje_vendido),
   };
 }
 
@@ -513,6 +471,7 @@ export async function POST(req) {
         No hacemos rollback desde JavaScript:
         la RPC ya terminó su transacción.
       */
+
       console.error(
         "La RPC devolvió una cantidad inesperada de tickets.",
         {
@@ -648,6 +607,7 @@ export async function POST(req) {
       /*
         El correo no modifica la aprobación.
       */
+
       console.error(
         "No se pudo enviar el correo:",
         emailError
