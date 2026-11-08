@@ -381,15 +381,15 @@ export async function POST(req) {
     let rifaCompleta = false;
 
     try {
-      const {
-        data: statsData,
-        error: statsError,
-      } = await supabaseAdmin.rpc(
-        "get_rifa_stats",
-        {
-          p_rifa_id: rifa.id,
-        }
-      );
+const {
+  data: statsData,
+  error: statsError,
+} = await supabaseAdmin.rpc(
+  "get_rifa_stats_detalladas",
+  {
+    p_rifa_id: rifa.id,
+  }
+);
 
       if (statsError) {
         throw statsError;
@@ -414,13 +414,13 @@ export async function POST(req) {
       rifaCompleta =
         stats.sold_out === true;
 
-      [
-        ticketsPagadosDespues,
-        ticketsFreeDespues,
-      ] = await Promise.all([
-        contarTickets(rifa.id, "pagados"),
-        contarTickets(rifa.id, "free"),
-      ]);
+ticketsPagadosDespues = Number(
+  stats.tickets_pagados
+);
+
+ticketsFreeDespues = Number(
+  stats.tickets_free
+);
 
       if (rifaCompleta) {
         const { error } = await supabaseAdmin

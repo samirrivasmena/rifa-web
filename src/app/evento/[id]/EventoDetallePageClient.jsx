@@ -581,15 +581,42 @@ numeroParticipacion:
    * pg_cron trabaja en el servidor; esta actualización permite que una página
    * que ya estaba abierta refleje el cambio sin obligar al usuario a recargar.
    */
-  useEffect(() => {
-    if (typeof window === "undefined" || !eventoId) return;
+useEffect(() => {
+  if (typeof window === "undefined" || !eventoId) return;
 
-    const intervalId = window.setInterval(() => {
+  const actualizarSiVisible = () => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
+    cargarFreeDrop();
+  };
+
+  const alVolverAPagina = () => {
+    if (document.visibilityState === "visible") {
       cargarFreeDrop();
-    }, 30000);
+    }
+  };
 
-    return () => window.clearInterval(intervalId);
-  }, [eventoId, cargarFreeDrop]);
+  const intervalId = window.setInterval(
+    actualizarSiVisible,
+    30000
+  );
+
+  document.addEventListener(
+    "visibilitychange",
+    alVolverAPagina
+  );
+
+  return () => {
+    window.clearInterval(intervalId);
+
+    document.removeEventListener(
+      "visibilitychange",
+      alVolverAPagina
+    );
+  };
+}, [eventoId, cargarFreeDrop]);
 
   /*
    * Reloj exclusivamente visual para la cuenta regresiva real.
