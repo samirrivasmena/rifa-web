@@ -103,10 +103,10 @@ export async function GET() {
       `)
       .eq("estado_pago", "aprobado")
       .not("aprobado_at", "is", null)
-      .order("aprobado_at", {
-        ascending: false,
-      })
-      .limit(20);
+.order("aprobado_at", {
+  ascending: false,
+})
+.limit(1);
 
     /* =====================================================
        ERROR DE SUPABASE

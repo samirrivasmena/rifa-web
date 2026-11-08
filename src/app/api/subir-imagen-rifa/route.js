@@ -1,5 +1,7 @@
+
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
+import sharp from "sharp";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
 
@@ -12,55 +14,37 @@ export const revalidate = 0;
 ========================================================= */
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+const MAX_DIMENSION = 1600;
+const WEBP_QUALITY = 82;
 
-const TIPOS_PERMITIDOS = {
-  "image/jpeg": "jpg",
-  "image/png": "png",
-  "image/webp": "webp",
-};
-
-/* =========================================================
-   RESPUESTA DE ERROR
-========================================================= */
+const TIPOS_PERMITIDOS = [
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+];
 
 function errorResponse(mensaje, status = 400) {
   return NextResponse.json(
-    {
-      error: mensaje,
-    },
-    {
-      status,
-    }
+    { error: mensaje },
+    { status }
   );
 }
 
 /* =========================================================
-   POST — SUBIR IMAGEN DE RIFA
+   POST — SUBIR IMAGEN OPTIMIZADA
 ========================================================= */
 
 export async function POST(req) {
-  /* -------------------------------------------------------
-     SOLO ADMINISTRADOR
-  ------------------------------------------------------- */
-
   const auth = await requireAdmin(req);
 
   if (!auth.ok) {
     return NextResponse.json(
-      {
-        error: auth.error,
-      },
-      {
-        status: auth.status,
-      }
+      { error: auth.error },
+      { status: auth.status }
     );
   }
 
   try {
-    /* -----------------------------------------------------
-       FORM DATA
-    ----------------------------------------------------- */
-
     let formData;
 
     try {
@@ -74,126 +58,148 @@ export async function POST(req) {
 
     const file = formData.get("file");
 
-    /* -----------------------------------------------------
-       VALIDAR ARCHIVO
-    ----------------------------------------------------- */
-
     if (
       !file ||
       typeof file.arrayBuffer !== "function"
     ) {
       return errorResponse(
-        "No se recibió ningún archivo",
-        400
+        "No se recibió ningún archivo"
       );
     }
 
-    /* -----------------------------------------------------
-       VALIDAR TAMAÑO
-    ----------------------------------------------------- */
-
-    const fileSize = Number(file.size || 0);
-
-    if (fileSize <= 0) {
-      return errorResponse(
-        "El archivo está vacío",
-        400
-      );
+    if (
+      !Number.isFinite(file.size) ||
+      file.size <= 0
+    ) {
+      return errorResponse("El archivo está vacío");
     }
 
-    if (fileSize > MAX_FILE_SIZE) {
+    if (file.size > MAX_FILE_SIZE) {
       return errorResponse(
         "La imagen no puede superar los 10 MB",
         413
       );
     }
 
-    /* -----------------------------------------------------
-       VALIDAR TIPO
-    ----------------------------------------------------- */
-
     const contentType = String(
       file.type || ""
-    )
-      .trim()
-      .toLowerCase();
+    ).trim().toLowerCase();
 
-    const extension =
-      TIPOS_PERMITIDOS[contentType];
-
-    if (!extension) {
+    if (!TIPOS_PERMITIDOS.includes(contentType)) {
       return errorResponse(
-        "Formato no permitido. Usa JPG, PNG o WEBP.",
-        400
+        "Formato no permitido. Usa JPG, PNG o WEBP."
       );
     }
-
-    /* -----------------------------------------------------
-       LEER ARCHIVO
-    ----------------------------------------------------- */
 
     let buffer;
 
     try {
-      const arrayBuffer =
-        await file.arrayBuffer();
-
-      buffer = Buffer.from(arrayBuffer);
-    } catch (error) {
-      console.error(
-        "Error leyendo imagen de rifa:",
-        error
-      );
-
+      buffer = Buffer.from(await file.arrayBuffer());
+    } catch {
       return errorResponse(
-        "No se pudo leer la imagen",
-        400
+        "No se pudo leer la imagen"
       );
     }
 
-    if (!buffer.length) {
+    if (
+      buffer.length === 0 ||
+      buffer.length > MAX_FILE_SIZE
+    ) {
       return errorResponse(
-        "El archivo está vacío",
-        400
-      );
-    }
-
-    /*
-     * Segunda comprobación del tamaño usando
-     * los bytes realmente recibidos.
-     */
-
-    if (buffer.length > MAX_FILE_SIZE) {
-      return errorResponse(
-        "La imagen no puede superar los 10 MB",
+        "Tamaño de imagen no permitido",
         413
       );
     }
 
-    /* -----------------------------------------------------
-       NOMBRE SEGURO GENERADO POR EL SERVIDOR
-    ----------------------------------------------------- */
+    /* =====================================================
+       VALIDAR EL CONTENIDO REAL DE LA IMAGEN
+    ===================================================== */
+
+    let metadata;
+
+    try {
+      metadata = await sharp(buffer, {
+        limitInputPixels: 40000000,
+        failOn: "error",
+      }).metadata();
+    } catch {
+      return errorResponse(
+        "La imagen está dañada o no es válida"
+      );
+    }
+
+    const formatos = {
+      jpeg: "image/jpeg",
+      png: "image/png",
+      webp: "image/webp",
+    };
+
+    if (formatos[metadata.format] !== contentType) {
+      return errorResponse(
+        "El contenido no coincide con el formato de imagen"
+      );
+    }
+
+    /* =====================================================
+       OPTIMIZAR IMAGEN
+    ===================================================== */
+
+    let imagenOptimizada;
+
+    try {
+      imagenOptimizada = await sharp(buffer, {
+        limitInputPixels: 40000000,
+        failOn: "error",
+      })
+        .rotate()
+        .resize({
+          width: MAX_DIMENSION,
+          height: MAX_DIMENSION,
+          fit: "inside",
+          withoutEnlargement: true,
+        })
+        .webp({
+          quality: WEBP_QUALITY,
+          effort: 5,
+        })
+        .toBuffer();
+    } catch (error) {
+      console.error(
+        "Error optimizando portada:",
+        error
+      );
+
+      return errorResponse(
+        "No se pudo optimizar la imagen",
+        400
+      );
+    }
+
+    if (!imagenOptimizada.length) {
+      return errorResponse(
+        "La imagen optimizada está vacía"
+      );
+    }
+
+    /* =====================================================
+       NOMBRE ÚNICO PARA CACHÉ SEGURA
+    ===================================================== */
 
     const nombreArchivo =
-      `portadas/${Date.now()}-${randomUUID()}.${extension}`;
+      `portadas/${Date.now()}-${randomUUID()}.webp`;
 
-    /* -----------------------------------------------------
+    /* =====================================================
        SUBIR A SUPABASE STORAGE
-    ----------------------------------------------------- */
+    ===================================================== */
 
-    const {
-      error: uploadError,
-    } = await supabaseAdmin.storage
-      .from("rifas")
-      .upload(
-        nombreArchivo,
-        buffer,
-        {
-          contentType,
+    const { error: uploadError } =
+      await supabaseAdmin.storage
+        .from("rifas")
+        .upload(nombreArchivo, imagenOptimizada, {
+          contentType: "image/webp",
+          cacheControl: "31536000",
           upsert: false,
-          cacheControl: "3600",
-        }
-      );
+        });
 
     if (uploadError) {
       console.error(
@@ -207,39 +213,27 @@ export async function POST(req) {
       );
     }
 
-    /* -----------------------------------------------------
+    /* =====================================================
        OBTENER URL PÚBLICA
-    ----------------------------------------------------- */
+    ===================================================== */
 
-    const {
-      data,
-    } = supabaseAdmin.storage
+    const { data } = supabaseAdmin.storage
       .from("rifas")
       .getPublicUrl(nombreArchivo);
 
-    const publicUrl =
-      String(data?.publicUrl || "").trim();
+    const publicUrl = String(
+      data?.publicUrl || ""
+    ).trim();
 
     if (!publicUrl) {
-      console.error(
-        "La imagen se subió pero no se pudo obtener su URL pública:",
-        nombreArchivo
-      );
-
-      /*
-       * Intentamos eliminar el archivo para no dejar
-       * un objeto huérfano en Storage.
-       */
-
-      const {
-        error: removeError,
-      } = await supabaseAdmin.storage
-        .from("rifas")
-        .remove([nombreArchivo]);
+      const { error: removeError } =
+        await supabaseAdmin.storage
+          .from("rifas")
+          .remove([nombreArchivo]);
 
       if (removeError) {
         console.error(
-          "No se pudo eliminar la imagen huérfana:",
+          "No se pudo limpiar la imagen:",
           removeError
         );
       }
@@ -250,9 +244,9 @@ export async function POST(req) {
       );
     }
 
-    /* -----------------------------------------------------
-       RESPUESTA
-    ----------------------------------------------------- */
+    /* =====================================================
+       RESPUESTA COMPATIBLE CON TU ADMIN
+    ===================================================== */
 
     return NextResponse.json({
       ok: true,
@@ -260,11 +254,6 @@ export async function POST(req) {
       path: nombreArchivo,
     });
   } catch (error) {
-    /*
-     * El detalle real queda solamente
-     * registrado en el servidor.
-     */
-
     console.error(
       "subir-imagen-rifa error:",
       error

@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ export default function RaffleDualImage({
   const [showSecondImage, setShowSecondImage] = useState(false);
   const [loadSecondary, setLoadSecondary] = useState(false);
   const [principalLoaded, setPrincipalLoaded] = useState(false);
+  const [secondaryLoaded, setSecondaryLoaded] = useState(false);
 
   const logoUrl = String(config?.logo_url || "").trim();
 
@@ -34,28 +36,40 @@ export default function RaffleDualImage({
     const node = containerRef.current;
     if (!node) return;
 
+    if (!("IntersectionObserver" in window)) {
+      setIsVisible(true);
+      return;
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsVisible(entry.isIntersecting);
       },
       {
         threshold: 0.01,
-        rootMargin: "300px 0px",
+        rootMargin: "0px",
       }
     );
 
     observer.observe(node);
 
-    return () => {
-      observer.disconnect();
-    };
+    return () => observer.disconnect();
   }, []);
 
   useEffect(() => {
-    if (!isVisible || !tieneSecundaria) return;
+    setPrincipalLoaded(false);
+    setSecondaryLoaded(false);
+    setLoadSecondary(false);
+    setShowSecondImage(false);
+  }, [principalFinal, secundariaFinal]);
+
+  useEffect(() => {
+    if (!isVisible || !tieneSecundaria || !principalLoaded) {
+      return;
+    }
 
     setLoadSecondary(true);
-  }, [isVisible, tieneSecundaria]);
+  }, [isVisible, tieneSecundaria, principalLoaded]);
 
   useEffect(() => {
     if (intervalRef.current) {
@@ -63,8 +77,12 @@ export default function RaffleDualImage({
       intervalRef.current = null;
     }
 
-    if (!tieneSecundaria || !isVisible || !principalLoaded) {
-      setShowSecondImage(false);
+    if (
+      !tieneSecundaria ||
+      !isVisible ||
+      !principalLoaded ||
+      !secondaryLoaded
+    ) {
       return;
     }
 
@@ -78,12 +96,21 @@ export default function RaffleDualImage({
         intervalRef.current = null;
       }
     };
-  }, [isVisible, tieneSecundaria, principalLoaded]);
+  }, [
+    isVisible,
+    tieneSecundaria,
+    principalLoaded,
+    secondaryLoaded,
+  ]);
 
   const cambiarImagen = (mostrarSegunda) => {
     if (!tieneSecundaria) return;
 
-    setLoadSecondary(true);
+    if (mostrarSegunda && !secondaryLoaded) {
+      setLoadSecondary(true);
+      return;
+    }
+
     setShowSecondImage(mostrarSegunda);
 
     if (intervalRef.current) {
@@ -95,20 +122,16 @@ export default function RaffleDualImage({
   const imagenAnterior = (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     cambiarImagen(false);
   };
 
   const imagenSiguiente = (e) => {
     e.preventDefault();
     e.stopPropagation();
-
     cambiarImagen(true);
   };
 
-  if (!principalFinal) {
-    return null;
-  }
+  if (!principalFinal) return null;
 
   return (
     <div
@@ -140,6 +163,7 @@ export default function RaffleDualImage({
           decoding="async"
           fetchPriority="low"
           draggable={false}
+          onLoad={() => setSecondaryLoaded(true)}
         />
       )}
 
