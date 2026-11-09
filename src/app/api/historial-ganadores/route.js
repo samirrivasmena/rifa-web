@@ -8,6 +8,16 @@ export const revalidate = 0;
 export const runtime = "nodejs";
 
 /* =========================================================
+   CONFIGURACIÓN DE CACHÉ
+========================================================= */
+
+const CACHE_HISTORIAL_PUBLICO =
+  "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
+
+const CACHE_PRIVADA =
+  "private, no-store, max-age=0";
+
+/* =========================================================
    HELPERS
 ========================================================= */
 
@@ -98,7 +108,7 @@ const FREE_PARTICIPATION_SELECT = `
    RESPUESTA PÚBLICA SEGURA
 
    Se construye con una lista explícita de campos.
-   Nunca se envían datos privados por accidente.
+   No incluye datos administrativos privados.
 ========================================================= */
 
 function convertirGanadorAPublico(ganador) {
@@ -155,16 +165,31 @@ function convertirGanadorAPublico(ganador) {
 }
 
 /* =========================================================
-   RESPUESTA JSON SIN CACHÉ
+   RESPUESTA JSON
 
-   Evita almacenar accidentalmente datos administrativos.
+   Público:
+   Caché compartida de 60 segundos.
+
+   Administrador:
+   Sin caché.
+
+   Errores:
+   Sin caché.
 ========================================================= */
 
-function responderJSON(datos, status = 200) {
+function responderJSON(
+  datos,
+  status = 200,
+  cachePublica = false
+) {
   return NextResponse.json(datos, {
     status,
     headers: {
-      "Cache-Control": "private, no-store, max-age=0",
+      "Cache-Control":
+        cachePublica && status === 200
+          ? CACHE_HISTORIAL_PUBLICO
+          : CACHE_PRIVADA,
+
       "X-Content-Type-Options": "nosniff",
     },
   });
@@ -187,7 +212,8 @@ export async function GET(req) {
     try {
       return await consulta();
     } finally {
-      const duracion = performance.now() - inicio;
+      const duracion =
+        performance.now() - inicio;
 
       console.log(
         `[${diagnosticoId}] HISTORIAL - ${nombre}: ${duracion.toFixed(2)}ms`
@@ -197,14 +223,7 @@ export async function GET(req) {
 
   try {
     /* =====================================================
-       1. VERIFICAR SI LA SOLICITUD ES ADMINISTRATIVA
-
-       Público:
-       No envía Authorization.
-
-       Administrador:
-       Envía token Bearer válido.
-       requireAdmin verifica ADMIN_USER_ID y MFA AAL2.
+       1. VERIFICAR ADMINISTRADOR
     ===================================================== */
 
     const authHeader =
@@ -219,7 +238,9 @@ export async function GET(req) {
         return responderJSON(
           {
             ok: false,
-            error: admin.error || "No autorizado",
+            error:
+              admin.error || "No autorizado",
+
             ...(admin.requiresMfa
               ? { requiresMfa: true }
               : {}),
@@ -284,15 +305,21 @@ export async function GET(req) {
       return responderJSON(
         {
           ok: false,
-          error: "No se pudo cargar el historial",
+          error:
+            "No se pudo cargar el historial",
         },
         500
       );
     }
 
-    const sorteosBase = Array.isArray(sorteos)
-      ? sorteos
-      : [];
+    const sorteosBase =
+      Array.isArray(sorteos)
+        ? sorteos
+        : [];
+
+    /* =====================================================
+       SIN GANADORES
+    ===================================================== */
 
     if (!sorteosBase.length) {
       console.log(
@@ -301,17 +328,18 @@ export async function GET(req) {
         )}ms`
       );
 
-      return responderJSON({
-        ok: true,
-        ganadores: [],
-      });
+      return responderJSON(
+        {
+          ok: true,
+          ganadores: [],
+        },
+        200,
+        !esAdministrador
+      );
     }
 
     /* =====================================================
        3. BUSCAR TICKETS GANADORES
-
-       Se conserva la búsqueda original por:
-       rifa_id + numero_ticket.
     ===================================================== */
 
     const sorteosConTicket = await medir(
@@ -323,9 +351,10 @@ export async function GET(req) {
               sorteo?.rifa_id
             );
 
-            const numeroGanador = normalizarNumero(
-              obtenerNumeroGanador(sorteo)
-            );
+            const numeroGanador =
+              normalizarNumero(
+                obtenerNumeroGanador(sorteo)
+              );
 
             if (
               !rifaId ||
@@ -344,7 +373,10 @@ export async function GET(req) {
               .from("tickets")
               .select(TICKET_SELECT)
               .eq("rifa_id", rifaId)
-              .eq("numero_ticket", numeroGanador)
+              .eq(
+                "numero_ticket",
+                numeroGanador
+              )
               .limit(1);
 
             if (ticketError) {
@@ -374,7 +406,7 @@ export async function GET(req) {
     );
 
     /* =====================================================
-       4. OBTENER IDS DE COMPRAS GANADORAS
+       4. IDS DE COMPRAS GANADORAS
     ===================================================== */
 
     const compraIds = [
@@ -459,7 +491,9 @@ export async function GET(req) {
       ...new Set(
         compras
           .map((compra) =>
-            limpiarTexto(compra?.usuario_id)
+            limpiarTexto(
+              compra?.usuario_id
+            )
           )
           .filter(Boolean)
       ),
@@ -520,7 +554,8 @@ export async function GET(req) {
         sorteosConTicket
           .map(({ ticketGanador }) =>
             limpiarTexto(
-              ticketGanador?.free_drop_participation_id
+              ticketGanador
+                ?.free_drop_participation_id
             )
           )
           .filter(Boolean)
@@ -529,16 +564,15 @@ export async function GET(req) {
 
     /* =====================================================
        8. IDS DE TICKETS GANADORES
-
-       Se conservan para buscar participaciones Free
-       antiguas mediante ticket_id.
     ===================================================== */
 
     const ticketGanadorIds = [
       ...new Set(
         sorteosConTicket
           .map(({ ticketGanador }) =>
-            limpiarTexto(ticketGanador?.id)
+            limpiarTexto(
+              ticketGanador?.id
+            )
           )
           .filter(Boolean)
       ),
@@ -556,9 +590,16 @@ export async function GET(req) {
         error: freeError,
       } = await medir("free por ID", () =>
         supabaseAdmin
-          .from("free_drop_participations")
-          .select(FREE_PARTICIPATION_SELECT)
-          .in("id", participacionFreeIds)
+          .from(
+            "free_drop_participations"
+          )
+          .select(
+            FREE_PARTICIPATION_SELECT
+          )
+          .in(
+            "id",
+            participacionFreeIds
+          )
       );
 
       if (freeError) {
@@ -577,9 +618,10 @@ export async function GET(req) {
         );
       }
 
-      participacionesFree = Array.isArray(freeData)
-        ? freeData
-        : [];
+      participacionesFree =
+        Array.isArray(freeData)
+          ? freeData
+          : [];
     }
 
     /* =====================================================
@@ -592,11 +634,20 @@ export async function GET(req) {
       const {
         data: freeTicketData,
         error: freeTicketError,
-      } = await medir("free por ticket", () =>
-        supabaseAdmin
-          .from("free_drop_participations")
-          .select(FREE_PARTICIPATION_SELECT)
-          .in("ticket_id", ticketGanadorIds)
+      } = await medir(
+        "free por ticket",
+        () =>
+          supabaseAdmin
+            .from(
+              "free_drop_participations"
+            )
+            .select(
+              FREE_PARTICIPATION_SELECT
+            )
+            .in(
+              "ticket_id",
+              ticketGanadorIds
+            )
       );
 
       if (freeTicketError) {
@@ -623,9 +674,12 @@ export async function GET(req) {
       );
 
       for (
-        const participacion of freeTicketData || []
+        const participacion of
+          freeTicketData || []
       ) {
-        const id = String(participacion.id);
+        const id = String(
+          participacion.id
+        );
 
         if (!existentes.has(id)) {
           participacionesFree.push(
@@ -641,11 +695,15 @@ export async function GET(req) {
        11. MAPAS DE PARTICIPACIONES FREE
     ===================================================== */
 
-    const participacionesPorId = new Map();
-    const participacionesPorTicket = new Map();
+    const participacionesPorId =
+      new Map();
+
+    const participacionesPorTicket =
+      new Map();
 
     for (
-      const participacion of participacionesFree
+      const participacion of
+        participacionesFree
     ) {
       if (participacion?.id) {
         participacionesPorId.set(
@@ -656,14 +714,16 @@ export async function GET(req) {
 
       if (participacion?.ticket_id) {
         participacionesPorTicket.set(
-          String(participacion.ticket_id),
+          String(
+            participacion.ticket_id
+          ),
           participacion
         );
       }
     }
 
     /* =====================================================
-       12. OBTENER IDS DE FREE DROPS
+       12. IDS DE FREE DROPS
     ===================================================== */
 
     const freeDropIds = [
@@ -672,14 +732,16 @@ export async function GET(req) {
           ...sorteosConTicket.map(
             ({ ticketGanador }) =>
               limpiarTexto(
-                ticketGanador?.free_drop_id
+                ticketGanador
+                  ?.free_drop_id
               )
           ),
 
           ...participacionesFree.map(
             (participacion) =>
               limpiarTexto(
-                participacion?.free_drop_id
+                participacion
+                  ?.free_drop_id
               )
           ),
         ].filter(Boolean)
@@ -696,17 +758,22 @@ export async function GET(req) {
       const {
         data: freeDropsData,
         error: freeDropsError,
-      } = await medir("free drops", () =>
-        supabaseAdmin
-          .from("free_drops")
-          .select(`
-            id,
-            nombre,
-            numero_drop,
-            estado,
-            rifa_id
-          `)
-          .in("id", freeDropIds)
+      } = await medir(
+        "free drops",
+        () =>
+          supabaseAdmin
+            .from("free_drops")
+            .select(`
+              id,
+              nombre,
+              numero_drop,
+              estado,
+              rifa_id
+            `)
+            .in(
+              "id",
+              freeDropIds
+            )
       );
 
       if (freeDropsError) {
@@ -725,9 +792,10 @@ export async function GET(req) {
         );
       }
 
-      freeDrops = Array.isArray(freeDropsData)
-        ? freeDropsData
-        : [];
+      freeDrops =
+        Array.isArray(freeDropsData)
+          ? freeDropsData
+          : [];
     }
 
     const freeDropsPorId = new Map(
@@ -740,122 +808,357 @@ export async function GET(req) {
     /* =====================================================
        14. CONSTRUIR HISTORIAL COMPLETO
 
-       Esta parte conserva la información necesaria
-       para el administrador.
+       Se conserva la información administrativa.
     ===================================================== */
 
-    const ganadores = sorteosConTicket.map(
-      ({ sorteo, ticketGanador }) => {
+    const ganadores =
+      sorteosConTicket.map(
+        ({
+          sorteo,
+          ticketGanador,
+        }) => {
+          /* ===============================================
+             CASO 1: NO SE ENCONTRÓ TICKET
+          =============================================== */
 
-        /* ===============================================
-           CASO 1: NO SE ENCONTRÓ TICKET
-        =============================================== */
+          if (!ticketGanador) {
+            return {
+              ...sorteo,
 
-        if (!ticketGanador) {
-          return {
-            ...sorteo,
+              ticket_ganador: null,
 
-            ticket_ganador: null,
+              tipo_ticket:
+                "desconocido",
 
-            tipo_ticket: "desconocido",
+              es_free: false,
 
-            es_free: false,
+              propietario: {
+                nombre:
+                  limpiarTexto(
+                    sorteo
+                      ?.nombre_ganador
+                  ) || null,
 
-            propietario: {
-              nombre:
-                limpiarTexto(
-                  sorteo?.nombre_ganador
-                ) || null,
+                email: null,
+                telefono: null,
+              },
 
-              email: null,
-              telefono: null,
-            },
+              compra_ganadora: null,
+              participacion_free: null,
+              free_drop_ganador: null,
+            };
+          }
 
-            compra_ganadora: null,
-            participacion_free: null,
-            free_drop_ganador: null,
-          };
-        }
+          /* ===============================================
+             DETECTAR FREE O PAGADO
+          =============================================== */
 
-        /* ===============================================
-           DETECTAR FREE O PAGADO
-        =============================================== */
+          const tipoTicket =
+            normalizarTexto(
+              ticketGanador?.tipo
+            );
 
-        const tipoTicket = normalizarTexto(
-          ticketGanador?.tipo
-        );
-
-        const esFree =
-          tipoTicket === "free" ||
-          Boolean(
-            ticketGanador?.free_drop_participation_id
-          ) ||
-          (
+          const esFree =
+            tipoTicket === "free" ||
             Boolean(
-              ticketGanador?.free_drop_id
-            ) &&
-            !ticketGanador?.compra_id
-          );
-
-        /* ===============================================
-           CASO 2: TICKET FREE
-        =============================================== */
-
-        if (esFree) {
-          const participacion =
+              ticketGanador
+                ?.free_drop_participation_id
+            ) ||
             (
-              ticketGanador?.free_drop_participation_id
-                ? participacionesPorId.get(
-                    String(
-                      ticketGanador.free_drop_participation_id
+              Boolean(
+                ticketGanador
+                  ?.free_drop_id
+              ) &&
+              !ticketGanador?.compra_id
+            );
+
+          /* ===============================================
+             CASO 2: TICKET FREE
+          =============================================== */
+
+          if (esFree) {
+            const participacion =
+              (
+                ticketGanador
+                  ?.free_drop_participation_id
+                  ? participacionesPorId.get(
+                      String(
+                        ticketGanador
+                          .free_drop_participation_id
+                      )
                     )
+                  : null
+              ) ||
+              participacionesPorTicket.get(
+                String(
+                  ticketGanador.id
+                )
+              ) ||
+              null;
+
+            const freeDropId =
+              participacion
+                ?.free_drop_id ||
+              ticketGanador
+                ?.free_drop_id ||
+              null;
+
+            const freeDrop =
+              freeDropId
+                ? freeDropsPorId.get(
+                    String(
+                      freeDropId
+                    )
+                  ) || null
+                : null;
+
+            const nombreFree =
+              construirNombre(
+                participacion?.nombre,
+                participacion?.apellido
+              ) ||
+              limpiarTexto(
+                ticketGanador
+                  ?.asignado_a_nombre
+              ) ||
+              limpiarTexto(
+                sorteo
+                  ?.nombre_ganador
+              ) ||
+              null;
+
+            const emailFree =
+              limpiarTexto(
+                participacion?.email
+              ) ||
+              limpiarTexto(
+                ticketGanador
+                  ?.asignado_a_email
+              ) ||
+              null;
+
+            const telefonoFree =
+              limpiarTexto(
+                participacion?.telefono
+              ) ||
+              limpiarTexto(
+                ticketGanador
+                  ?.asignado_a_telefono
+              ) ||
+              null;
+
+            return {
+              ...sorteo,
+
+              ticket_ganador: {
+                id:
+                  ticketGanador.id,
+
+                numero_ticket:
+                  ticketGanador
+                    .numero_ticket,
+
+                tipo: "free",
+                es_free: true,
+
+                estado:
+                  ticketGanador.estado,
+
+                compra_id: null,
+
+                free_drop_id:
+                  ticketGanador
+                    .free_drop_id ||
+                  null,
+
+                free_drop_participation_id:
+                  ticketGanador
+                    .free_drop_participation_id ||
+                  null,
+              },
+
+              tipo_ticket: "free",
+              es_free: true,
+
+              propietario: {
+                nombre: nombreFree,
+                email: emailFree,
+                telefono: telefonoFree,
+              },
+
+              compra_ganadora: null,
+
+              participacion_free:
+                participacion
+                  ? {
+                      id:
+                        participacion.id,
+
+                      nombre:
+                        participacion.nombre ||
+                        null,
+
+                      apellido:
+                        participacion.apellido ||
+                        null,
+
+                      email:
+                        participacion.email ||
+                        null,
+
+                      telefono:
+                        participacion.telefono ||
+                        null,
+
+                      codigo:
+                        participacion
+                          .codigo_unico ||
+                        null,
+
+                      codigo_unico:
+                        participacion
+                          .codigo_unico ||
+                        null,
+
+                      estado:
+                        participacion.estado ||
+                        null,
+
+                      estado_residencia:
+                        participacion
+                          .estado_residencia ||
+                        null,
+
+                      acepta_reglas:
+                        Boolean(
+                          participacion
+                            .acepta_reglas
+                        ),
+
+                      cumple_requisitos:
+                        Boolean(
+                          participacion
+                            .cumple_requisitos
+                        ),
+
+                      social_username:
+                        participacion
+                          .social_username ||
+                        null,
+
+                      evidence_url:
+                        participacion
+                          .evidence_url ||
+                        null,
+
+                      created_at:
+                        participacion
+                          .created_at ||
+                        null,
+
+                      updated_at:
+                        participacion
+                          .updated_at ||
+                        null,
+                    }
+                  : null,
+
+              free_drop_ganador:
+                freeDrop
+                  ? {
+                      id:
+                        freeDrop.id,
+
+                      nombre:
+                        freeDrop.nombre,
+
+                      numero_drop:
+                        freeDrop
+                          .numero_drop,
+
+                      estado:
+                        freeDrop.estado,
+                    }
+                  : null,
+            };
+          }
+
+          /* ===============================================
+             CASO 3: TICKET PAGADO
+          =============================================== */
+
+          const compra =
+            ticketGanador
+              ?.compra_id
+              ? comprasPorId.get(
+                  String(
+                    ticketGanador
+                      .compra_id
                   )
-                : null
+                ) || null
+              : null;
+
+          const usuario =
+            compra?.usuario_id
+              ? usuariosPorId.get(
+                  String(
+                    compra.usuario_id
+                  )
+                ) || null
+              : null;
+
+          /*
+             PRIORIDAD DEL PROPIETARIO:
+
+             1. Tabla usuarios
+             2. Tabla compras
+             3. Datos asignados al ticket
+             4. Nombre manual del sorteo
+          */
+
+          const nombrePagado =
+            limpiarTexto(
+              usuario?.nombre
             ) ||
-            participacionesPorTicket.get(
-              String(ticketGanador.id)
+            limpiarTexto(
+              compra
+                ?.nombre_cliente
+            ) ||
+            limpiarTexto(
+              ticketGanador
+                ?.asignado_a_nombre
+            ) ||
+            limpiarTexto(
+              sorteo
+                ?.nombre_ganador
             ) ||
             null;
 
-          const freeDropId =
-            participacion?.free_drop_id ||
-            ticketGanador?.free_drop_id ||
-            null;
-
-          const freeDrop = freeDropId
-            ? freeDropsPorId.get(
-                String(freeDropId)
-              ) || null
-            : null;
-
-          const nombreFree =
-            construirNombre(
-              participacion?.nombre,
-              participacion?.apellido
+          const emailPagado =
+            limpiarTexto(
+              usuario?.email
             ) ||
             limpiarTexto(
-              ticketGanador?.asignado_a_nombre
+              compra
+                ?.email_cliente
             ) ||
             limpiarTexto(
-              sorteo?.nombre_ganador
+              ticketGanador
+                ?.asignado_a_email
             ) ||
             null;
 
-          const emailFree =
+          const telefonoPagado =
             limpiarTexto(
-              participacion?.email
+              usuario?.telefono
             ) ||
             limpiarTexto(
-              ticketGanador?.asignado_a_email
-            ) ||
-            null;
-
-          const telefonoFree =
-            limpiarTexto(
-              participacion?.telefono
+              compra
+                ?.telefono_cliente
             ) ||
             limpiarTexto(
-              ticketGanador?.asignado_a_telefono
+              ticketGanador
+                ?.asignado_a_telefono
             ) ||
             null;
 
@@ -863,264 +1166,112 @@ export async function GET(req) {
             ...sorteo,
 
             ticket_ganador: {
-              id: ticketGanador.id,
+              id:
+                ticketGanador.id,
 
               numero_ticket:
-                ticketGanador.numero_ticket,
+                ticketGanador
+                  .numero_ticket,
 
-              tipo: "free",
-              es_free: true,
+              tipo: "compra",
+              es_free: false,
 
               estado:
                 ticketGanador.estado,
 
-              compra_id: null,
-
-              free_drop_id:
-                ticketGanador.free_drop_id ||
+              compra_id:
+                ticketGanador
+                  .compra_id ||
                 null,
+
+              free_drop_id: null,
 
               free_drop_participation_id:
-                ticketGanador.free_drop_participation_id ||
                 null,
             },
 
-            tipo_ticket: "free",
-            es_free: true,
-
-            propietario: {
-              nombre: nombreFree,
-              email: emailFree,
-              telefono: telefonoFree,
-            },
-
-            compra_ganadora: null,
-
-            participacion_free: participacion
-              ? {
-                  id: participacion.id,
-
-                  nombre:
-                    participacion.nombre ||
-                    null,
-
-                  apellido:
-                    participacion.apellido ||
-                    null,
-
-                  email:
-                    participacion.email ||
-                    null,
-
-                  telefono:
-                    participacion.telefono ||
-                    null,
-
-                  codigo:
-                    participacion.codigo_unico ||
-                    null,
-
-                  codigo_unico:
-                    participacion.codigo_unico ||
-                    null,
-
-                  estado:
-                    participacion.estado ||
-                    null,
-
-                  estado_residencia:
-                    participacion.estado_residencia ||
-                    null,
-
-                  acepta_reglas: Boolean(
-                    participacion.acepta_reglas
-                  ),
-
-                  cumple_requisitos: Boolean(
-                    participacion.cumple_requisitos
-                  ),
-
-                  social_username:
-                    participacion.social_username ||
-                    null,
-
-                  evidence_url:
-                    participacion.evidence_url ||
-                    null,
-
-                  created_at:
-                    participacion.created_at ||
-                    null,
-
-                  updated_at:
-                    participacion.updated_at ||
-                    null,
-                }
-              : null,
-
-            free_drop_ganador: freeDrop
-              ? {
-                  id: freeDrop.id,
-
-                  nombre: freeDrop.nombre,
-
-                  numero_drop:
-                    freeDrop.numero_drop,
-
-                  estado: freeDrop.estado,
-                }
-              : null,
-          };
-        }
-
-        /* ===============================================
-           CASO 3: TICKET PAGADO
-        =============================================== */
-
-        const compra = ticketGanador?.compra_id
-          ? comprasPorId.get(
-              String(
-                ticketGanador.compra_id
-              )
-            ) || null
-          : null;
-
-        const usuario = compra?.usuario_id
-          ? usuariosPorId.get(
-              String(compra.usuario_id)
-            ) || null
-          : null;
-
-        /*
-           PRIORIDAD DEL PROPIETARIO:
-
-           1. Tabla usuarios
-           2. Tabla compras
-           3. Datos asignados al ticket
-           4. Nombre manual del sorteo
-        */
-
-        const nombrePagado =
-          limpiarTexto(usuario?.nombre) ||
-          limpiarTexto(
-            compra?.nombre_cliente
-          ) ||
-          limpiarTexto(
-            ticketGanador?.asignado_a_nombre
-          ) ||
-          limpiarTexto(
-            sorteo?.nombre_ganador
-          ) ||
-          null;
-
-        const emailPagado =
-          limpiarTexto(usuario?.email) ||
-          limpiarTexto(
-            compra?.email_cliente
-          ) ||
-          limpiarTexto(
-            ticketGanador?.asignado_a_email
-          ) ||
-          null;
-
-        const telefonoPagado =
-          limpiarTexto(
-            usuario?.telefono
-          ) ||
-          limpiarTexto(
-            compra?.telefono_cliente
-          ) ||
-          limpiarTexto(
-            ticketGanador?.asignado_a_telefono
-          ) ||
-          null;
-
-        return {
-          ...sorteo,
-
-          ticket_ganador: {
-            id: ticketGanador.id,
-
-            numero_ticket:
-              ticketGanador.numero_ticket,
-
-            tipo: "compra",
+            tipo_ticket: "compra",
             es_free: false,
 
-            estado:
-              ticketGanador.estado,
+            propietario: {
+              nombre:
+                nombrePagado,
 
-            compra_id:
-              ticketGanador.compra_id ||
+              email:
+                emailPagado,
+
+              telefono:
+                telefonoPagado,
+            },
+
+            compra_ganadora:
+              compra
+                ? {
+                    id:
+                      compra.id,
+
+                    usuario_id:
+                      compra
+                        .usuario_id ||
+                      null,
+
+                    nombre_cliente:
+                      compra
+                        .nombre_cliente ||
+                      null,
+
+                    email_cliente:
+                      compra
+                        .email_cliente ||
+                      null,
+
+                    telefono_cliente:
+                      compra
+                        .telefono_cliente ||
+                      null,
+
+                    cantidad_tickets:
+                      compra
+                        .cantidad_tickets ??
+                      null,
+
+                    monto_total:
+                      compra
+                        .monto_total ??
+                      null,
+
+                    referencia:
+                      compra
+                        .referencia ||
+                      null,
+
+                    metodo_pago:
+                      compra
+                        .metodo_pago ||
+                      null,
+
+                    estado_pago:
+                      compra
+                        .estado_pago ||
+                      null,
+
+                    fecha_compra:
+                      compra
+                        .fecha_compra ||
+                      compra
+                        .created_at ||
+                      null,
+                  }
+                : null,
+
+            participacion_free:
               null,
 
-            free_drop_id: null,
-
-            free_drop_participation_id: null,
-          },
-
-          tipo_ticket: "compra",
-          es_free: false,
-
-          propietario: {
-            nombre: nombrePagado,
-            email: emailPagado,
-            telefono: telefonoPagado,
-          },
-
-          compra_ganadora: compra
-            ? {
-                id: compra.id,
-
-                usuario_id:
-                  compra.usuario_id ||
-                  null,
-
-                nombre_cliente:
-                  compra.nombre_cliente ||
-                  null,
-
-                email_cliente:
-                  compra.email_cliente ||
-                  null,
-
-                telefono_cliente:
-                  compra.telefono_cliente ||
-                  null,
-
-                cantidad_tickets:
-                  compra.cantidad_tickets ??
-                  null,
-
-                monto_total:
-                  compra.monto_total ??
-                  null,
-
-                referencia:
-                  compra.referencia ||
-                  null,
-
-                metodo_pago:
-                  compra.metodo_pago ||
-                  null,
-
-                estado_pago:
-                  compra.estado_pago ||
-                  null,
-
-                fecha_compra:
-                  compra.fecha_compra ||
-                  compra.created_at ||
-                  null,
-              }
-            : null,
-
-          participacion_free: null,
-
-          free_drop_ganador: null,
-        };
-      }
-    );
+            free_drop_ganador:
+              null,
+          };
+        }
+      );
 
     /* =====================================================
        15. RESULTADOS DE RENDIMIENTO
@@ -1135,22 +1286,26 @@ export async function GET(req) {
 
     console.log(
       `[${diagnosticoId}] HISTORIAL - TOTAL: ${Math.round(
-        performance.now() - inicioHistorial
+        performance.now() -
+        inicioHistorial
       )}ms`
     );
 
     /* =====================================================
        16. RESPUESTA ADMINISTRATIVA
 
-       Solo se devuelve cuando requireAdmin verificó
-       correctamente ADMIN_USER_ID y MFA AAL2.
+       No almacenar datos privados en caché.
     ===================================================== */
 
     if (esAdministrador) {
-      return responderJSON({
-        ok: true,
-        ganadores,
-      });
+      return responderJSON(
+        {
+          ok: true,
+          ganadores,
+        },
+        200,
+        false
+      );
     }
 
     /* =====================================================
@@ -1165,18 +1320,31 @@ export async function GET(req) {
        - Evidencias privadas
        - Notas internas
        - IDs de usuarios y compras
+
+       Caché compartida de 60 segundos.
     ===================================================== */
 
-    const ganadoresPublicos = ganadores.map(
-      convertirGanadorAPublico
+    const ganadoresPublicos =
+      ganadores.map(
+        convertirGanadorAPublico
+      );
+
+    return responderJSON(
+      {
+        ok: true,
+        ganadores:
+          ganadoresPublicos,
+      },
+      200,
+      true
     );
-
-    return responderJSON({
-      ok: true,
-      ganadores: ganadoresPublicos,
-    });
-
   } catch (error) {
+    /* =====================================================
+       ERROR INESPERADO
+
+       Nunca almacenar errores en caché.
+    ===================================================== */
+
     console.error(
       `[${diagnosticoId}] historial-ganadores error:`,
       error
@@ -1185,9 +1353,11 @@ export async function GET(req) {
     return responderJSON(
       {
         ok: false,
-        error: "Error interno del historial",
+        error:
+          "Error interno del historial",
       },
-      500
+      500,
+      false
     );
   }
 }
