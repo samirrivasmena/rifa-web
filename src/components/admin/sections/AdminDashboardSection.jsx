@@ -1412,6 +1412,99 @@ const telefonoCompra =
 
   }
 
+    if (!rifaSeleccionada) {
+    return (
+      <div className="adminpro-page-stack" ref={dashboardRef}>
+        <section
+          className="adminpro-card"
+          style={{
+            padding: "40px 24px",
+            textAlign: "center",
+            marginTop: "24px",
+          }}
+        >
+          <div style={{ fontSize: "48px", marginBottom: "16px" }}>
+            🎟️
+          </div>
+
+          <h2 style={{ marginBottom: "12px" }}>
+            Bienvenido a Sorteos LSD
+          </h2>
+
+          <p style={{ marginBottom: "24px", opacity: 0.75 }}>
+            Tu panel administrativo está listo.
+            Todavía no tienes rifas registradas.
+          </p>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns:
+                "repeat(auto-fit, minmax(150px, 1fr))",
+              gap: "12px",
+              marginBottom: "28px",
+            }}
+          >
+            {[
+              ["🎟️ Rifas", 0],
+              ["🛒 Compras", 0],
+              ["🔢 Tickets vendidos", 0],
+              ["💰 Ingresos", "$0.00"],
+            ].map(([titulo, valor]) => (
+              <div
+                key={titulo}
+                className="adminpro-card"
+                style={{ padding: "20px" }}
+              >
+                <div style={{ opacity: 0.75 }}>
+                  {titulo}
+                </div>
+
+                <strong
+                  style={{
+                    display: "block",
+                    fontSize: "26px",
+                    marginTop: "10px",
+                  }}
+                >
+                  {valor}
+                </strong>
+              </div>
+            ))}
+          </div>
+
+<button
+  type="button"
+  onClick={() => setSeccionActiva("rifas")}
+  style={{
+    background: "linear-gradient(135deg, #ff3333, #b90000)",
+    color: "#ffffff",
+    border: "1px solid rgba(255,255,255,0.12)",
+    borderRadius: "12px",
+    padding: "14px 28px",
+    fontSize: "13px",
+    fontWeight: "800",
+    cursor: "pointer",
+    boxShadow: "0 6px 22px rgba(220,0,0,0.25)",
+    transition: "all 0.2s ease",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.transform = "translateY(-2px)";
+    e.currentTarget.style.boxShadow =
+      "0 10px 28px rgba(220,0,0,0.4)";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.transform = "translateY(0)";
+    e.currentTarget.style.boxShadow =
+      "0 6px 22px rgba(220,0,0,0.25)";
+  }}
+>
+  🎟️ CREAR MI PRIMERA RIFA
+</button>
+        </section>
+      </div>
+    );
+  }
   return (
 
     <>
