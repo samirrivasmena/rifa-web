@@ -12,6 +12,11 @@ export const runtime = "nodejs";
 
 const CACHE_DURATION_MS = 15 * 1000;
 
+const CACHE_HEADERS = {
+  "Cache-Control":
+    "public, s-maxage=10, stale-while-revalidate=20",
+};
+
 const NO_CACHE_HEADERS = {
   "Cache-Control": "no-store",
 };
@@ -60,15 +65,15 @@ export async function GET() {
   try {
     const rifas = await obtenerRifasConCache();
 
-    return NextResponse.json(
-      {
-        ok: true,
-        rifas,
-      },
-      {
-        headers: NO_CACHE_HEADERS,
-      }
-    );
+return NextResponse.json(
+  {
+    ok: true,
+    rifas,
+  },
+  {
+    headers: CACHE_HEADERS,
+  }
+);
   } catch (error) {
     console.error("rifas-publicas error:", error);
 
