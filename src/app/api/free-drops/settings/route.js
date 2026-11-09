@@ -122,18 +122,26 @@ export async function GET(req) {
     // RESPUESTA PÚBLICA
     // ========================================================
 
-    return NextResponse.json({
-      ok: true,
+return NextResponse.json(
+  {
+    ok: true,
 
-      settings: {
-        ...settings,
+    settings: {
+      ...settings,
 
-        instagram_profile_url: instagramProfileUrl,
-        instagram_post_url: instagramPostUrl,
+      instagram_profile_url: instagramProfileUrl,
+      instagram_post_url: instagramPostUrl,
 
-        remaining_total,
-      },
-    });
+      remaining_total,
+    },
+  },
+  {
+    headers: {
+      "Cache-Control":
+        "public, s-maxage=10, stale-while-revalidate=10",
+    },
+  }
+);
   } catch (error) {
     console.error(
       "Error en GET /api/free-drops/settings:",
