@@ -1,3 +1,4 @@
+
 import { NextResponse } from "next/server";
 import { createHash } from "crypto";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
@@ -5,6 +6,28 @@ import { supabaseAdmin } from "@/lib/supabaseAdmin";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
+
+/* =========================================================
+   CONFIGURACIÓN DE CACHÉ
+
+   - Navegador: no almacenar respuesta fresca.
+   - CDN: reutilizar durante 15 segundos.
+   - Revalidación: permite servir una respuesta anterior
+     durante un máximo adicional de 30 segundos mientras
+     se actualiza en segundo plano.
+
+   Solo se aplica a respuestas exitosas.
+========================================================= */
+
+const CACHE_PUBLICA =
+  "public, max-age=0, s-maxage=15, stale-while-revalidate=30";
+
+const HEADERS_SIN_CACHE = {
+  "Cache-Control":
+    "no-store, no-cache, must-revalidate, proxy-revalidate",
+  Pragma: "no-cache",
+  Expires: "0",
+};
 
 /* =========================================================
    OCULTAR NOMBRE
@@ -103,13 +126,15 @@ export async function GET() {
       `)
       .eq("estado_pago", "aprobado")
       .not("aprobado_at", "is", null)
-.order("aprobado_at", {
-  ascending: false,
-})
-.limit(1);
+      .order("aprobado_at", {
+        ascending: false,
+      })
+      .limit(1);
 
     /* =====================================================
        ERROR DE SUPABASE
+
+       No almacenar errores en caché.
     ===================================================== */
 
     if (error) {
@@ -126,12 +151,7 @@ export async function GET() {
         },
         {
           status: 500,
-          headers: {
-            "Cache-Control":
-              "no-store, no-cache, must-revalidate, proxy-revalidate",
-            Pragma: "no-cache",
-            Expires: "0",
-          },
+          headers: HEADERS_SIN_CACHE,
         }
       );
     }
@@ -199,7 +219,12 @@ export async function GET() {
     });
 
     /* =====================================================
-       RESPUESTA
+       RESPUESTA EXITOSA
+
+       CACHÉ COMPARTIDA DE 15 SEGUNDOS
+
+       La caché se aplica únicamente a información
+       pública que ya fue anonimizada.
     ===================================================== */
 
     return NextResponse.json(
@@ -210,14 +235,17 @@ export async function GET() {
       {
         status: 200,
         headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
+          "Cache-Control": CACHE_PUBLICA,
         },
       }
     );
   } catch (error) {
+    /* =====================================================
+       ERROR INESPERADO
+
+       No almacenar errores en caché.
+    ===================================================== */
+
     console.error(
       "Error inesperado en notificaciones-compras:",
       error
@@ -231,12 +259,7 @@ export async function GET() {
       },
       {
         status: 500,
-        headers: {
-          "Cache-Control":
-            "no-store, no-cache, must-revalidate, proxy-revalidate",
-          Pragma: "no-cache",
-          Expires: "0",
-        },
+        headers: HEADERS_SIN_CACHE,
       }
     );
   }
