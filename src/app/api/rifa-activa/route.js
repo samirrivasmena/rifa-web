@@ -64,11 +64,13 @@ function normalizarTexto(valor) {
 // HEADERS
 // ============================================================
 
-const NO_CACHE_HEADERS = {
+const CACHE_HEADERS = {
   "Cache-Control":
-    "no-store, no-cache, must-revalidate, proxy-revalidate",
-  Pragma: "no-cache",
-  Expires: "0",
+    "public, s-maxage=10, stale-while-revalidate=20",
+};
+
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store",
 };
 
 // ============================================================
@@ -439,9 +441,9 @@ export async function GET() {
             disponiblesInventario,
           },
         },
-      },
+       },
       {
-        headers: NO_CACHE_HEADERS,
+        headers: CACHE_HEADERS,
       }
     );
   } catch (error) {
