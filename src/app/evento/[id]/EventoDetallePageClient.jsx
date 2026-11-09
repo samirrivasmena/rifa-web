@@ -598,10 +598,10 @@ useEffect(() => {
     }
   };
 
-  const intervalId = window.setInterval(
-    actualizarSiVisible,
-    30000
-  );
+const intervalId = window.setInterval(
+  actualizarSiVisible,
+  60000
+);
 
   document.addEventListener(
     "visibilitychange",
