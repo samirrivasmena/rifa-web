@@ -112,20 +112,32 @@ export default async function Page() {
 
   /* =======================================================
      OBTENER CONFIGURACIÓN Y RIFAS
+     DETECTAR ERRORES SIN CONFUNDIRLOS CON LISTAS VACÍAS
   ======================================================= */
 
-  const [config, rifasIniciales] = await Promise.all([
+  const [config, resultadoRifas] = await Promise.all([
     obtenerConfiguracion(),
 
-    obtenerRifasPublicas().catch((error) => {
-      console.error(
-        "Error cargando rifas iniciales de /principal:",
-        error
-      );
+    obtenerRifasPublicas()
+      .then((rifas) => ({
+        rifas: Array.isArray(rifas) ? rifas : [],
+        error: false,
+      }))
+      .catch((error) => {
+        console.error(
+          "Error cargando rifas iniciales de /principal:",
+          error
+        );
 
-      return [];
-    }),
+        return {
+          rifas: [],
+          error: true,
+        };
+      }),
   ]);
+
+  const rifasIniciales = resultadoRifas.rifas;
+  const errorInicialRifas = resultadoRifas.error;
 
   /* =======================================================
      COLORES INICIALES
@@ -189,6 +201,7 @@ export default async function Page() {
       <PrincipalPageClient
         initialConfig={config}
         initialRifas={rifasIniciales}
+        initialRifasError={errorInicialRifas}
       />
     </div>
   );

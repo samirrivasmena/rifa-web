@@ -52,6 +52,7 @@ import {
 export default function PrincipalPageClient({
   initialConfig = null,
   initialRifas = [],
+  initialRifasError = false,
 }) {
 
   const { config, loadingConfig } =
@@ -170,9 +171,7 @@ const [rifas, setRifas] = useState(() =>
 );
 
 const [loadingRifas, setLoadingRifas] = useState(
-  () =>
-    !Array.isArray(initialRifas) ||
-    initialRifas.length === 0
+  () => initialRifasError || !Array.isArray(initialRifas)
 );
 
   const [errorRed, setErrorRed] = useState(false);
@@ -546,11 +545,12 @@ if (e.key === "Escape") {
 
   useEffect(() => {
 
-    // Las rifas ya llegaron desde el servidor: evitar una segunda consulta.
-    // Si no llegaron eventos, conservar la carga de respaldo existente.
-    if (Array.isArray(initialRifas) && initialRifas.length > 0) {
-      return;
-    }
+// El servidor cargó las rifas correctamente,
+// incluso cuando la lista está vacía.
+// Consultar la API solamente si hubo un error.
+if (!initialRifasError && Array.isArray(initialRifas)) {
+  return;
+}
 
     const cargarRifas = async () => {
 
@@ -652,7 +652,7 @@ if (e.key === "Escape") {
 
     cargarRifas();
 
-  }, []);
+}, [initialRifasError, initialRifas]);
 
 
 
