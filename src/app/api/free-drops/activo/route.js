@@ -424,41 +424,23 @@ export async function GET(req) {
      * ========================================================
      */
 
-    return NextResponse.json({
-      ok: true,
+return NextResponse.json(
+  {
+    ok: true,
 
-      /*
-       * Drop principal.
-       *
-       * Puede ser:
-       *
-       * activo
-       * pausado
-       * agotado
-       * programado
-       * null
-       */
-      drop:
-        enriquecerDrop(
-          dropVisible
-        ),
+    drop: enriquecerDrop(dropVisible),
 
-      /*
-       * Exclusivamente un PROGRAMADO futuro real.
-       *
-       * Nunca PENDIENTE.
-       * Nunca BORRADOR.
-       */
-      proximo_drop:
-        enriquecerDrop(
-          proximoDrop
-        ),
+    proximo_drop: enriquecerDrop(proximoDrop),
 
-      /*
-       * Información básica de la rifa.
-       */
-      rifa: rifa || null,
-    });
+    rifa: rifa || null,
+  },
+  {
+    headers: {
+      "Cache-Control":
+        "public, s-maxage=5, stale-while-revalidate=5",
+    },
+  }
+);
   } catch (error) {
     console.error(
       "Error en GET /api/free-drops/activo:",
