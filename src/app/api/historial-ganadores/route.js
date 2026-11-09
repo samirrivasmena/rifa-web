@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 ========================================================= */
 
 const CACHE_HISTORIAL_PUBLICO =
-  "public, max-age=0, s-maxage=60, stale-while-revalidate=30";
+  "private, no-store, max-age=0";
 
 const CACHE_PRIVADA =
   "private, no-store, max-age=0";
