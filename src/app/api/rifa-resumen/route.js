@@ -58,14 +58,19 @@ const CAMPOS_RESUMEN = `
 ============================================================ */
 
 function responderJSON(data, status = 200) {
+  const respuestaExitosa =
+    status === 200 && data?.ok === true;
+
   return NextResponse.json(data, {
     status,
-    headers: {
-      "Cache-Control":
-        "no-store, no-cache, must-revalidate, proxy-revalidate",
-      Pragma: "no-cache",
-      Expires: "0",
-    },
+    headers: respuestaExitosa
+      ? {
+          "Cache-Control":
+            "public, s-maxage=10, stale-while-revalidate=20",
+        }
+      : {
+          "Cache-Control": "no-store",
+        },
   });
 }
 
