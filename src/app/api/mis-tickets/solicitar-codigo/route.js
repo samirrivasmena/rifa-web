@@ -1,973 +1,174 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
-
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { sendMisTicketsCodeEmail } from "@/lib/sendMisTicketsCodeEmail";
 
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-export const runtime = "nodejs";
 
-/* =========================================================
-   CONFIGURACIÓN
-========================================================= */
+const DURACION_MINUTOS = 10;
+const REENVIO_SEGUNDOS = 60;
+const HEADERS = { "Cache-Control": "no-store, no-cache, must-revalidate" };
 
-const CODIGO_DURACION_MINUTOS = 10;
-const ESPERA_REENVIO_SEGUNDOS = 60;
-
-const TURNSTILE_SECRET_KEY =
-  process.env.TURNSTILE_SECRET_KEY;
-
-const TURNSTILE_VERIFY_URL =
-  "https://challenges.cloudflare.com/turnstile/v0/siteverify";
-
-const NO_CACHE_HEADERS = {
-  "Cache-Control": "no-store, no-cache, must-revalidate",
-};
-
-/* =========================================================
-   HELPERS
-========================================================= */
-
-function limpiarEmail(valor) {
-  return String(valor || "")
-    .trim()
-    .toLowerCase();
+function responder(body, status = 200, headers = {}) {
+  return NextResponse.json(body, {
+    status,
+    headers: { ...HEADERS, ...headers },
+  });
 }
 
-function esEmailValido(email) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
-    String(email || "").trim()
-  );
+function limpiarEmail(value) {
+  return String(value || "").trim().toLowerCase();
 }
 
-function crearCodigo() {
-  return crypto
-    .randomInt(100000, 1000000)
-    .toString();
+function emailValido(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
-
-function crearHashCodigo(email, codigo) {
-  const secret =
-    process.env.MIS_TICKETS_OTP_SECRET;
-
-  if (!secret) {
-    throw new Error(
-      "Falta MIS_TICKETS_OTP_SECRET"
-    );
-  }
-
-  return crypto
-    .createHmac("sha256", secret)
-    .update(`${email}:${codigo}`)
-    .digest("hex");
-}
-
-function respuestaGenerica() {
-  return NextResponse.json(
-    {
-      ok: true,
-
-      mensaje:
-        "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
-
-      expiresIn:
-        CODIGO_DURACION_MINUTOS * 60,
-    },
-    {
-      headers: NO_CACHE_HEADERS,
-    }
-  );
-}
-
-/* =========================================================
-   OBTENER IP DEL CLIENTE
-========================================================= */
 
 function obtenerIp(req) {
-  const forwarded =
-    req.headers.get("x-forwarded-for");
-
-  if (forwarded) {
-    return (
-      forwarded
-        .split(",")[0]
-        ?.trim() || ""
-    );
-  }
-
-  return String(
-    req.headers.get("x-real-ip") || ""
-  ).trim();
+  return (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() ||
+    String(req.headers.get("x-real-ip") || "").trim();
 }
 
-/* =========================================================
-   VERIFICAR CLOUDFLARE TURNSTILE
-========================================================= */
-
-async function verificarTurnstile(
-  token,
-  ip = ""
-) {
-  const tokenLimpio =
-    String(token || "").trim();
-
-  if (!TURNSTILE_SECRET_KEY) {
-    console.error(
-      "SEGURIDAD: falta TURNSTILE_SECRET_KEY"
-    );
-
-    return {
-      ok: false,
-      configuracionIncompleta: true,
-    };
-  }
-
-  if (!tokenLimpio) {
-    return {
-      ok: false,
-      configuracionIncompleta: false,
-    };
-  }
-
-  const controller =
-    new AbortController();
-
-  const timeoutId =
-    setTimeout(() => {
-      controller.abort();
-    }, 10000);
-
+async function verificarTurnstile(token, ip) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
   try {
-    const body =
-      new URLSearchParams();
-
-    body.set(
-      "secret",
-      TURNSTILE_SECRET_KEY
+    const body = new URLSearchParams({
+      secret: process.env.TURNSTILE_SECRET_KEY,
+      response: token,
+    });
+    if (ip) body.set("remoteip", ip);
+    const response = await fetch(
+      "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: body.toString(),
+        signal: controller.signal,
+        cache: "no-store",
+      }
     );
-
-    body.set(
-      "response",
-      tokenLimpio
-    );
-
-    if (ip) {
-      body.set(
-        "remoteip",
-        ip
-      );
-    }
-
-    const response =
-      await fetch(
-        TURNSTILE_VERIFY_URL,
-        {
-          method: "POST",
-
-          headers: {
-            "Content-Type":
-              "application/x-www-form-urlencoded",
-          },
-
-          body: body.toString(),
-
-          signal: controller.signal,
-
-          cache: "no-store",
-        }
-      );
-
-    if (!response.ok) {
-      console.error(
-        "Turnstile Siteverify respondió con estado:",
-        response.status
-      );
-
-      return {
-        ok: false,
-        configuracionIncompleta: false,
-      };
-    }
-
-    const data =
-      await response.json();
-
-    if (!data?.success) {
-      console.warn(
-        "Turnstile rechazó solicitud de Mis Tickets:",
-        Array.isArray(
-          data?.["error-codes"]
-        )
-          ? data["error-codes"]
-          : []
-      );
-
-      return {
-        ok: false,
-        configuracionIncompleta: false,
-      };
-    }
-
-    return {
-      ok: true,
-      configuracionIncompleta: false,
-    };
+    if (!response.ok) return false;
+    const data = await response.json();
+    return data?.success === true;
   } catch (error) {
-    console.error(
-      "Error verificando Turnstile en Mis Tickets:",
-      error
-    );
-
-    return {
-      ok: false,
-      configuracionIncompleta: false,
-    };
+    console.error("Error verificando Turnstile en Mis Tickets:", error);
+    return false;
   } finally {
-    clearTimeout(timeoutId);
+    clearTimeout(timer);
   }
 }
-
-/* =========================================================
-   POST /api/mis-tickets/solicitar-codigo
-========================================================= */
 
 export async function POST(req) {
   try {
-    /* =====================================================
-       LEER BODY
-    ===================================================== */
-
-    const body =
-      await req.json().catch(() => null);
-
-    if (
-      !body ||
-      typeof body !== "object" ||
-      Array.isArray(body)
-    ) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Solicitud inválida",
-        },
-        {
-          status: 400,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
+    const body = await req.json().catch(() => null);
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return responder({ ok: false, error: "Solicitud inválida" }, 400);
     }
 
-    const email =
-      limpiarEmail(
-        body?.email
-      );
-
-    const captchaToken =
-      String(
-        body?.captchaToken || ""
-      ).trim();
-
-    /* =====================================================
-       VALIDAR EMAIL
-    ===================================================== */
-
-    if (!email) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Email requerido",
-        },
-        {
-          status: 400,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
+    const email = limpiarEmail(body.email);
+    const captchaToken = String(body.captchaToken || "").trim();
+    if (!email) return responder({ ok: false, error: "Email requerido" }, 400);
+    if (!emailValido(email)) {
+      return responder({ ok: false, error: "Ingresa un correo electrónico válido" }, 400);
     }
-
-    if (!esEmailValido(email)) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Ingresa un correo electrónico válido",
-        },
-        {
-          status: 400,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
+    if (!process.env.MIS_TICKETS_OTP_SECRET ||
+        !process.env.RESEND_API_KEY ||
+        !process.env.EMAIL_FROM ||
+        !process.env.TURNSTILE_SECRET_KEY) {
+      console.error("Configuración incompleta para OTP Mis Tickets");
+      return responder({ ok: false, error: "El sistema de verificación no está configurado" }, 500);
     }
-
-    /* =====================================================
-       VALIDAR VARIABLES DE ENTORNO
-    ===================================================== */
-
-    if (
-      !process.env
-        .MIS_TICKETS_OTP_SECRET
-    ) {
-      console.error(
-        "Falta MIS_TICKETS_OTP_SECRET"
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "El sistema de verificación no está configurado",
-        },
-        {
-          status: 500,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    if (!process.env.RESEND_API_KEY) {
-      console.error(
-        "Falta RESEND_API_KEY"
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "El servicio de correo no está configurado",
-        },
-        {
-          status: 500,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    if (!process.env.EMAIL_FROM) {
-      console.error(
-        "Falta EMAIL_FROM"
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "El remitente de correo no está configurado",
-        },
-        {
-          status: 500,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    if (!TURNSTILE_SECRET_KEY) {
-      console.error(
-        "Falta TURNSTILE_SECRET_KEY"
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "La verificación de seguridad no está configurada",
-        },
-        {
-          status: 500,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    /* =====================================================
-       VALIDAR CLOUDFLARE TURNSTILE
-
-       IMPORTANTE:
-       Esto ocurre ANTES de consultar usuarios,
-       compras, FREE Drops o generar un OTP.
-    ===================================================== */
-
     if (!captchaToken) {
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "Completa la verificación de seguridad.",
-        },
-        {
-          status: 400,
-          headers: NO_CACHE_HEADERS,
-        }
-      );
+      return responder({ ok: false, error: "Completa la verificación de seguridad." }, 400);
+    }
+    if (!(await verificarTurnstile(captchaToken, obtenerIp(req)))) {
+      return responder({ ok: false, error: "La verificación de seguridad expiró o no es válida. Inténtalo nuevamente." }, 400);
     }
 
-    const ip =
-      obtenerIp(req);
-
-    const captcha =
-      await verificarTurnstile(
-        captchaToken,
-        ip
-      );
-
-    if (!captcha.ok) {
-      if (
-        captcha.configuracionIncompleta
-      ) {
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "La verificación de seguridad no está disponible.",
-          },
-          {
-            status: 500,
-            headers:
-              NO_CACHE_HEADERS,
-          }
-        );
-      }
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "La verificación de seguridad expiró o no es válida. Inténtalo nuevamente.",
-        },
-        {
-          status: 400,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    /* =====================================================
-       1. COMPROBAR SI EXISTE USUARIO
-    ===================================================== */
-
-    const {
-      data: usuario,
-      error: usuarioError,
-    } = await supabaseAdmin
-      .from("usuarios")
-      .select("id")
-      .ilike(
-        "email",
-        email
-      )
-      .limit(1)
-      .maybeSingle();
-
-    if (usuarioError) {
-      console.error(
-        "Error buscando usuario para OTP:",
-        usuarioError
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo procesar la solicitud",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    /* =====================================================
-       2. COMPROBAR SI TIENE COMPRAS
-    ===================================================== */
-
-    let tieneCompras = false;
-
-    if (usuario?.id) {
-      const {
-        data: compra,
-        error: compraError,
-      } = await supabaseAdmin
-        .from("compras")
-        .select("id")
-        .eq(
-          "usuario_id",
-          usuario.id
-        )
-        .limit(1)
-        .maybeSingle();
-
-      if (compraError) {
-        console.error(
-          "Error buscando compras para OTP:",
-          compraError
-        );
-
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "No se pudo procesar la solicitud",
-          },
-          {
-            status: 500,
-            headers:
-              NO_CACHE_HEADERS,
-          }
-        );
-      }
-
-      tieneCompras =
-        Boolean(compra?.id);
-    }
-
-    /* =====================================================
-       3. COMPROBAR FREE POR email_normalized
-    ===================================================== */
-
-    const {
-      data: freeNormalizado,
-      error: freeNormalizadoError,
-    } = await supabaseAdmin
-      .from(
-        "free_drop_participations"
-      )
-      .select("id")
-      .eq(
-        "email_normalized",
-        email
-      )
-      .limit(1)
-      .maybeSingle();
-
-    if (freeNormalizadoError) {
-      console.error(
-        "Error buscando FREE normalizado para OTP:",
-        freeNormalizadoError
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo procesar la solicitud",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
-    }
-
-    /* =====================================================
-       4. COMPATIBILIDAD CON FREE ANTIGUOS
-    ===================================================== */
-
-    let freeAntiguo = null;
-
-    if (!freeNormalizado?.id) {
-      const {
-        data: freeAntiguoData,
-        error: freeAntiguoError,
-      } = await supabaseAdmin
-        .from(
-          "free_drop_participations"
-        )
-        .select("id")
-        .ilike(
-          "email",
-          email
-        )
-        .limit(1)
-        .maybeSingle();
-
-      if (freeAntiguoError) {
-        console.error(
-          "Error buscando FREE antiguo para OTP:",
-          freeAntiguoError
-        );
-
-        return NextResponse.json(
-          {
-            ok: false,
-            error:
-              "No se pudo procesar la solicitud",
-          },
-          {
-            status: 500,
-            headers:
-              NO_CACHE_HEADERS,
-          }
-        );
-      }
-
-      freeAntiguo =
-        freeAntiguoData;
-    }
-
-    const tieneFree =
-      Boolean(
-        freeNormalizado?.id ||
-          freeAntiguo?.id
-      );
-
-    const tieneParticipacion =
-      tieneCompras ||
-      tieneFree;
-
-    /* =====================================================
-       NO REVELAR SI EL EMAIL EXISTE O NO
-
-       Por seguridad devolvemos el mismo mensaje.
-    ===================================================== */
-
-    if (!tieneParticipacion) {
-      return respuestaGenerica();
-    }
-
-    /* =====================================================
-       5. RATE LIMIT
-
-       No permitir generar otro código antes de 60 segundos.
-    ===================================================== */
-
-    const {
-      data: ultimoOtp,
-      error: ultimoOtpError,
-    } = await supabaseAdmin
+    // Se envía OTP a cualquier correo válido, tenga o no participaciones.
+    // La existencia de compras se consulta únicamente DESPUÉS de verificar el OTP.
+    const { data: ultimoOtp, error: ultimoOtpError } = await supabaseAdmin
       .from("mis_tickets_otps")
-      .select(`
-        id,
-        created_at
-      `)
-      .eq(
-        "email",
-        email
-      )
-      .order(
-        "created_at",
-        {
-          ascending: false,
-        }
-      )
+      .select("id, created_at")
+      .eq("email", email)
+      .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
 
     if (ultimoOtpError) {
-      console.error(
-        "Error consultando último OTP:",
-        ultimoOtpError
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo generar el código",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
+      console.error("Error consultando último OTP:", ultimoOtpError);
+      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
     }
-
     if (ultimoOtp?.created_at) {
-      const creado =
-        new Date(
-          ultimoOtp.created_at
-        ).getTime();
-
-      const ahoraServidor =
-        Date.now();
-
-      const diferenciaSegundos =
-        Math.floor(
-          (ahoraServidor -
-            creado) /
-            1000
-        );
-
-      /*
-       * Aplicamos el límite únicamente cuando
-       * la fecha recibida es coherente.
-       *
-       * Permitimos hasta 5 segundos de diferencia
-       * entre el reloj del servidor y la base de datos.
-       *
-       * Si created_at aparece muy adelantado,
-       * no dejamos al usuario atrapado permanentemente
-       * en "Espera 60 segundos".
-       */
-
-      if (
-        diferenciaSegundos >= -5 &&
-        diferenciaSegundos <
-          ESPERA_REENVIO_SEGUNDOS
-      ) {
-        const diferenciaSegura =
-          Math.max(
-            0,
-            diferenciaSegundos
-          );
-
-        const retryAfter =
-          Math.max(
-            1,
-            Math.min(
-              ESPERA_REENVIO_SEGUNDOS,
-
-              ESPERA_REENVIO_SEGUNDOS -
-                diferenciaSegura
-            )
-          );
-
-        return NextResponse.json(
-          {
-            ok: false,
-
-            error:
-              `Espera ${retryAfter} segundo${
-                retryAfter === 1
-                  ? ""
-                  : "s"
-              } antes de solicitar otro código.`,
-
-            retryAfter,
-          },
-          {
-            status: 429,
-
-            headers: {
-              ...NO_CACHE_HEADERS,
-
-              "Retry-After":
-                String(
-                  retryAfter
-                ),
-            },
-          }
-        );
+      const diferencia = Math.floor((Date.now() - new Date(ultimoOtp.created_at).getTime()) / 1000);
+      if (Number.isFinite(diferencia) && diferencia >= -5 && diferencia < REENVIO_SEGUNDOS) {
+        const retryAfter = Math.max(1, REENVIO_SEGUNDOS - Math.max(0, diferencia));
+        return responder({
+          ok: false,
+          error: `Espera ${retryAfter} segundos antes de solicitar otro código.`,
+          retryAfter,
+        }, 429, { "Retry-After": String(retryAfter) });
       }
     }
 
-    /* =====================================================
-       6. GENERAR CÓDIGO
-    ===================================================== */
+    const codigo = String(crypto.randomInt(100000, 1000000));
+    const codigoHash = crypto
+      .createHmac("sha256", process.env.MIS_TICKETS_OTP_SECRET)
+      .update(`${email}:${codigo}`)
+      .digest("hex");
+    const expiresAt = new Date(Date.now() + DURACION_MINUTOS * 60 * 1000);
 
-    const codigo =
-      crearCodigo();
-
-    const codigoHash =
-      crearHashCodigo(
-        email,
-        codigo
-      );
-
-    const ahora =
-      new Date();
-
-    const expiresAt =
-      new Date(
-        ahora.getTime() +
-          CODIGO_DURACION_MINUTOS *
-            60 *
-            1000
-      );
-
-    /* =====================================================
-       7. INVALIDAR CÓDIGOS ANTERIORES
-    ===================================================== */
-
-    const {
-      error: invalidarError,
-    } = await supabaseAdmin
+    const { error: invalidarError } = await supabaseAdmin
       .from("mis_tickets_otps")
-      .update({
-        usado: true,
-      })
-      .eq(
-        "email",
-        email
-      )
-      .eq(
-        "usado",
-        false
-      );
-
+      .update({ usado: true })
+      .eq("email", email)
+      .eq("usado", false);
     if (invalidarError) {
-      console.error(
-        "Error invalidando OTP anteriores:",
-        invalidarError
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo generar el código",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
+      console.error("Error invalidando OTP anteriores:", invalidarError);
+      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
     }
 
-    /* =====================================================
-       8. GUARDAR NUEVO OTP
-    ===================================================== */
-
-    const {
-      data: nuevoOtp,
-      error: insertarError,
-    } = await supabaseAdmin
+    const { data: nuevoOtp, error: insertarError } = await supabaseAdmin
       .from("mis_tickets_otps")
       .insert({
         email,
-
-        codigo_hash:
-          codigoHash,
-
-        expires_at:
-          expiresAt.toISOString(),
-
+        codigo_hash: codigoHash,
+        expires_at: expiresAt.toISOString(),
         intentos: 0,
-
         usado: false,
       })
       .select("id")
       .single();
-
     if (insertarError) {
-      console.error(
-        "Error guardando OTP:",
-        insertarError
-      );
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo generar el código",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
+      console.error("Error guardando OTP:", insertarError);
+      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
     }
-
-    /* =====================================================
-       9. ENVIAR CÓDIGO POR EMAIL
-    ===================================================== */
 
     try {
-      await sendMisTicketsCodeEmail({
-        to: email,
-        codigo,
-      });
-    } catch (emailError) {
-      console.error(
-        "Error enviando OTP por email:",
-        emailError
-      );
-
-      /*
-       * Si el correo no pudo enviarse,
-       * invalidamos el código para que
-       * no quede activo.
-       */
-
+      await sendMisTicketsCodeEmail({ to: email, codigo });
+    } catch (error) {
+      console.error("Error enviando OTP por email:", error);
       if (nuevoOtp?.id) {
-        const {
-          error:
-            invalidarNuevoError,
-        } = await supabaseAdmin
-          .from(
-            "mis_tickets_otps"
-          )
-          .update({
-            usado: true,
-          })
-          .eq(
-            "id",
-            nuevoOtp.id
-          );
-
-        if (
-          invalidarNuevoError
-        ) {
-          console.error(
-            "Error invalidando OTP después de fallo de email:",
-            invalidarNuevoError
-          );
-        }
+        const { error: invalidarNuevoError } = await supabaseAdmin
+          .from("mis_tickets_otps")
+          .update({ usado: true })
+          .eq("id", nuevoOtp.id);
+        if (invalidarNuevoError) console.error("Error invalidando OTP fallido:", invalidarNuevoError);
       }
-
-      return NextResponse.json(
-        {
-          ok: false,
-          error:
-            "No se pudo enviar el código de verificación. Inténtalo nuevamente.",
-        },
-        {
-          status: 500,
-          headers:
-            NO_CACHE_HEADERS,
-        }
-      );
+      return responder({ ok: false, error: "No se pudo enviar el código de verificación. Inténtalo nuevamente." }, 500);
     }
 
-    /* =====================================================
-       RESPUESTA
-
-       NUNCA devolvemos el código ni su hash.
-    ===================================================== */
-
-    return NextResponse.json(
-      {
-        ok: true,
-
-        mensaje:
-          "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
-
-        expiresIn:
-          CODIGO_DURACION_MINUTOS *
-          60,
-
-        retryAfter:
-          ESPERA_REENVIO_SEGUNDOS,
-      },
-      {
-        headers: NO_CACHE_HEADERS,
-      }
-    );
+    return responder({
+      ok: true,
+      mensaje: "Si el correo puede recibir mensajes, llegará un código de 6 dígitos para consultar tus participaciones.",
+      expiresIn: DURACION_MINUTOS * 60,
+      retryAfter: REENVIO_SEGUNDOS,
+    });
   } catch (error) {
-    console.error(
-      "Error general solicitar código Mis Tickets:",
-      error
-    );
-
-    return NextResponse.json(
-      {
-        ok: false,
-
-        error:
-          "Error interno al solicitar el código",
-      },
-      {
-        status: 500,
-        headers:
-          NO_CACHE_HEADERS,
-      }
-    );
+    console.error("Error general solicitar código Mis Tickets:", error);
+    return responder({ ok: false, error: "Error interno al solicitar el código" }, 500);
   }
 }

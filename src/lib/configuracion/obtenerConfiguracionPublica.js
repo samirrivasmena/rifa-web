@@ -182,12 +182,25 @@ const CAMPOS_PUBLICOS = [
 
 const campos = CAMPOS_PUBLICOS.join(",");
 
+
+/* =========================================================
+   CACHÉ PÚBLICA DE CONFIGURACIÓN
+
+   - Duración: 15 segundos.
+   - Compartida dentro de una instancia del servidor.
+   - Evita solicitudes simultáneas duplicadas.
+   - No modifica la base de datos.
+   - force=true permite consultar directamente.
+========================================================= */
+
+const CACHE_DURATION_MS = 15 * 1000;
+
+let cachedConfig = null;
+let cacheExpiresAt = 0;
+let pendingRequest = null;
+
 /* =========================================================
    CONSULTAR CONFIGURACIÓN EN SUPABASE
-
-   - Solo selecciona los campos públicos.
-   - No utiliza caché global de 30 segundos.
-   - No modifica datos de Supabase.
 ========================================================= */
 
 async function consultarConfiguracion() {
@@ -211,22 +224,39 @@ async function consultarConfiguracion() {
 
 /* =========================================================
    OBTENER CONFIGURACIÓN PÚBLICA
-
-   - Compatible con las llamadas existentes.
-   - Consulta Supabase directamente.
-   - Los cambios del administrador se reflejan
-     en las siguientes solicitudes al servidor.
 ========================================================= */
 
 export async function obtenerConfiguracionPublica({
   force = false,
 } = {}) {
-  // Se conserva force por compatibilidad.
-  // Ya no existe una caché global que omitir.
-  void force;
+  const ahora = Date.now();
+
+  if (
+    !force &&
+    cachedConfig !== null &&
+    ahora < cacheExpiresAt
+  ) {
+    return cachedConfig;
+  }
+
+  if (!force && pendingRequest) {
+    return pendingRequest;
+  }
+
+  const nuevaConsulta = consultarConfiguracion();
+
+  if (!force) {
+    pendingRequest = nuevaConsulta;
+  }
 
   try {
-    return await consultarConfiguracion();
+    const config = await nuevaConsulta;
+
+    cachedConfig = config;
+    cacheExpiresAt =
+      Date.now() + CACHE_DURATION_MS;
+
+    return config;
   } catch (error) {
     console.error(
       "obtenerConfiguracionPublica error:",
@@ -234,17 +264,20 @@ export async function obtenerConfiguracionPublica({
     );
 
     throw error;
+  } finally {
+    if (pendingRequest === nuevaConsulta) {
+      pendingRequest = null;
+    }
   }
 }
 
 /* =========================================================
    INVALIDACIÓN DE CACHÉ
 
-   Se conserva la función por compatibilidad.
-   No es necesario invalidar caché porque esta
-   versión no mantiene datos en memoria.
+   Se conserva por compatibilidad.
 ========================================================= */
 
 export function invalidarCacheConfiguracionPublica() {
-  // Sin caché global que invalidar.
+  cachedConfig = null;
+  cacheExpiresAt = 0;
 }

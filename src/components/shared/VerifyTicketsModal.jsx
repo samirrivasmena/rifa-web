@@ -574,10 +574,10 @@ const solicitudData = solicitud.data || {};
         await Swal.fire({
           ...swalConfig,
           icon: "success",
-          title: "Código enviado",
+          title: "Solicitud de código procesada",
           text:
             solicitudData.mensaje ||
-            "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
+            "Revisa tu correo para continuar con la verificación.",
           confirmButtonText: "Continuar",
         });
 
@@ -629,10 +629,10 @@ const solicitudData = solicitud.data || {};
         await Swal.fire({
           ...swalConfig,
           icon: "info",
-          title: "Sin participaciones",
+          title: "Sin tickets registrados",
           text:
             data.mensaje ||
-            "No encontramos participaciones asociadas con este correo.",
+            "No encontramos compras ni participaciones FREE DROP asociadas con este correo.",
         });
 
         return;
@@ -646,9 +646,9 @@ const solicitudData = solicitud.data || {};
         await Swal.fire({
           ...swalConfig,
           icon: "info",
-          title: "Sin participaciones",
+          title: "Sin tickets registrados",
           text:
-            "No encontramos tickets aprobados ni participaciones FREE asociadas con este correo.",
+            "No encontramos tickets pagados ni participaciones FREE DROP asociadas con este correo.",
         });
 
         return;
@@ -1084,10 +1084,10 @@ const solicitudData = solicitud.data || {};
           await Swal.fire({
             ...swalConfig,
             icon: "success",
-            title: "Código enviado",
+            title: "Solicitud de código procesada",
             text:
               solicitudData.mensaje ||
-              "Si el correo está asociado a participaciones, recibirás un código de 6 dígitos.",
+              "Revisa tu correo para continuar con la verificación.",
             confirmButtonText: "Continuar",
           });
           return;

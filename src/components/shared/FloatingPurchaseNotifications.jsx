@@ -12,8 +12,8 @@ import "./floating-purchase-notifications.css";
 const STORAGE_KEY =
   "sorteoslsd_ultima_compra_notificacion_mostrada";
 
-// Consulta periódica cada 60 segundos.
-const INTERVALO_CONSULTA = 60 * 1000;
+// Consulta periódica cada 120 segundos.
+const INTERVALO_CONSULTA = 120 * 1000;
 
 // Evita consultas repetidas por focus y visibilitychange.
 const INTERVALO_MINIMO = 10 * 1000;

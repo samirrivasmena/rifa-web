@@ -1,10 +1,15 @@
+
 import EventoDetallePageClient from "./EventoDetallePageClient";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
+import { obtenerConfiguracionPublica } from "@/lib/configuracion/obtenerConfiguracionPublica";
 import MaintenancePage from "@/components/public/MaintenancePage";
+
 /* =========================================================
    RENDER DINÁMICO
-   Evita que Vercel conserve configuración/colores anteriores
+
+   Evita que Next.js conserve una versión estática
+   de la página del evento.
 ========================================================= */
 
 export const dynamic = "force-dynamic";
@@ -15,7 +20,8 @@ export const revalidate = 0;
 ========================================================= */
 
 const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL || "https://www.sorteoslsd.com";
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  "https://www.sorteoslsd.com";
 
 const SITE_NAME = "Sorteos LSD";
 
@@ -28,8 +34,11 @@ function limpiarTexto(valor) {
 }
 
 function construirDescripcion(data) {
-  const nombreEvento = limpiarTexto(data?.nombre) || "Evento";
-  const descripcion = limpiarTexto(data?.descripcion);
+  const nombreEvento =
+    limpiarTexto(data?.nombre) || "Evento";
+
+  const descripcion =
+    limpiarTexto(data?.descripcion);
 
   if (descripcion) {
     return descripcion;
@@ -40,59 +49,22 @@ function construirDescripcion(data) {
 
 /* =========================================================
    OBTENER CONFIGURACIÓN DEL SITIO
+
+   Reutiliza la función pública centralizada.
+
+   - Conserva colores y configuración visual.
+   - Conserva el logo configurado desde Admin.
+   - Conserva la línea de anuncios.
+   - No modifica la base de datos.
+   - Mantiene el respaldo ante errores.
 ========================================================= */
 
 async function obtenerConfiguracionSitio() {
   try {
-    const { data, error } = await supabaseAdmin
-      .from("configuracion_sitio")
-      .select(
-        `
-        logo_url,
-        color_primario,
-        color_secundario,
-        color_fondo,
-        color_texto,
-        color_boton,
-        color_tarjeta,
-        color_borde,
-        color_alerta,
-        color_exito,
-        color_error,
-        color_hover,
-        color_progreso,
-        color_progreso_fondo,
-        color_punticos,
-        linea_anuncios_activa,
-        linea_anuncios_mensaje_1,
-        linea_anuncios_mensaje_2,
-        linea_anuncios_mensaje_3,
-        linea_anuncios_color_fondo,
-        linea_anuncios_color_texto,
-        linea_anuncios_color_separador,
-        linea_anuncios_velocidad,
-        linea_anuncios_negrita,
-        linea_anuncios_mostrar_movil,
-        linea_anuncios_mostrar_escritorio
-        `
-      )
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      console.error(
-        "Error obteniendo configuración del sitio:",
-        error
-      );
-
-      return null;
-    }
-
-    return data || null;
+    return await obtenerConfiguracionPublica();
   } catch (error) {
     console.error(
-      "Error inesperado obteniendo configuración del sitio:",
+      "Error obteniendo configuración del sitio:",
       error
     );
 
@@ -105,9 +77,13 @@ async function obtenerConfiguracionSitio() {
 ========================================================= */
 
 async function obtenerLogoActual() {
-  const config = await obtenerConfiguracionSitio();
+  const config =
+    await obtenerConfiguracionSitio();
 
-  return limpiarTexto(config?.logo_url) || `${SITE_URL}/icon`;
+  return (
+    limpiarTexto(config?.logo_url) ||
+    `${SITE_URL}/icon`
+  );
 }
 
 /* =========================================================
@@ -115,22 +91,25 @@ async function obtenerLogoActual() {
 ========================================================= */
 
 async function construirImagen(data) {
-  const portada = limpiarTexto(data?.portada_url);
+  const portada =
+    limpiarTexto(data?.portada_url);
 
   /*
    * Si el evento tiene portada, usamos esa imagen.
-   * Esa seguirá siendo la imagen principal que
+   *
    * WhatsApp, Facebook, Telegram, X, etc.
-   * intentarán mostrar.
+   * intentarán mostrarla al compartir el evento.
    */
+
   if (portada) {
     return portada;
   }
 
   /*
-   * Si el evento no tiene portada,
-   * usamos el logo actual configurado desde Admin.
+   * Si no tiene portada, utilizamos el logo
+   * configurado desde el administrador.
    */
+
   return await obtenerLogoActual();
 }
 
@@ -151,7 +130,8 @@ export async function generateMetadata({ params }) {
 
       title: `Evento | ${SITE_NAME}`,
 
-      description: `Consulta la información del evento en ${SITE_NAME}.`,
+      description:
+        `Consulta la información del evento en ${SITE_NAME}.`,
     };
   }
 
@@ -189,7 +169,8 @@ export async function generateMetadata({ params }) {
 
         title: `Evento | ${SITE_NAME}`,
 
-        description: `Consulta la información del evento en ${SITE_NAME}.`,
+        description:
+          `Consulta la información del evento en ${SITE_NAME}.`,
       };
     }
 
@@ -201,7 +182,8 @@ export async function generateMetadata({ params }) {
       return {
         metadataBase: new URL(SITE_URL),
 
-        title: `Evento no encontrado | ${SITE_NAME}`,
+        title:
+          `Evento no encontrado | ${SITE_NAME}`,
 
         description:
           "Este evento no existe o no está disponible públicamente.",
@@ -288,16 +270,21 @@ export async function generateMetadata({ params }) {
 
       title: `Evento | ${SITE_NAME}`,
 
-      description: `Consulta la información del evento en ${SITE_NAME}.`,
+      description:
+        `Consulta la información del evento en ${SITE_NAME}.`,
     };
   }
 }
 
 /* =========================================================
-   PÁGINA
+   PÁGINA DEL EVENTO
 ========================================================= */
 
 export default async function Page() {
+  /* =======================================================
+     VERIFICAR MODO MANTENIMIENTO
+  ======================================================= */
+
   const modoMantenimiento =
     await obtenerModoMantenimiento();
 
@@ -305,11 +292,17 @@ export default async function Page() {
     return <MaintenancePage />;
   }
 
-  const config = await obtenerConfiguracionSitio();
+  /* =======================================================
+     OBTENER CONFIGURACIÓN PÚBLICA
+  ======================================================= */
+
+  const config =
+    await obtenerConfiguracionSitio();
 
   /* =======================================================
      COLORES INICIALES
-     Se cargan desde Supabase en el servidor
+
+     Conservamos todas las variables CSS originales.
   ======================================================= */
 
   const coloresIniciales = {
@@ -362,12 +355,16 @@ export default async function Page() {
   };
 
   /* =======================================================
-     RENDER
+     RENDER DEL EVENTO
+
+     Conservamos el componente original y su configuración.
   ======================================================= */
 
   return (
     <div style={coloresIniciales}>
-      <EventoDetallePageClient initialConfig={config} />
+      <EventoDetallePageClient
+        initialConfig={config}
+      />
     </div>
   );
 }

@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -22,45 +23,32 @@ export default function SiteLogo({
 }) {
   const { config } = useSiteConfig();
 
-  const [broken, setBroken] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  const [brokenSrc, setBrokenSrc] = useState(null);
 
-  /*
-  |--------------------------------------------------------------------------
-  | LOGO
-  |--------------------------------------------------------------------------
-  |
-  | IMPORTANTE:
-  |
-  | Antes usábamos:
-  |
-  | config?.logo_url || "/logo.png"
-  |
-  | Eso provocaba que apareciera primero el logo viejo mientras
-  | cargaba la configuración global.
-  |
-  | Ahora, si no se pasó un src manual, esperamos a que exista
-  | config.logo_url antes de mostrar la imagen.
-  |
-  */
-
-  const logoSrc =
-    src ||
-    config?.logo_url ||
-    "";
-
-  /*
-  |--------------------------------------------------------------------------
-  | Si cambia el logo, quitamos cualquier estado de error anterior
-  |--------------------------------------------------------------------------
-  */
-
+  // Evita diferencias entre el HTML del servidor
+  // y el primer renderizado del navegador.
   useEffect(() => {
-    setBroken(false);
-  }, [logoSrc]);
+    setMounted(true);
+  }, []);
+
+  // El src manual tiene prioridad sobre la configuración.
+  // No utilizamos /logo.png como fallback.
+  const logoSrc = mounted
+    ? String(src || config?.logo_url || "").trim()
+    : "";
+
+  const broken = Boolean(
+    logoSrc && brokenSrc === logoSrc
+  );
 
   const brandInitial =
     fallbackText ||
-    String(config?.nombre_marca || "R")
+    String(
+      mounted
+        ? config?.nombre_marca || "R"
+        : "R"
+    )
       .trim()
       .charAt(0)
       .toUpperCase();
@@ -73,41 +61,25 @@ export default function SiteLogo({
     .filter(Boolean)
     .join(" ");
 
-  const imageAlt =
-    alt ||
-    `Logo ${
-      config?.nombre_marca ||
-      "Sorteos LSD"
-    }`;
-
-  /*
-  |--------------------------------------------------------------------------
-  | CONTENIDO
-  |--------------------------------------------------------------------------
-  |
-  | - Si tenemos logo válido: mostramos el logo.
-  | - Si el logo falla: mostramos la inicial.
-  | - Mientras config todavía está cargando: dejamos el espacio vacío.
-  |
-  | Así nunca aparece /logo.png viejo antes del logo actual.
-  |
-  */
+  const imageAlt = mounted
+    ? alt || `Logo ${config?.nombre_marca || "Sorteos LSD"}`
+    : alt || "Logo Sorteos LSD";
 
   let content = null;
 
-  if (broken) {
+  if (mounted && broken) {
     content = (
       <span className="site-logo-fallback">
         {brandInitial}
       </span>
     );
-  } else if (logoSrc) {
+  } else if (mounted && logoSrc) {
     content = (
       <img
         src={logoSrc}
         alt={imageAlt}
         className="site-logo-img"
-        onError={() => setBroken(true)}
+        onError={() => setBrokenSrc(logoSrc)}
         loading="eager"
         decoding="async"
       />
