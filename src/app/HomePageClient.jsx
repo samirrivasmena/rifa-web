@@ -1700,7 +1700,7 @@ const data = await response.json();
 
                     {!esPagoDigital && (
                       <>
-                        <label className="input-label">Número de referencia *</label>
+                        <label className="input-label">Comprobante de pago *</label>
                         <input
                           type="text"
                           name="referencia"
