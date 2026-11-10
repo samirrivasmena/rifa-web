@@ -156,7 +156,7 @@ export default function AdminGanadoresSection({
 const headers = await getAdminAuthHeaders();
 
 const res = await fetch(
-  "/api/historial-ganadores",
+  "/api/admin/historial-ganadores",
   {
     method: "GET",
     cache: "no-store",
