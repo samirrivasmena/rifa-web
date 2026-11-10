@@ -1,5 +1,14 @@
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+
+export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+/* ============================================================
+   CLIENTE SUPABASE - SOLO SERVIDOR
+============================================================ */
 
 function getSupabaseServerClient() {
   const supabaseUrl = process.env.SUPABASE_URL;
@@ -24,11 +33,25 @@ function getSupabaseServerClient() {
   );
 }
 
+/* ============================================================
+   NORMALIZAR ESTADO
+============================================================ */
+
 function normalizarEstado(valor) {
   return String(valor || "")
     .trim()
     .toLowerCase();
 }
+
+/* ============================================================
+   ENRIQUECER FREE DROP
+
+   Conserva:
+   - Estado normalizado
+   - Cupos totales
+   - Cupos utilizados
+   - Cupos disponibles
+============================================================ */
 
 function enriquecerDrop(drop) {
   if (!drop) {
@@ -53,9 +76,7 @@ function enriquecerDrop(drop) {
   return {
     ...drop,
 
-    estado: normalizarEstado(
-      drop.estado
-    ),
+    estado: normalizarEstado(drop.estado),
 
     cupos_total: cuposTotal,
     cupos_usados: cuposUsados,
@@ -63,34 +84,23 @@ function enriquecerDrop(drop) {
   };
 }
 
-/*
- * ============================================================
- * FECHA PROGRAMADA VÁLIDA
- * ============================================================
- *
- * Un Drop solamente puede anunciarse públicamente como
- * "próximo" cuando:
- *
- * 1. Su estado real es PROGRAMADO.
- * 2. Tiene fecha_inicio.
- * 3. fecha_inicio contiene una fecha válida.
- *
- * No utilizamos created_at como fecha del lanzamiento.
- * No inventamos horarios.
- * ============================================================
- */
+/* ============================================================
+   FECHA PROGRAMADA VÁLIDA
+
+   Solo anunciamos como próximo un Free Drop
+   con estado "programado" y fecha válida.
+
+   No utilizamos created_at como fecha de inicio.
+============================================================ */
+
 function obtenerFechaProgramada(drop) {
   if (!drop?.fecha_inicio) {
     return null;
   }
 
-  const fecha = new Date(
-    drop.fecha_inicio
-  );
+  const fecha = new Date(drop.fecha_inicio);
 
-  if (
-    Number.isNaN(fecha.getTime())
-  ) {
+  if (Number.isNaN(fecha.getTime())) {
     return null;
   }
 
@@ -105,21 +115,32 @@ function esProgramadoValido(drop) {
     return false;
   }
 
-  return Boolean(
-    obtenerFechaProgramada(drop)
-  );
+  return Boolean(obtenerFechaProgramada(drop));
 }
+
+/* ============================================================
+   GET - FREE DROP PÚBLICO
+
+   OPTIMIZACIÓN:
+
+   ANTES:
+   1. Consulta free_drops
+   2. Consulta rifas
+
+   AHORA:
+   1. Consulta free_drops
+
+   La información principal de la rifa ya se
+   obtiene mediante /api/rifa-resumen.
+
+   No modificamos ninguna operación de escritura.
+============================================================ */
 
 export async function GET(req) {
   try {
-    const supabase =
-      getSupabaseServerClient();
+    const { searchParams } = new URL(req.url);
 
-    const { searchParams } =
-      new URL(req.url);
-
-    const rifaId =
-      searchParams.get("rifaId");
+    const rifaId = searchParams.get("rifaId");
 
     if (!rifaId) {
       return NextResponse.json(
@@ -128,30 +149,31 @@ export async function GET(req) {
         },
         {
           status: 400,
+          headers: {
+            "Cache-Control": "no-store",
+          },
         }
       );
     }
 
-    /*
-     * ========================================================
-     * CARGAMOS LOS FREE DROPS DEL EVENTO
-     * ========================================================
-     *
-     * No filtramos únicamente por "activo" porque necesitamos
-     * poder representar correctamente:
-     *
-     * - ACTIVO
-     * - PAUSADO
-     * - AGOTADO
-     * - PROGRAMADO
-     *
-     * CERRADO no se presenta como Drop vigente.
-     * ARCHIVADO tampoco.
-     *
-     * PENDIENTE y BORRADOR pueden existir en administración,
-     * pero NO se anuncian públicamente como próximos Drops.
-     * ========================================================
-     */
+    const supabase = getSupabaseServerClient();
+
+    /* ========================================================
+       1. CONSULTAR FREE DROPS
+
+       Conservamos todos los estados necesarios:
+
+       - activo
+       - pausado
+       - agotado
+       - programado
+
+       También conservamos la consulta original para
+       no cambiar inesperadamente el comportamiento.
+
+       Los borradores, pendientes, cerrados y archivados
+       no se seleccionarán como Drops públicos vigentes.
+    ======================================================== */
 
     const {
       data: drops,
@@ -159,16 +181,16 @@ export async function GET(req) {
     } = await supabase
       .from("free_drops")
       .select(`
-  id,
-  rifa_id,
-  nombre,
-  numero_drop,
-  cupos_total,
-  cupos_usados,
-  estado,
-  fecha_inicio,
-  created_at
-`)
+        id,
+        rifa_id,
+        nombre,
+        numero_drop,
+        cupos_total,
+        cupos_usados,
+        estado,
+        fecha_inicio,
+        created_at
+      `)
       .eq("rifa_id", rifaId)
       .neq("estado", "archivado")
       .order("numero_drop", {
@@ -186,176 +208,104 @@ export async function GET(req) {
 
       return NextResponse.json(
         {
-          error:
-            "No se pudo buscar el free drop",
+          error: "No se pudo buscar el free drop",
         },
         {
           status: 500,
+          headers: {
+            "Cache-Control": "no-store",
+          },
         }
       );
     }
 
-    const lista = Array.isArray(
-      drops
-    )
+    const lista = Array.isArray(drops)
       ? drops
       : [];
 
-    /*
-     * ========================================================
-     * DROP ACTIVO
-     * ========================================================
-     */
+    /* ========================================================
+       2. BUSCAR DROP ACTIVO
+    ======================================================== */
 
     const activo =
       lista.find(
         (drop) =>
-          normalizarEstado(
-            drop.estado
-          ) === "activo"
+          normalizarEstado(drop.estado) ===
+          "activo"
       ) || null;
 
-    /*
-     * ========================================================
-     * DROP PAUSADO
-     * ========================================================
-     *
-     * Conservamos este comportamiento porque ya lo habíamos
-     * corregido anteriormente:
-     *
-     * un Drop pausado puede seguir mostrándose públicamente,
-     * pero el frontend NO debe permitir participar.
-     * ========================================================
-     */
+    /* ========================================================
+       3. BUSCAR DROP PAUSADO
+
+       El frontend puede mostrarlo como pausado,
+       pero no debe permitir participar.
+    ======================================================== */
 
     const pausado =
       lista.find(
         (drop) =>
-          normalizarEstado(
-            drop.estado
-          ) === "pausado"
+          normalizarEstado(drop.estado) ===
+          "pausado"
       ) || null;
 
-    /*
-     * ========================================================
-     * DROP AGOTADO
-     * ========================================================
-     */
+    /* ========================================================
+       4. BUSCAR DROP AGOTADO
+    ======================================================== */
 
     const agotado =
       lista.find(
         (drop) =>
-          normalizarEstado(
-            drop.estado
-          ) === "agotado"
+          normalizarEstado(drop.estado) ===
+          "agotado"
       ) || null;
 
-    /*
-     * ========================================================
-     * DROPS PROGRAMADOS
-     * ========================================================
-     *
-     * Solamente PROGRAMADO puede anunciarse públicamente como
-     * próximo Drop.
-     *
-     * PENDIENTE:
-     *   administración interna.
-     *
-     * BORRADOR:
-     *   administración interna.
-     *
-     * Ninguno de esos dos estados se expone como
-     * "Próximo FREE DROP".
-     * ========================================================
-     */
+    /* ========================================================
+       5. BUSCAR DROPS PROGRAMADOS
 
-    const programados =
-      lista
-        .filter(
-          esProgramadoValido
-        )
-        .sort(
-          (a, b) => {
-            const fechaA =
-              obtenerFechaProgramada(
-                a
-              );
+       Conservamos el orden por fecha de inicio.
+       No anunciamos borradores ni pendientes.
+    ======================================================== */
 
-            const fechaB =
-              obtenerFechaProgramada(
-                b
-              );
+    const programados = lista
+      .filter(esProgramadoValido)
+      .sort((a, b) => {
+        const fechaA = obtenerFechaProgramada(a);
+        const fechaB = obtenerFechaProgramada(b);
 
-            return (
-              fechaA.getTime() -
-              fechaB.getTime()
-            );
-          }
+        return (
+          fechaA.getTime() -
+          fechaB.getTime()
         );
+      });
 
-    /*
-     * ========================================================
-     * PRÓXIMO DROP PROGRAMADO
-     * ========================================================
-     *
-     * Buscamos la fecha futura más cercana.
-     *
-     * Normalmente pg_cron convierte rápidamente cualquier
-     * programado vencido en ACTIVO.
-     *
-     * Aun así, esta API no anuncia como "próximo" un horario
-     * que ya pasó.
-     * ========================================================
-     */
+    /* ========================================================
+       6. SELECCIONAR EL PRÓXIMO DROP
+
+       Solo consideramos fechas futuras.
+    ======================================================== */
 
     const ahoraMs = Date.now();
 
     const proximoProgramado =
-      programados.find(
-        (drop) => {
-          const fecha =
-            obtenerFechaProgramada(
-              drop
-            );
+      programados.find((drop) => {
+        const fecha = obtenerFechaProgramada(drop);
 
-          return (
-            fecha &&
-            fecha.getTime() >
-              ahoraMs
-          );
-        }
-      ) || null;
+        return (
+          fecha &&
+          fecha.getTime() > ahoraMs
+        );
+      }) || null;
 
-    /*
-     * ========================================================
-     * DROP PRINCIPAL QUE SE MOSTRARÁ
-     * ========================================================
-     *
-     * Prioridad:
-     *
-     * 1. ACTIVO
-     * 2. PAUSADO
-     * 3. AGOTADO
-     * 4. PROGRAMADO FUTURO
-     *
-     * Si existe un ACTIVO y también un PROGRAMADO:
-     *
-     *   drop         = ACTIVO
-     *   proximo_drop = PROGRAMADO
-     *
-     * Si todavía no existe un Drop vigente pero sí hay uno
-     * programado:
-     *
-     *   drop = PROGRAMADO
-     *
-     * De esa forma el frontend puede mostrar:
-     *
-     *   "Próximo FREE DROP"
-     *   + fecha/hora real
-     *
-     * sin inventar información.
-     * ========================================================
-     */
+    /* ========================================================
+       7. SELECCIONAR DROP VISIBLE
+
+       PRIORIDAD ORIGINAL:
+
+       1. ACTIVO
+       2. PAUSADO
+       3. AGOTADO
+       4. PROGRAMADO FUTURO
+    ======================================================== */
 
     const dropVisible =
       activo ||
@@ -364,83 +314,54 @@ export async function GET(req) {
       proximoProgramado ||
       null;
 
-    /*
-     * ========================================================
-     * PROXIMO_DROP
-     * ========================================================
-     *
-     * Nunca devolvemos:
-     *
-     * - pendiente
-     * - borrador
-     * - cerrado
-     * - archivado
-     *
-     * Tampoco devolvemos el mismo Drop dos veces.
-     * ========================================================
-     */
+    /* ========================================================
+       8. PRÓXIMO DROP
+
+       Si existe un activo y uno programado,
+       devolvemos ambos.
+
+       Nunca repetimos el mismo Drop.
+    ======================================================== */
 
     const proximoDrop =
       proximoProgramado &&
-      proximoProgramado.id !==
-        dropVisible?.id
+      proximoProgramado.id !== dropVisible?.id
         ? proximoProgramado
         : null;
 
-    /*
-     * ========================================================
-     * CARGAMOS LA RIFA
-     * ========================================================
-     */
+    /* ========================================================
+       9. RESPUESTA PÚBLICA OPTIMIZADA
 
-    const {
-      data: rifa,
-      error: errorRifa,
-    } = await supabase
-      .from("rifas")
-      .select(
-        [
-          "id",
-          "nombre",
-          "estado",
-          "precio_ticket",
-          "portada_url",
-          "portada_scroll_url",
-        ].join(", ")
-      )
-      .eq("id", rifaId)
-      .maybeSingle();
+       Conservamos:
+       - ok
+       - drop
+       - proximo_drop
+       - rifa
 
-    if (errorRifa) {
-      console.warn(
-        "No se pudo cargar la rifa asociada al free drop:",
-        errorRifa
-      );
-    }
+       rifa queda en null para mantener la propiedad
+       sin realizar una segunda consulta a Supabase.
 
-    /*
-     * ========================================================
-     * RESPUESTA PÚBLICA
-     * ========================================================
-     */
+       La página del evento ya obtiene los datos de
+       la rifa desde /api/rifa-resumen.
+    ======================================================== */
 
-return NextResponse.json(
-  {
-    ok: true,
+    return NextResponse.json(
+      {
+        ok: true,
 
-    drop: enriquecerDrop(dropVisible),
+        drop: enriquecerDrop(dropVisible),
 
-    proximo_drop: enriquecerDrop(proximoDrop),
+        proximo_drop: enriquecerDrop(proximoDrop),
 
-    rifa: rifa || null,
-  },
-  {
-    headers: {
-      "Cache-Control":
-        "public, s-maxage=5, stale-while-revalidate=5",
-    },
-  }
-);
+        rifa: null,
+      },
+      {
+        headers: {
+          "Cache-Control":
+            "public, s-maxage=5, stale-while-revalidate=5",
+        },
+      }
+    );
   } catch (error) {
     console.error(
       "Error en GET /api/free-drops/activo:",
@@ -454,6 +375,9 @@ return NextResponse.json(
       },
       {
         status: 500,
+        headers: {
+          "Cache-Control": "no-store",
+        },
       }
     );
   }
