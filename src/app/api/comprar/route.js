@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createHmac, timingSafeEqual } from "crypto";
+import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { enviarPushAdmins } from "@/lib/adminPush";
 import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
@@ -1112,15 +1112,6 @@ const metodosPermitidos = [
       metodoPago ===
       "App Pay";
 
-    if (
-      !esAppPay &&
-      !referenciaLimpia
-    ) {
-      return errorResponse(
-        "La referencia es obligatoria para este método de pago",
-        400
-      );
-    }
 
 if (!esAppPay) {
   if (
@@ -1585,11 +1576,11 @@ if (!esAppPay) {
     // REFERENCIA FINAL
     // -------------------------------------------------------
 
-    const referenciaFinal =
-      esAppPay
-        ? referenciaLimpia ||
-          `APPPAY-${Date.now()}`
-        : referenciaLimpia;
+const referenciaFinal =
+  referenciaLimpia ||
+  (esAppPay
+    ? `APPPAY-${randomUUID()}`
+    : `COMPRA-${randomUUID()}`);
 
 const comprobanteFinal =
   esAppPay

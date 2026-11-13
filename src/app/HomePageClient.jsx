@@ -989,7 +989,7 @@ const metodoSeleccionado = {
           nombre: nombreFinal,
           email: emailFinal,
           telefono: `${codigoPais || "+58"} ${telefonoLimpio}`,
-          referencia: referenciaPago || "APPPAY",
+          referencia: referenciaPago || "",
           tickets,
           totalPagar,
           paymentMethod: "App Pay",
@@ -1140,15 +1140,6 @@ const metodoSeleccionado = {
         return;
       }
 
-      if (!esPagoDigital && !referencia.trim()) {
-        await Swal.fire({
-          ...swalConfig,
-          icon: "warning",
-          title: "Referencia requerida",
-          text: "Debes ingresar el número de referencia del pago",
-        });
-        return;
-      }
 
       if (!validarEmail(email)) {
         await Swal.fire({
@@ -1560,6 +1551,35 @@ const data = await response.json();
               </section>
             )}
 
+<div
+  style={{
+    display: "flex",
+    justifyContent: "center",
+    margin: "18px 0",
+  }}
+>
+  <button
+    type="button"
+    onClick={() => {
+      window.dispatchEvent(
+        new Event("open-purchase-guide")
+      );
+    }}
+    style={{
+      background: "#c40000",
+      color: "#ffffff",
+      border: "none",
+      borderRadius: "20px",
+      padding: "10px 20px",
+      fontSize: "12px",
+      fontWeight: "800",
+      cursor: "pointer",
+      boxShadow: "0 4px 12px rgba(196,0,0,0.25)",
+    }}
+  >
+    📖 ¿CÓMO COMPRAR?
+  </button>
+</div>
             <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
               <section className="card-section personal-data-card">
                 <h2 className="big-card-title">LISTA DE BOLETOS</h2>
@@ -1698,20 +1718,6 @@ const data = await response.json();
                       />
                     </div>
 
-                    {!esPagoDigital && (
-                      <>
-                        <label className="input-label">Comprobante de pago *</label>
-                        <input
-                          type="text"
-                          name="referencia"
-                          placeholder="Ejemplo: 1234567890"
-                          value={formData.referencia}
-                          onChange={handleInputChange}
-                          required
-                          disabled={rifaCompleta}
-                        />
-                      </>
-                    )}
                   </div>
                 </section>
 

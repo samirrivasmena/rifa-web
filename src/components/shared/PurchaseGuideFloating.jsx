@@ -9,6 +9,29 @@ export default function PurchaseGuideFloating({ onOpenVerifier }) {
   const [mounted, setMounted] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
+    /* =========================================================
+     ABRIR GUÍA DESDE EL BOTÓN DE LISTA DE BOLETOS
+  ========================================================= */
+
+  useEffect(() => {
+    const abrirGuiaDesdeBoton = () => {
+      setPendingAction(null);
+      setOpen(true);
+    };
+
+    window.addEventListener(
+      "open-purchase-guide",
+      abrirGuiaDesdeBoton
+    );
+
+    return () => {
+      window.removeEventListener(
+        "open-purchase-guide",
+        abrirGuiaDesdeBoton
+      );
+    };
+  }, []);
+
   /* =========================================================
      MONTAJE + RESPONSIVE
   ========================================================= */
