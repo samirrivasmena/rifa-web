@@ -367,6 +367,11 @@ export default function Sidebar({
 { id: "ganador", icon: <IconGanador />, label: "Validar Ganador" },
     { id: "ganadores", icon: <IconGanadores />, label: "Ganadores" },
     { id: "ranking", icon: <IconRanking />, label: "Ranking" },
+    {
+  id: "analiticas",
+  icon: <IconRanking />,
+  label: "📊 Analíticas",
+},
     { id: "freeDrops", icon: <IconFreeDrop />, label: "Free Drops" },
     { id: "configuracion", icon: <IconConfig />, label: "Configuración" },
     { id: "perfil", icon: <IconPerfil />, label: "Perfil y Seguridad" }, 
@@ -385,10 +390,21 @@ export default function Sidebar({
      NAVEGACIÓN
      ======================================================= */
 
-  const handleNavigate = (id) => {
-    onNavigate(id);
+const handleNavigate = (id) => {
+  if (id === "analiticas") {
+    window.open(
+      "https://vercel.com/samir-rivas-projects/rifa-web/analytics?environment=all",
+      "_blank",
+      "noopener,noreferrer"
+    );
+
     setMobileMenuOpen(false);
-  };
+    return;
+  }
+
+  onNavigate(id);
+  setMobileMenuOpen(false);
+};
 
   /* =======================================================
      BRAND

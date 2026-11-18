@@ -2576,7 +2576,7 @@ text={
 {/* INSTAGRAM */}
 
 <div className="free-drop-form-field full free-drop-instagram-field">
-  <span>📸 Usuario de Instagram *</span>
+  <span>📸 Nombre de Instagram *</span>
 
   <input
     type="text"
