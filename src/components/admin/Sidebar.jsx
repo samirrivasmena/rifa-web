@@ -361,6 +361,11 @@ export default function Sidebar({
   const items = [
     { id: "dashboard", icon: <IconDashboard />, label: "Dashboard" },
     { id: "numero", icon: <IconNumero />, label: "Números" },
+    {
+  id: "seleccionManual",
+  icon: <IconNumero />,
+  label: "🎟️ Selección manual",
+},
     { id: "rifas", icon: <IconRifas />, label: "Crear Rifas" },
 { id: "compras", icon: <IconCompras />, label: "Gestión de Compras" },
 { id: "usuarios", icon: <IconUsuarios />, label: "Usuarios" },

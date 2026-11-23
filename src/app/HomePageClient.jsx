@@ -4,6 +4,7 @@ import { supabase } from "@/lib/supabase";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import Swal from "sweetalert2";
+import SelectorNumerosPro from "@/components/shared/SelectorNumerosPro";
 
 import HomeEventosPreview from "@/components/home/HomeEventosPreview";
 import VerifyTicketsModal from "@/components/shared/VerifyTicketsModal";
@@ -111,6 +112,9 @@ document.documentElement.style.setProperty(
   const rifaDesdeQuery = searchParams.get("rifa");
 
   const [tickets, setTickets] = useState(1);
+  const [preferenciaManual, setModoManual] = useState(false);
+  const [selectorVersion, setSelectorVersion] = useState(0);
+const [numerosElegidos, setNumerosElegidos] = useState([]);
   const [paymentMethod, setPaymentMethod] = useState("");
   const [showSecondImage, setShowSecondImage] = useState(false);
   const [homeImageIndex, setHomeImageIndex] = useState(0);
@@ -159,6 +163,23 @@ const [loadingRifa, setLoadingRifa] = useState(
   rifasInicialesSeguras.length === 0
 );
 const [rifas, setRifas] = useState(rifasInicialesSeguras);
+
+  const seleccionManual = rifaActiva?.seleccion_manual;
+  const modoConfigurado = seleccionManual?.enabled === true
+    ? seleccionManual.modo_compra : "automatica";
+  const permiteManual = ["ambos", "manual"].includes(modoConfigurado);
+  const soloManual = modoConfigurado === "manual";
+  const modoManual = permiteManual && (soloManual || preferenciaManual);
+  const limiteConfigurado = Number(seleccionManual?.max_numeros_por_compra);
+  const maxNumeros = seleccionManual?.enabled === true && Number.isInteger(limiteConfigurado)
+    ? Math.max(1, Math.min(100, limiteConfigurado)) : 100;
+
+  useEffect(() => {
+    setModoManual(false);
+    setNumerosElegidos([]);
+    setTickets(1);
+    setSelectorVersion(v => v + 1);
+  }, [rifaActiva?.id, modoConfigurado, maxNumeros]);
 
   const [previewUrl, setPreviewUrl] = useState("");
   const [showAppPayModal, setShowAppPayModal] = useState(false);
@@ -629,11 +650,15 @@ const popupLink = (() => {
     return metodosPagoAdmin
       .filter((metodo) => esActivo(metodo.activo))
       .map((metodo) => metodo.nombre)
-      .filter(Boolean);
-  }, [metodosPagoAdmin]);
+      .filter(Boolean)
+      .filter(nombre => !modoManual || nombre !== "App Pay");
+  }, [metodosPagoAdmin, modoManual]);
 
   useEffect(() => {
-    if (paymentMethods.length === 0) return;
+    if (paymentMethods.length === 0) {
+      setPaymentMethod("");
+      return;
+    }
 
     if (!paymentMethods.includes(paymentMethod)) {
       setPaymentMethod(paymentMethods[0]);
@@ -696,7 +721,8 @@ const popupLink = (() => {
   const precioPorTicket = Number.isFinite(precioPorTicketRaw)
     ? precioPorTicketRaw
     : 0;
-const totalPagar = tickets * precioPorTicket;
+const cantidadCompraVisual = modoManual ? numerosElegidos.length : tickets;
+ const totalPagar = cantidadCompraVisual * precioPorTicket;
 
 const totalPagarBs =
   Number.isFinite(tasaBcv) && tasaBcv > 0
@@ -799,6 +825,22 @@ const metodoSeleccionado = {
   descripcion: metodoAdmin?.descripcion || "",
   note: metodoAdmin?.nota || "",
 };
+
+  // Identificar Pago Móvil aunque el administrador guarde el tipo con otro formato.
+  const esPagoMovil = [
+    metodoSeleccionado.tipo,
+    metodoSeleccionado.titulo,
+    paymentMethod,
+  ].some((valor) => {
+    const normalizado = String(valor || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase()
+      .replace(/[_-]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    return normalizado.includes("pago movil") || normalizado.includes("pagomovil");
+  });
 
   const esPagoDigital = paymentMethod === "App Pay";
 
@@ -909,6 +951,7 @@ const metodoSeleccionado = {
     emailWallet = "",
     nombreWallet = "",
   }) => {
+    if (modoManual || !paymentMethods.includes("App Pay") || tickets > maxNumeros) return;
     if (loadingCompra) return;
 
     try {
@@ -1070,8 +1113,14 @@ const metodoSeleccionado = {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    // Las reservas manuales se validan de forma definitiva en /api/comprar.
 
     if (loadingCompra) return;
+
+    if (!paymentMethods.includes(paymentMethod)) {
+      await Swal.fire({ ...swalConfig, icon: "warning", title: "Método no disponible", text: "Selecciona un método de pago disponible." });
+      return;
+    }
 
     if (paymentMethod === "App Pay") {
       await Swal.fire({
@@ -1161,12 +1210,12 @@ const metodoSeleccionado = {
         return;
       }
 
-      if (!tickets || tickets < 1 || tickets > 100) {
+      if (!Number.isInteger(cantidadCompraVisual) || cantidadCompraVisual < 1 || cantidadCompraVisual > maxNumeros) {
         await Swal.fire({
           ...swalConfig,
           icon: "warning",
           title: "Cantidad inválida",
-          text: "Debes seleccionar entre 1 y 100 tickets",
+          text: `Debes seleccionar entre 1 y ${maxNumeros} tickets`,
         });
         return;
       }
@@ -1286,17 +1335,18 @@ const response = await fetch(
       referencia:
         referencia.trim(),
 
-      tickets,
+tickets: cantidadCompraVisual,
+numerosSeleccionados: modoManual ? numerosElegidos : [],
 
 totalPagar,
 
 tasaBcv:
-  metodoSeleccionado.tipo === "pago_movil"
+  esPagoMovil
     ? tasaBcv
     : null,
 
 montoBolivares:
-  metodoSeleccionado.tipo === "pago_movil"
+  esPagoMovil
     ? totalPagarBs
     : null,
 
@@ -1341,9 +1391,11 @@ const data = await response.json();
         codigoPais: "+58",
       });
 
-      setCapturaInmediata(false);
-      setTickets(1);
-      limpiarArchivo();
+setCapturaInmediata(false);
+setTickets(1);
+setNumerosElegidos([]);
+setSelectorVersion(v => v + 1);
+limpiarArchivo();
     } catch (error) {
       await Swal.fire({
         ...swalConfig,
@@ -1583,6 +1635,51 @@ const data = await response.json();
             <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
               <section className="card-section personal-data-card">
                 <h2 className="big-card-title">LISTA DE BOLETOS</h2>
+                {permiteManual && !soloManual && (
+                <button
+  type="button"
+  onClick={() => {
+    setModoManual((anterior) => !anterior);
+    setNumerosElegidos([]);
+  }}
+  disabled={rifaCompleta || loadingCompra}
+  style={{
+    width: "100%",
+    marginTop: "15px",
+    marginBottom: "15px",
+    padding: "14px",
+    background: modoManual ? "#fff4f4" : "#c40000",
+    border: modoManual ? "1px solid #eab2b2" : "1px solid #c40000",
+    color: modoManual ? "#9b1111" : "#ffffff",
+    borderRadius: "12px",
+    fontWeight: "800",
+    cursor: "pointer",
+  }}
+>
+  {modoManual ? "← VOLVER A COMPRA NORMAL" : "🔢 ELEGIR MIS NÚMEROS"}
+</button>
+)}
+{modoManual && rifaActiva && !rifaCompleta && (
+  <>
+    <fieldset disabled={loadingCompra} style={{border:0,padding:0,margin:0,minWidth:0}}>
+    <SelectorNumerosPro
+      key={`${rifaActiva.id}:${selectorVersion}`}
+      maxNumeros={maxNumeros}
+      buscadorActivo={seleccionManual?.buscador_activo !== false}
+      actualizacionAutomatica={seleccionManual?.actualizacion_automatica !== false && !loadingCompra}
+      rifaId={rifaActiva.id}
+      inicio={Number(rifaActiva.numero_inicio ?? 0)}
+      fin={Number(rifaActiva.numero_fin ?? 9999)}
+      precio={precioPorTicket}
+      pagoMovil={esPagoMovil}
+      tasaBcv={tasaBcv}
+      onChange={setNumerosElegidos}
+    />
+    </fieldset>
+
+
+  </>
+)}
 
                 {rifaCompleta && (
                   <div className="home-soldout-banner">
@@ -1590,6 +1687,7 @@ const data = await response.json();
                   </div>
                 )}
 
+                {!modoManual && (
                 <div
                   className={`ticket-controls ${
                     rifaCompleta ? "ticket-controls-disabled" : ""
@@ -1600,7 +1698,7 @@ const data = await response.json();
                     onClick={() => setTickets((prev) => Math.max(prev - 1, 1))}
                     type="button"
                     aria-label="Disminuir cantidad de boletos"
-                    disabled={rifaCompleta}
+                    disabled={rifaCompleta || loadingCompra}
                   >
                     −
                   </button>
@@ -1620,20 +1718,26 @@ const data = await response.json();
                   >
                     <button
                       className="circle-btn circle-btn-main"
-                      onClick={() => setTickets((prev) => Math.min(prev + 1, 100))}
+                      onClick={() => setTickets((prev) => Math.min(prev + 1, maxNumeros))}
                       type="button"
                       aria-label="Aumentar cantidad de boletos"
-                      disabled={rifaCompleta}
+                      disabled={rifaCompleta || loadingCompra}
                     >
                       +
                     </button>
                   </div>
                 </div>
 
+                )}
+
+                {!modoManual && (
                 <p className="main-total">Total: USD {totalPagar.toFixed(2)}</p>
 
+                )}
+
+                {!modoManual && (
                 <div className="quick-ticket-buttons-red">
-                  {[1, 2, 5, 10, 20, 50, 100].map((num) => (
+                  {[...new Set([1, 2, 5, 10, 20, 50, 100, maxNumeros])].filter(n => n <= maxNumeros).sort((a,b) => a-b).map((num) => (
                     <button
                       key={num}
                       className={`quick-ticket-btn-red ${
@@ -1641,12 +1745,13 @@ const data = await response.json();
                       }`}
                       onClick={() => setTickets(num)}
                       type="button"
-                      disabled={rifaCompleta}
+                      disabled={rifaCompleta || loadingCompra}
                     >
                       {num}
                     </button>
                   ))}
                 </div>
+                )}
               </section>
 
               <form onSubmit={handleSubmit} className="purchase-form">
@@ -1662,7 +1767,7 @@ const data = await response.json();
                       value={formData.nombre}
                       onChange={handleInputChange}
                       required
-                      disabled={rifaCompleta}
+                      disabled={rifaCompleta || loadingCompra}
                     />
 
                     <label className="input-label">Email *</label>
@@ -1673,7 +1778,7 @@ const data = await response.json();
                       value={formData.email}
                       onChange={handleInputChange}
                       required
-                      disabled={rifaCompleta}
+                      disabled={rifaCompleta || loadingCompra}
                     />
 
                     <label className="input-label">Teléfono *</label>
@@ -1683,7 +1788,7 @@ const data = await response.json();
                         className="phone-prefix-select"
                         value={formData.codigoPais}
                         onChange={handleInputChange}
-                        disabled={rifaCompleta}
+                        disabled={rifaCompleta || loadingCompra}
                       >
                         <option value="+58">🇻🇪 VE +58</option>
                         <option value="+57">🇨🇴 CO +57</option>
@@ -1714,7 +1819,7 @@ const data = await response.json();
                         value={formData.telefono}
                         onChange={handleInputChange}
                         required
-                        disabled={rifaCompleta}
+                        disabled={rifaCompleta || loadingCompra}
                       />
                     </div>
 
@@ -1749,7 +1854,7 @@ const data = await response.json();
                           }`}
                           onClick={() => setPaymentMethod(method)}
                           type="button"
-                          disabled={rifaCompleta}
+                          disabled={rifaCompleta || loadingCompra}
                         >
                           <div className="payment-pill-logo-wrap">
 {metodoVisual.logo ? (
@@ -1771,7 +1876,7 @@ const data = await response.json();
                     })}
                   </div>
 
-                  {paymentMethod === "App Pay" ? (
+                  {paymentMethod === "App Pay" && !modoManual ? (
                     <div className="apppay-detail-box premium-card-hover">
                       <span className="apppay-detail-label">
                         {metodoSeleccionado.subtitulo}
@@ -1793,7 +1898,7 @@ const data = await response.json();
                         <div
                           key={`apppay-wrap-${rifaActiva.id}-${tickets}-${totalPagar}`}
                         >
-                          <AppPayButton
+                          {!modoManual ? <AppPayButton
                             key={`apppay-btn-${rifaActiva.id}-${tickets}-${totalPagar}`}
                             totalPagar={Number(totalPagar || 0)}
                             nombreRifa={nombreRifa}
@@ -1802,12 +1907,12 @@ const data = await response.json();
                             disabled={
                               loadingCompra ||
                               !rifaActiva?.id ||
-                              tickets < 1 ||
+                              tickets < 1 || tickets > maxNumeros ||
                               precioPorTicket <= 0 ||
                               !estaDisponibleParaCompra(rifaActiva?.estado) ||
                               rifaCompleta
                             }
-                          />
+                          /> : <p style={{color:"#9a3412",fontSize:12,fontWeight:700}}>Pago manual desactivado durante esta prueba.</p>}
                         </div>
                       )}
 
@@ -1828,7 +1933,7 @@ const data = await response.json();
                         </p>
                       )}
                     </div>
-                                   ) : metodoSeleccionado.tipo === "pago_movil" ? (
+                                   ) : esPagoMovil ? (
                     <div className="selected-payment-box premium-card-hover">
                       <h4>{metodoSeleccionado.titulo}</h4>
 
@@ -1878,7 +1983,7 @@ const data = await response.json();
                               onClick={() =>
                                 copiarTexto(metodoSeleccionado.codigoBanco)
                               }
-                              disabled={rifaCompleta}
+                              disabled={rifaCompleta || loadingCompra}
                             >
                               Copiar
                             </button>
@@ -1903,7 +2008,7 @@ const data = await response.json();
                               onClick={() =>
                                 copiarTexto(metodoSeleccionado.telefono)
                               }
-                              disabled={rifaCompleta}
+                              disabled={rifaCompleta || loadingCompra}
                             >
                               Copiar
                             </button>
@@ -1928,7 +2033,7 @@ const data = await response.json();
                               onClick={() =>
                                 copiarTexto(metodoSeleccionado.documento)
                               }
-                              disabled={rifaCompleta}
+                              disabled={rifaCompleta || loadingCompra}
                             >
                               Copiar
                             </button>
@@ -1963,7 +2068,7 @@ const data = await response.json();
     TOTAL A PAGAR
   </div>
 
-  {totalPagarBs !== null ? (
+  {esPagoMovil && totalPagarBs !== null ? (
     <>
       <div
         style={{
@@ -1983,7 +2088,7 @@ const data = await response.json();
         }}
       >
         ${Number(totalPagar || 0).toFixed(2)} USD ·{" "}
-        {tickets} {tickets === 1 ? "boleto" : "boletos"}
+        {cantidadCompraVisual} {cantidadCompraVisual === 1 ? "boleto" : "boletos"}
       </div>
 
       <div
@@ -2015,6 +2120,11 @@ const data = await response.json();
     </>
   ) : (
     <>
+      {esPagoMovil && (
+        <p style={{ color: "#b91c1c", fontSize: "12px", fontWeight: 700, marginBottom: "8px" }}>
+          Tasa BCV no disponible. No realices el pago hasta confirmar el monto en bolívares.
+        </p>
+      )}
       <div
         style={{
           fontSize: "22px",
@@ -2024,15 +2134,11 @@ const data = await response.json();
         ${Number(totalPagar || 0).toFixed(2)} USD
       </div>
 
-      <div
-        style={{
-          fontSize: "11px",
-          marginTop: "7px",
-          opacity: 0.7,
-        }}
-      >
-        Tasa BCV temporalmente no disponible
-      </div>
+      {esPagoMovil && (
+        <div style={{ fontSize: "11px", marginTop: "7px", opacity: 0.7 }}>
+          Tasa BCV temporalmente no disponible
+        </div>
+      )}
     </>
   )}
 </div>
@@ -2057,7 +2163,7 @@ const data = await response.json();
                           type="button"
                           className="copy-btn"
                           onClick={() => copiarTexto(metodoSeleccionado.cuenta)}
-                          disabled={rifaCompleta}
+                          disabled={rifaCompleta || loadingCompra}
                         >
                           Copiar
                         </button>
@@ -2080,7 +2186,7 @@ const data = await response.json();
                               type="button"
                               className="copy-btn"
                               onClick={() => copiarTexto(item.value)}
-                              disabled={rifaCompleta}
+                              disabled={rifaCompleta || loadingCompra}
                             >
                               Copiar
                             </button>
@@ -2088,8 +2194,8 @@ const data = await response.json();
                         ))}
 
                       <div className="payment-total-banner">
-                        Total: ${totalPagar.toFixed(2)} USD ({tickets} boleto
-                        {tickets > 1 ? "s" : ""})
+                        Total: ${totalPagar.toFixed(2)} USD ({cantidadCompraVisual} boleto
+                        {cantidadCompraVisual !== 1 ? "s" : ""})
                       </div>
 
                       <p className="payment-description">
@@ -2109,7 +2215,7 @@ const data = await response.json();
                         type="checkbox"
                         checked={capturaInmediata}
                         onChange={(e) => setCapturaInmediata(e.target.checked)}
-                        disabled={rifaCompleta}
+                        disabled={rifaCompleta || loadingCompra}
                       />
                       <span>ENVIAR CAPTURA INMEDIATAMENTE</span>
                     </label>
@@ -2130,7 +2236,7 @@ const data = await response.json();
                         onChange={handleInputChange}
                         hidden
                         accept=".jpg,.jpeg,.png,.webp,.pdf"
-                        disabled={rifaCompleta}
+                        disabled={rifaCompleta || loadingCompra}
                       />
                     </label>
 
@@ -2163,8 +2269,8 @@ const data = await response.json();
                     )}
 
                     <p className="upload-method-summary">
-                      {paymentMethod}: ${totalPagar.toFixed(2)} USD ({tickets} boleto
-                      {tickets > 1 ? "s" : ""})
+                      {paymentMethod}: ${totalPagar.toFixed(2)} USD ({cantidadCompraVisual} boleto
+                      {cantidadCompraVisual > 1 ? "s" : ""})
                     </p>
 
                     <p className="privacy-note">
@@ -2235,6 +2341,9 @@ const data = await response.json();
                         rifaCompleta ? "confirm-main-btn-disabled" : ""
                       }`}
                       disabled={
+                        !paymentMethods.includes(paymentMethod) ||
+                        cantidadCompraVisual > maxNumeros ||
+                        (modoManual && numerosElegidos.length === 0) ||
                         loadingCompra ||
                         !rifaActiva?.id ||
                         !estaDisponibleParaCompra(rifaActiva?.estado) ||
@@ -2242,7 +2351,9 @@ const data = await response.json();
                         rifaCompleta
                       }
                     >
-                      {loadingCompra
+                      {modoManual && numerosElegidos.length === 0
+                        ? "ELIGE TUS NÚMEROS"
+                        : loadingCompra
                         ? "PROCESANDO..."
                         : rifaCompleta
                         ? "BOLETOS AGOTADOS"
@@ -2298,7 +2409,7 @@ const data = await response.json();
               <>
                 <span>Total:</span> {Number(totalPagar || 0).toFixed(2)} USD{" "}
                 <small>
-                  ({tickets} boleto{tickets > 1 ? "s" : ""})
+                  ({cantidadCompraVisual} boleto{cantidadCompraVisual > 1 ? "s" : ""})
                 </small>
               </>
             ) : (

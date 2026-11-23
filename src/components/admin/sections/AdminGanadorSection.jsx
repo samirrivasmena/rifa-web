@@ -186,10 +186,12 @@ export default function AdminGanadorSection({
           </div>
         )}
 
-        <form className="adminpro-search-row" onSubmit={handleSubmit}>
-          <div className="adminpro-search-input">
+        <form className="adminpro-search-row" onSubmit={handleSubmit} style={{display:"flex", gap:10, alignItems:"center", flexWrap:"wrap"}}>
+          <div className="adminpro-search-input" style={{flex:"1 1 180px"}}>
             <input
               type="text"
+              aria-label="Número a consultar"
+              style={{width:"100%", boxSizing:"border-box", padding:"12px 14px", borderRadius:12, border:"1px solid #3f3f46", background:"#202027", color:"#fafafa"}}
               placeholder={padLength === 3 ? "000 - 999" : "0000 - 9999"}
               value={numeroGanador}
               maxLength={padLength}

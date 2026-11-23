@@ -90,63 +90,18 @@ export async function POST(req) {
 
     // Se envía OTP a cualquier correo válido, tenga o no participaciones.
     // La existencia de compras se consulta únicamente DESPUÉS de verificar el OTP.
-    const { data: ultimoOtp, error: ultimoOtpError } = await supabaseAdmin
-      .from("mis_tickets_otps")
-      .select("id, created_at")
-      .eq("email", email)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (ultimoOtpError) {
-      console.error("Error consultando último OTP:", ultimoOtpError);
-      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
-    }
-    if (ultimoOtp?.created_at) {
-      const diferencia = Math.floor((Date.now() - new Date(ultimoOtp.created_at).getTime()) / 1000);
-      if (Number.isFinite(diferencia) && diferencia >= -5 && diferencia < REENVIO_SEGUNDOS) {
-        const retryAfter = Math.max(1, REENVIO_SEGUNDOS - Math.max(0, diferencia));
-        return responder({
-          ok: false,
-          error: `Espera ${retryAfter} segundos antes de solicitar otro código.`,
-          retryAfter,
-        }, 429, { "Retry-After": String(retryAfter) });
-      }
-    }
-
     const codigo = String(crypto.randomInt(100000, 1000000));
     const codigoHash = crypto
       .createHmac("sha256", process.env.MIS_TICKETS_OTP_SECRET)
       .update(`${email}:${codigo}`)
       .digest("hex");
-    const expiresAt = new Date(Date.now() + DURACION_MINUTOS * 60 * 1000);
-
-    const { error: invalidarError } = await supabaseAdmin
-      .from("mis_tickets_otps")
-      .update({ usado: true })
-      .eq("email", email)
-      .eq("usado", false);
-    if (invalidarError) {
-      console.error("Error invalidando OTP anteriores:", invalidarError);
-      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
+    const { data: resultado, error: insertarError } = await supabaseAdmin.rpc("crear_mis_tickets_otp_seguro", { p_email: email, p_hash: codigoHash });
+    if (insertarError || !resultado) return responder({ ok: false, error: "No se pudo generar el código" }, 500);
+    if (!resultado.ok) {
+      const retryAfter = resultado.retry_after || 60;
+      return responder({ ok: false, error: `Espera ${retryAfter} segundos antes de solicitar otro código.`, retryAfter }, 429, { "Retry-After": String(retryAfter) });
     }
-
-    const { data: nuevoOtp, error: insertarError } = await supabaseAdmin
-      .from("mis_tickets_otps")
-      .insert({
-        email,
-        codigo_hash: codigoHash,
-        expires_at: expiresAt.toISOString(),
-        intentos: 0,
-        usado: false,
-      })
-      .select("id")
-      .single();
-    if (insertarError) {
-      console.error("Error guardando OTP:", insertarError);
-      return responder({ ok: false, error: "No se pudo generar el código" }, 500);
-    }
-
+    const nuevoOtp = { id: resultado.id };
     try {
       await sendMisTicketsCodeEmail({ to: email, codigo });
     } catch (error) {

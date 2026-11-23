@@ -1,7 +1,5 @@
 "use client";
-
-import { useMemo } from "react";
-
+import { useMemo, useEffect, useState } from "react";
 function getEstadoBadgeStyle(estado) {
   switch (String(estado || "").toLowerCase()) {
     case "aprobado":
@@ -10,21 +8,18 @@ function getEstadoBadgeStyle(estado) {
         color: "#166534",
         border: "1px solid #86efac",
       };
-
     case "pendiente":
       return {
         background: "#fef3c7",
         color: "#92400e",
         border: "1px solid #fcd34d",
       };
-
     case "rechazado":
       return {
         background: "#fee2e2",
         color: "#991b1b",
         border: "1px solid #fca5a5",
       };
-
     default:
       return {
         background: "#e5e7eb",
@@ -33,7 +28,6 @@ function getEstadoBadgeStyle(estado) {
       };
   }
 }
-
 function EstadoBadge({ estado }) {
   return (
     <span
@@ -52,27 +46,18 @@ function EstadoBadge({ estado }) {
     </span>
   );
 }
-
 function normalizarNumero(valor, padLength = 4) {
   if (valor === undefined || valor === null || valor === "") return null;
-
   const soloNumeros = String(valor).trim().replace(/\D/g, "");
-
   if (!soloNumeros) return null;
-
   return String(Number(soloNumeros)).padStart(padLength, "0");
 }
-
 function limpiarTelefonoWhatsapp(valor) {
   const numeros = String(valor || "").replace(/\D/g, "");
-
   if (!numeros) return "";
-
   if (numeros.length === 10) return `1${numeros}`;
-
   return numeros;
 }
-
 function crearMensajeWhatsapp({
   compra,
   ticketsFormateados,
@@ -82,29 +67,23 @@ function crearMensajeWhatsapp({
     compra?.nombre_cliente ||
     compra?.usuarios?.nombre ||
     "cliente";
-
   const rifaNombre =
     compra?.rifas?.nombre ||
     compra?.rifa_nombre ||
     "Rifa";
-
   const premio =
     compra?.rifas?.premio ||
     compra?.premio ||
     rifaNombre;
-
   const fechaSorteo =
     compra?.rifas?.fecha_sorteo ||
     "Por confirmar";
-
   const horaSorteo =
     compra?.rifas?.hora_sorteo ||
     "";
-
   const eventoUrl = compra?.rifa_id
-    ? `${window.location.origin}/evento/${compra.rifa_id}`
-    : `${window.location.origin}/principal`;
-
+    ? `${(typeof window !== "undefined" ? window.location.origin : "")}/evento/${compra.rifa_id}`
+    : `${(typeof window !== "undefined" ? window.location.origin : "")}/principal`;
   const ticketsTexto =
     ticketsFormateados?.length > 0
       ? ticketsFormateados
@@ -117,31 +96,22 @@ function crearMensajeWhatsapp({
           )
           .join("\n")
       : "⏳ Pendiente de asignar";
-
   return `🎉 *¡COMPRA APROBADA!*
-
 Hola *${nombre}* 👋
-
 Tu compra fue aprobada correctamente en *Sorteos LSD*.
-
 ━━━━━━━━━━━━━━
 🎁 *Premio:* ${premio}
 🎯 *Rifa:* ${rifaNombre}
 📅 *Sorteo:* ${fechaSorteo} ${horaSorteo}
 ━━━━━━━━━━━━━━
-
 ✅ *Tus tickets asignados:*
 ${ticketsTexto}
-
 🔎 *Ver tu rifa aquí:*
 ${eventoUrl}
-
 🍀 Mucha suerte.
 Gracias por participar con nosotros.
-
 *Sorteos LSD* 🏆`;
 }
-
 export default function PurchaseCard({
   compra,
   ticketsAsignados = [],
@@ -164,22 +134,18 @@ export default function PurchaseCard({
     compra?.capture_url ||
     compra?.soporte_pago ||
     "";
-
   const monto = Number(
     compra?.monto_total ??
       compra?.total ??
       0
   );
-
   const fechaVisible =
     compra?.fecha_compra ||
     compra?.created_at ||
     null;
-
   const estado = String(
     compra?.estado_pago || ""
   ).toLowerCase();
-
   // =====================================================
   // DATOS HISTÓRICOS DE ESTA COMPRA
   // =====================================================
@@ -189,102 +155,100 @@ export default function PurchaseCard({
   // Las compras antiguas, que no tienen estos campos,
   // siguen utilizando la información de usuarios.
   // =====================================================
-
   const nombreCliente =
     compra?.nombre_cliente ||
     compra?.usuarios?.nombre ||
     compra?.usuario_id ||
     "Sin nombre";
-
   const emailCliente =
     compra?.email_cliente ||
     compra?.usuarios?.email ||
     "Sin email";
-
   const telefonoCliente =
     compra?.telefono_cliente ||
     compra?.usuarios?.telefono ||
     "";
-
   const telefonoWhatsapp =
     limpiarTelefonoWhatsapp(telefonoCliente);
-
   const esPdfComprobante = useMemo(() => {
     if (!comprobanteUrl) return false;
-
-    return /\.pdf(\?|#|$)/i.test(
-      comprobanteUrl
-    );
+    return /\.pdf(\?|#|$)/i.test(comprobanteUrl);
   }, [comprobanteUrl]);
-
   const numeroGanadorFormateado = useMemo(() => {
     return normalizarNumero(
       numeroGanadorOficial,
       padLength
     );
   }, [numeroGanadorOficial, padLength]);
-
+  const pendiente = estado === "pendiente";
+  const modo = compra?.modo_compra_pendiente;
+  const reservados = Array.isArray(compra?.numeros_reservados) ? compra.numeros_reservados : [];
+  const manual = pendiente && (modo === "manual" || reservados.length > 0);
+  const revision = pendiente && (modo === "revision" || (!modo && ticketsAsignados.length > 0));
+  const expira = Date.parse(compra?.reserva_expira_at || "");
+  const [ahora, setAhora] = useState(null);
+  useEffect(() => {
+    if (!manual || !Number.isFinite(expira)) return;
+    const actualizar = () => setAhora(Date.now());
+    actualizar();
+    const timer = setInterval(actualizar, 1000);
+    return () => clearInterval(timer);
+  }, [manual, expira]);
+  const restante = Number.isFinite(expira) && ahora !== null ? Math.max(0, expira - ahora) : null;
+  const vencida = manual && (compra?.reserva_vencida === true || restante === 0);
+  const incompleta = manual && (compra?.reserva_incompleta === true || !Number.isFinite(expira) || reservados.length !== Number(compra?.cantidad_tickets));
+  const segundos = Math.ceil((restante || 0) / 1000);
+  const contador = `${Math.floor(segundos / 3600)}h ${String(Math.floor(segundos / 60) % 60).padStart(2, "0")}m ${String(segundos % 60).padStart(2, "0")}s`;
+  const bloquearAprobacion = revision || vencida || incompleta || (manual && ahora === null) || loadingAprobacion === compra?.id || loadingRechazo === compra?.id;
   const ticketsFormateados = useMemo(() => {
-    return (ticketsAsignados || []).map(
-      (t) =>
-        normalizarNumero(t, padLength) ||
-        String(t).padStart(padLength, "0")
-    );
-  }, [ticketsAsignados, padLength]);
-
+    const numeros = manual ? reservados : estado === "aprobado" ? ticketsAsignados : [];
+    return [...new Set(numeros.map(t => normalizarNumero(t?.numero_ticket ?? t, padLength)).filter(Boolean))];
+  }, [manual, reservados, estado, ticketsAsignados, padLength]);
   const mensajeWhatsapp = useMemo(() => {
+    if (estado !== "aprobado") return `Hola ${nombreCliente}, te contactamos de Sorteos LSD sobre tu compra.`;
     return crearMensajeWhatsapp({
       compra,
       ticketsFormateados,
       padLength,
     });
   }, [
-    compra,
+    compra, estado, nombreCliente,
     ticketsFormateados,
     padLength,
   ]);
-
   const whatsappUrl = telefonoWhatsapp
     ? `https://wa.me/${telefonoWhatsapp}?text=${encodeURIComponent(
         mensajeWhatsapp
       )}`
     : "";
-
   const compraTieneGanador = useMemo(() => {
-    if (!numeroGanadorFormateado) {
+    if (estado !== "aprobado" || !numeroGanadorFormateado) {
       return false;
     }
-
     return ticketsFormateados.includes(
       numeroGanadorFormateado
     );
   }, [
-    numeroGanadorFormateado,
+    estado, numeroGanadorFormateado,
     ticketsFormateados,
   ]);
-
   const esTicketGanador = (ticket) => {
     const ticketFormateado =
       normalizarNumero(
         ticket,
         padLength
       );
-
     return (
-      Boolean(numeroGanadorFormateado) &&
+      estado === "aprobado" && Boolean(numeroGanadorFormateado) &&
       ticketFormateado ===
         numeroGanadorFormateado
     );
   };
-
   const abrirPreviewRapida = () => {
     if (!comprobanteUrl) return;
-
-    onVerComprobante?.(
-      comprobanteUrl
-    );
+    if (onVerComprobante) onVerComprobante(comprobanteUrl);
+    else window.open(comprobanteUrl, "_blank", "noopener,noreferrer");
   };
-
   return (
     <div
       className="adminpro-purchase-card"
@@ -325,7 +289,6 @@ export default function PurchaseCard({
                 }}
               >
                 Compra #{compra?.id}
-
                 {compraTieneGanador && (
                   <span
                     style={{
@@ -347,19 +310,16 @@ export default function PurchaseCard({
                   </span>
                 )}
               </h3>
-
               <p>
                 {nombreCliente}
               </p>
             </div>
-
             <EstadoBadge
               estado={estado}
             />
           </div>
         </div>
       </div>
-
       <div className="adminpro-purchase-body">
         <p>
           <strong>
@@ -367,7 +327,6 @@ export default function PurchaseCard({
           </strong>{" "}
           {emailCliente}
         </p>
-
         <p>
           <strong>
             Teléfono:
@@ -375,7 +334,6 @@ export default function PurchaseCard({
           {telefonoCliente ||
             "Sin teléfono"}
         </p>
-
         {telefonoWhatsapp ? (
           <a
             href={whatsappUrl}
@@ -397,7 +355,6 @@ export default function PurchaseCard({
             WhatsApp
           </p>
         )}
-
         <p>
           <strong>
             Tickets comprados:
@@ -405,7 +362,6 @@ export default function PurchaseCard({
           {compra?.cantidad_tickets ??
             0}
         </p>
-
         <p>
           <strong>
             Monto:
@@ -427,7 +383,6 @@ export default function PurchaseCard({
           maximumFractionDigits: 2,
         }).format(Number(compra.monto_bolivares))}
       </p>
-
       <p>
         <strong>Tasa BCV:</strong>{" "}
         Bs.{" "}
@@ -439,7 +394,6 @@ export default function PurchaseCard({
       </p>
     </>
   )}
-
         <p>
           <strong>
             Referencia:
@@ -447,7 +401,6 @@ export default function PurchaseCard({
           {compra?.referencia ||
             "Sin referencia"}
         </p>
-
         <p>
           <strong>
             Método:
@@ -455,7 +408,6 @@ export default function PurchaseCard({
           {compra?.metodo_pago ||
             "Sin método"}
         </p>
-
         <p>
           <strong>
             Fecha:
@@ -464,12 +416,10 @@ export default function PurchaseCard({
             fechaVisible
           ) || "Sin fecha"}
         </p>
-
         <div className="adminpro-tickets-box">
           <strong>
-            Tickets asignados:
+            {manual ? "🎯 Números reservados por el cliente:" : pendiente ? "🎲 Números pendientes de asignación:" : "Tickets asignados:"}
           </strong>
-
           {ticketsFormateados?.length >
           0 ? (
             <div className="adminpro-ticket-chips">
@@ -479,7 +429,6 @@ export default function PurchaseCard({
                     esTicketGanador(
                       ticket
                     );
-
                   return (
                     <span
                       key={`${compra?.id}-${ticket}`}
@@ -501,7 +450,7 @@ export default function PurchaseCard({
                       title={
                         ganador
                           ? "Ticket ganador oficial"
-                          : "Ticket asignado"
+                          : manual ? "Número reservado" : "Ticket asignado"
                       }
                     >
                       {ticket}
@@ -524,7 +473,15 @@ export default function PurchaseCard({
             </p>
           )}
         </div>
-
+        {manual && (
+          <div style={{marginTop:12,padding:12,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb",color:"#92400e"}}>
+            <strong>{incompleta ? "Reserva incompleta: requiere revisión" : vencida ? "Reserva vencida" : "⏳ Reserva activa"}</strong>
+            {!incompleta && <div style={{fontSize:22,fontWeight:800,fontVariantNumeric:"tabular-nums"}}>{vencida ? "00h 00m 00s" : restante === null ? "Calculando…" : contador}</div>}
+            <div style={{height:6,background:"#fde68a",borderRadius:8,overflow:"hidden",margin:"8px 0"}}><div style={{height:"100%",background:vencida ? "#dc2626" : "#16a34a",width:`${Math.min(100,(restante || 0)/864000)}%`}} /></div>
+            <small>Los números elegidos no se pueden cambiar. La liberación se realiza en el servidor.</small>
+          </div>
+        )}
+        {revision && <p style={{color:"#b45309",fontWeight:700}}>Compra pendiente de revisión. Actualiza los datos antes de aprobar.</p>}
         {comprobanteUrl ? (
           <div
             style={{
@@ -534,7 +491,6 @@ export default function PurchaseCard({
             <strong>
               Comprobante:
             </strong>
-
             <div
               onClick={
                 abrirPreviewRapida
@@ -575,7 +531,6 @@ export default function PurchaseCard({
                   >
                     PDF comprobante
                   </p>
-
                   <p
                     style={{
                       margin:
@@ -605,14 +560,12 @@ export default function PurchaseCard({
                   onError={(e) => {
                     e.currentTarget.style.objectFit =
                       "contain";
-
                     e.currentTarget.style.padding =
                       "18px";
                   }}
                 />
               )}
             </div>
-
             <div
               style={{
                 display: "flex",
@@ -632,7 +585,6 @@ export default function PurchaseCard({
               >
                 Ver comprobante
               </button>
-
               <a
                 href={
                   comprobanteUrl
@@ -665,7 +617,6 @@ export default function PurchaseCard({
             No disponible
           </p>
         )}
-
         <div
           style={{
             display: "flex",
@@ -690,17 +641,16 @@ export default function PurchaseCard({
                   )
                 }
                 disabled={
-                  loadingAprobacion ===
-                  compra?.id
+                  bloquearAprobacion
                 }
                 type="button"
               >
                 {loadingAprobacion ===
                 compra?.id
                   ? "Aprobando..."
-                  : "Aprobar automática"}
+                  : manual ? "Aprobar números reservados" : "Aprobar automática"}
               </button>
-
+              {!manual && !revision && (
               <button
                 className="adminpro-soft-btn"
                 style={{
@@ -714,14 +664,13 @@ export default function PurchaseCard({
                   )
                 }
                 disabled={
-                  loadingAprobacion ===
-                  compra?.id
+                  bloquearAprobacion
                 }
                 type="button"
               >
                 Aprobar manual
               </button>
-
+              )}
               <button
                 className="adminpro-soft-btn"
                 style={{
@@ -735,8 +684,7 @@ export default function PurchaseCard({
                   )
                 }
                 disabled={
-                  loadingRechazo ===
-                  compra?.id
+                  loadingRechazo === compra?.id || loadingAprobacion === compra?.id
                 }
                 type="button"
               >
@@ -747,7 +695,6 @@ export default function PurchaseCard({
               </button>
             </>
           )}
-
           {mostrarEliminar &&
             estado ===
               "rechazado" && (

@@ -3,25 +3,18 @@ import { createHmac, timingSafeEqual, randomUUID } from "crypto";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { enviarPushAdmins } from "@/lib/adminPush";
 import { obtenerModoMantenimiento } from "@/lib/mantenimiento/obtenerModoMantenimiento";
-
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
 // =========================================================
 // CONFIGURACIÓN
 // =========================================================
-
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
-
 const RATE_LIMIT_MAX = 15;
-
 const UPLOAD_PROOF_MAX_AGE_MS = 10 * 60 * 1000;
 const UPLOAD_PROOF_FUTURE_SKEW_MS = 30 * 1000;
-
 const PATH_COMPROBANTES =
   "/storage/v1/object/public/comprobantes/";
-
 /*
  * Obtenemos el host autorizado directamente desde
  * NEXT_PUBLIC_SUPABASE_URL.
@@ -31,14 +24,12 @@ const PATH_COMPROBANTES =
  *
  * No exponemos la SERVICE_ROLE_KEY.
  */
-
 function obtenerSupabaseHostPermitido() {
   try {
     const supabaseUrl =
       String(
         process.env.NEXT_PUBLIC_SUPABASE_URL || ""
       ).trim();
-
     if (!supabaseUrl) {
       return "";
     }
@@ -47,14 +38,13 @@ function obtenerSupabaseHostPermitido() {
   } catch {
     return "";
   }
+
 }
 
 // =========================================================
 // RATE LIMIT BÁSICO
 // =========================================================
-
 const globalForRateLimit = globalThis;
-
 if (!globalForRateLimit.__comprarRateLimitStore) {
   globalForRateLimit.__comprarRateLimitStore =
     new Map();
@@ -62,11 +52,9 @@ if (!globalForRateLimit.__comprarRateLimitStore) {
 
 const rateLimitStore =
   globalForRateLimit.__comprarRateLimitStore;
-
 // =========================================================
 // VALIDACIONES BÁSICAS
 // =========================================================
-
 function validarEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(
     String(email || "").trim()
@@ -96,7 +84,6 @@ function normalizarTexto(valor) {
 // =========================================================
 // TICKETS
 // =========================================================
-
 /**
  * Determina si un ticket pertenece al sistema FREE.
  *
@@ -105,7 +92,6 @@ function normalizarTexto(valor) {
  */
 function esTicketFree(ticket = {}) {
   const tipo = normalizarTexto(ticket?.tipo);
-
   return (
     Boolean(
       ticket?.free_drop_id !== null &&
@@ -135,19 +121,15 @@ function esTicketDisponible(ticket = {}) {
   const sinCompra =
     ticket?.compra_id === null ||
     ticket?.compra_id === undefined;
-
   const sinFreeDrop =
     ticket?.free_drop_id === null ||
     ticket?.free_drop_id === undefined;
-
   const sinParticipacionFree =
     ticket?.free_drop_participation_id === null ||
     ticket?.free_drop_participation_id ===
       undefined;
-
   const tipo = normalizarTexto(ticket?.tipo);
   const estado = normalizarTexto(ticket?.estado);
-
   return (
     sinCompra &&
     sinFreeDrop &&
@@ -205,11 +187,9 @@ function contarNumerosUnicosDisponibles(
 // =========================================================
 // IP / RATE LIMIT
 // =========================================================
-
 function obtenerIp(req) {
   const forwardedFor =
     req.headers.get("x-forwarded-for");
-
   if (forwardedFor) {
     return forwardedFor
       .split(",")[0]
@@ -227,10 +207,8 @@ function aplicarRateLimit(req) {
   const ip = obtenerIp(req);
   const key = `comprar:${ip}`;
   const now = Date.now();
-
   let record =
     rateLimitStore.get(key);
-
   if (
     !record ||
     now > record.resetAt
@@ -244,12 +222,10 @@ function aplicarRateLimit(req) {
   }
 
   record.count += 1;
-
   rateLimitStore.set(
     key,
     record
   );
-
   if (
     record.count >
     RATE_LIMIT_MAX
@@ -273,7 +249,6 @@ function aplicarRateLimit(req) {
 // =========================================================
 // COMPROBANTE
 // =========================================================
-
 function esComprobanteValido(url) {
   if (!url) {
     return false;
@@ -281,7 +256,6 @@ function esComprobanteValido(url) {
 
   try {
     const parsed = new URL(url);
-
     // HTTPS obligatorio
     if (parsed.protocol !== "https:") {
       return false;
@@ -290,12 +264,10 @@ function esComprobanteValido(url) {
     // HOST EXACTO DE SUPABASE
     const hostPermitido =
       obtenerSupabaseHostPermitido();
-
     if (!hostPermitido) {
       console.error(
         "SEGURIDAD: NEXT_PUBLIC_SUPABASE_URL no está configurada correctamente"
       );
-
       return false;
     }
 
@@ -319,6 +291,7 @@ function esComprobanteValido(url) {
   } catch {
     return false;
   }
+
 }
 
 function esComprobantePathValido(path) {
@@ -330,7 +303,6 @@ function esComprobantePathValido(path) {
   }
 
   const limpio = path.trim();
-
   if (
     !limpio ||
     limpio.length > 500
@@ -350,7 +322,7 @@ function esComprobantePathValido(path) {
   if (
     limpio.startsWith("/") ||
     limpio.includes("..") ||
-    limpio.includes("\\")
+    limpio.includes("\\\\")
   ) {
     return false;
   }
@@ -359,13 +331,12 @@ function esComprobantePathValido(path) {
   // 2026/10/uuid.jpg
   const patron =
     /^\d{4}\/\d{2}\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|pdf)$/i;
-
   return patron.test(limpio);
 }
+
 // =========================================================
 // VALIDAR PRUEBA CRIPTOGRÁFICA DEL COMPROBANTE
 // =========================================================
-
 function validarUploadProof({
   path,
   rifaId,
@@ -375,7 +346,6 @@ function validarUploadProof({
     const secret = String(
       process.env.PURCHASE_UPLOAD_PROOF_SECRET || ""
     ).trim();
-
     /*
      * Si el secreto no existe, fallamos de forma segura.
      * Nunca permitimos una compra manual sin poder
@@ -385,14 +355,12 @@ function validarUploadProof({
       console.error(
         "SEGURIDAD: PURCHASE_UPLOAD_PROOF_SECRET no está configurado correctamente."
       );
-
       return false;
     }
 
     const pathLimpio = String(path || "").trim();
     const rifaIdLimpio = String(rifaId || "").trim();
     const proofLimpio = String(proof || "").trim();
-
     if (
       !pathLimpio ||
       !rifaIdLimpio ||
@@ -413,22 +381,18 @@ function validarUploadProof({
       /^(\d{13})\.([0-9a-f]{64})$/i.exec(
         proofLimpio
       );
-
     if (!match) {
       return false;
     }
 
     const issuedAt = Number(match[1]);
-
     const firmaRecibida =
       match[2].toLowerCase();
-
     if (!Number.isFinite(issuedAt)) {
       return false;
     }
 
     const ahora = Date.now();
-
     /*
      * Evita aceptar una prueba con una fecha
      * demasiado adelantada.
@@ -458,7 +422,6 @@ function validarUploadProof({
      */
     const payload =
       `${pathLimpio}.${issuedAt}`;
-
     const firmaEsperada =
       createHmac(
         "sha256",
@@ -469,7 +432,6 @@ function validarUploadProof({
           "utf8"
         )
         .digest("hex");
-
     /*
      * Comparación resistente a timing attacks.
      */
@@ -478,13 +440,11 @@ function validarUploadProof({
         firmaRecibida,
         "hex"
       );
-
     const bufferEsperado =
       Buffer.from(
         firmaEsperada,
         "hex"
       );
-
     if (
       bufferRecibido.length !==
       bufferEsperado.length
@@ -501,14 +461,14 @@ function validarUploadProof({
       "Error validando uploadProof:",
       error
     );
-
     return false;
   }
+
 }
+
 // =========================================================
 // RESPUESTAS
 // =========================================================
-
 function errorResponse(
   mensaje,
   status = 400
@@ -524,13 +484,13 @@ function errorResponse(
           "no-store, no-cache, must-revalidate",
       },
     }
+
   );
 }
 
 // =========================================================
 // RIFA
 // =========================================================
-
 function obtenerTotalNumeros(
   rifa = {}
 ) {
@@ -538,12 +498,10 @@ function obtenerTotalNumeros(
     Number(
       rifa?.numero_inicio
     );
-
   const fin =
     Number(
       rifa?.numero_fin
     );
-
   if (
     Number.isFinite(inicio) &&
     Number.isFinite(fin) &&
@@ -560,7 +518,6 @@ function obtenerTotalNumeros(
     Number(
       rifa?.cantidad_numeros
     );
-
   return Number.isFinite(
     cantidad
   )
@@ -576,19 +533,16 @@ function construirNumerosTickets(
     Number(
       rifa?.numero_inicio
     );
-
   const fin =
     Number(
       rifa?.numero_fin
     );
-
   if (
     Number.isFinite(inicio) &&
     Number.isFinite(fin) &&
     fin >= inicio
   ) {
     const numeros = [];
-
     for (
       let n = inicio;
       n <= fin;
@@ -604,7 +558,6 @@ function construirNumerosTickets(
     Number(
       rifa?.cantidad_numeros
     );
-
   const limite =
     Number.isFinite(
       cantidad
@@ -612,7 +565,6 @@ function construirNumerosTickets(
     cantidad > 0
       ? cantidad
       : totalNumeros;
-
   return Array.from(
     {
       length: limite,
@@ -625,7 +577,6 @@ function construirNumerosTickets(
 // =========================================================
 // GENERAR INVENTARIO SI NO EXISTE
 // =========================================================
-
 async function generarTicketsSiNoExisten(
   rifaIdLimpio,
   rifa,
@@ -644,13 +595,11 @@ async function generarTicketsSiNoExisten(
       "rifa_id",
       rifaIdLimpio
     );
-
   if (error) {
     console.error(
       "Error comprobando inventario:",
       error
     );
-
     return {
       ok: false,
       error:
@@ -660,7 +609,6 @@ async function generarTicketsSiNoExisten(
 
   const ticketsExistentes =
     count ?? 0;
-
   /*
    * Si ya existe inventario,
    * no lo regeneramos.
@@ -679,7 +627,6 @@ async function generarTicketsSiNoExisten(
       rifa,
       totalNumeros
     );
-
   if (
     !Array.isArray(
       numeros
@@ -694,7 +641,6 @@ async function generarTicketsSiNoExisten(
   }
 
   const batchSize = 500;
-
   for (
     let i = 0;
     i < numeros.length;
@@ -710,15 +656,12 @@ async function generarTicketsSiNoExisten(
           (numero) => ({
             rifa_id:
               rifaIdLimpio,
-
             numero_ticket:
               numero,
-
             compra_id:
               null,
           })
         );
-
     /*
      * IMPORTANTE:
      *
@@ -733,7 +676,6 @@ async function generarTicketsSiNoExisten(
      * evita duplicados sin provocar el error que
      * anteriormente podía producir insert().
      */
-
     const {
       error: insertError,
     } = await supabaseAdmin
@@ -746,20 +688,20 @@ async function generarTicketsSiNoExisten(
           ignoreDuplicates:
             true,
         }
-      );
 
+      );
     if (insertError) {
       console.error(
         "Error generando inventario:",
         insertError
       );
-
       return {
         ok: false,
         error:
           "No se pudieron generar los tickets",
       };
     }
+
   }
 
   return {
@@ -771,7 +713,6 @@ async function generarTicketsSiNoExisten(
 // =========================================================
 // OBTENER INVENTARIO REAL
 // =========================================================
-
 async function obtenerInventarioRifa(
   rifaId
 ) {
@@ -781,26 +722,33 @@ async function obtenerInventarioRifa(
   } = await supabaseAdmin
     .from("tickets")
     .select(`
+
       id,
+
       numero_ticket,
+
       compra_id,
+
       rifa_id,
+
       tipo,
+
       estado,
+
       free_drop_id,
+
       free_drop_participation_id
+
     `)
     .eq(
       "rifa_id",
       rifaId
     );
-
   if (error) {
     console.error(
       "Error consultando inventario:",
       error
     );
-
     return {
       ok: false,
       error:
@@ -821,16 +769,13 @@ async function obtenerInventarioRifa(
 // =========================================================
 // POST
 // =========================================================
-
 export async function POST(req) {
   try {
         // -------------------------------------------------------
     // MODO MANTENIMIENTO GLOBAL
     // -------------------------------------------------------
-
     const modoMantenimiento =
       await obtenerModoMantenimiento();
-
     if (modoMantenimiento) {
       return NextResponse.json(
         {
@@ -845,15 +790,15 @@ export async function POST(req) {
             "Retry-After": "300",
           },
         }
+
       );
     }
+
     // -------------------------------------------------------
     // RATE LIMIT
     // -------------------------------------------------------
-
     const rateLimit =
       aplicarRateLimit(req);
-
     if (
       rateLimit.limited
     ) {
@@ -870,20 +815,18 @@ export async function POST(req) {
                 rateLimit.retryAfter ||
                   60
               ),
-
             "Cache-Control":
               "no-store",
           },
         }
+
       );
     }
 
     // -------------------------------------------------------
     // BODY
     // -------------------------------------------------------
-
     let body;
-
     try {
       body =
         await req.json();
@@ -919,24 +862,42 @@ const {
   comprobanteUrl,
   comprobantePath,
   uploadProof,
+  numerosSeleccionados,
 } = body;
+    // El formulario envía [] en compras automáticas: no es una reserva manual.
+    // Rechazar tipos inesperados sin afectar el flujo anterior.
+    if (numerosSeleccionados !== undefined && !Array.isArray(numerosSeleccionados)) {
+      return errorResponse("La selección de números no es válida", 400);
+    }
+
+    const compraManual = Array.isArray(numerosSeleccionados) && numerosSeleccionados.length > 0;
+    let numerosManuales = [];
+    if (compraManual) {
+      if (
+        numerosSeleccionados.length < 1 ||
+        numerosSeleccionados.length > 100 ||
+        !numerosSeleccionados.every(Number.isSafeInteger) ||
+        new Set(numerosSeleccionados).size !== numerosSeleccionados.length
+      ) {
+        return errorResponse("La selección de números no es válida", 400);
+      }
+
+      numerosManuales = [...numerosSeleccionados];
+    }
 
     const rifaIdRecibido =
       body.rifaId ??
       body.rifa_id ??
       body.idRifa ??
       body.id_rifa;
-
     // -------------------------------------------------------
     // NORMALIZACIÓN
     // -------------------------------------------------------
-
     const nombreLimpio =
       limitarLongitud(
         limpiarTexto(nombre),
         120
       );
-
     const emailLimpio =
       limitarLongitud(
         limpiarTexto(
@@ -944,7 +905,6 @@ const {
         ).toLowerCase(),
         254
       );
-
     const telefonoLimpio =
       limitarLongitud(
         limpiarTelefono(
@@ -952,7 +912,6 @@ const {
         ),
         15
       );
-
     const referenciaLimpia =
       limitarLongitud(
         limpiarTexto(
@@ -960,7 +919,6 @@ const {
         ),
         80
       );
-
     const metodoPago =
       limitarLongitud(
         limpiarTexto(
@@ -968,7 +926,6 @@ const {
         ),
         30
       );
-
 const comprobante =
   limitarLongitud(
     limpiarTexto(
@@ -976,7 +933,6 @@ const comprobante =
     ),
     500
   );
-
 const comprobantePathLimpio =
   limitarLongitud(
     limpiarTexto(
@@ -991,7 +947,6 @@ const comprobantePathLimpio =
     ),
     200
   );
-
     const rifaIdLimpio =
       limitarLongitud(
         limpiarTexto(
@@ -999,26 +954,21 @@ const comprobantePathLimpio =
         ),
         100
       );
-
     const cantidadTickets =
       Number(tickets);
-
     const totalRecibido =
       Number(totalPagar);
       const tasaBcvRecibida =
   tasaBcv !== null && tasaBcv !== undefined
     ? Number(tasaBcv)
     : null;
-
 const montoBolivaresRecibido =
   montoBolivares !== null && montoBolivares !== undefined
     ? Number(montoBolivares)
     : null;
-
     // -------------------------------------------------------
     // MÉTODOS DE PAGO
     // -------------------------------------------------------
-
 const metodosPermitidos = [
   "Binance",
   "Zelle",
@@ -1027,7 +977,6 @@ const metodosPermitidos = [
   "Cash App",
   "PAGO MOVIL BDV",
 ];
-
     if (
       !metodosPermitidos.includes(
         metodoPago
@@ -1042,7 +991,6 @@ const metodosPermitidos = [
     // -------------------------------------------------------
     // CAMPOS OBLIGATORIOS
     // -------------------------------------------------------
-
     if (
       !nombreLimpio ||
       !emailLimpio ||
@@ -1104,14 +1052,25 @@ const metodosPermitidos = [
       );
     }
 
+    if (compraManual && numerosManuales.length !== cantidadTickets) {
+      return errorResponse("La cantidad de números elegidos no coincide con los tickets", 400);
+    }
+
     // -------------------------------------------------------
     // COMPROBANTE
     // -------------------------------------------------------
-
     const esAppPay =
       metodoPago ===
       "App Pay";
-
+      if (esAppPay) {
+  return errorResponse(
+    "App Pay está temporalmente desactivado.",
+    403
+  );
+}
+if (compraManual && esAppPay) {
+  return errorResponse("App Pay no está disponible para la selección manual.", 400);
+}
 
 if (!esAppPay) {
   if (
@@ -1141,38 +1100,44 @@ if (!esAppPay) {
       rifaId: rifaIdLimpio,
       proof: uploadProofLimpio,
     });
-
   if (!uploadProofValido) {
     return errorResponse(
       "El comprobante no pudo ser verificado. Súbelo nuevamente.",
       400
     );
   }
+
 }
 
     // -------------------------------------------------------
     // CARGAR RIFA
     // -------------------------------------------------------
-
     /*
      * Aquí no necesitamos select("*").
      *
      * Solamente cargamos los campos que utiliza esta ruta.
      */
-
     const {
       data: rifa,
       error: rifaError,
     } = await supabaseAdmin
       .from("rifas")
       .select(`
+
         id,
+
         numero_inicio,
+
         numero_fin,
+
         cantidad_numeros,
+
         estado,
+
         precio_ticket,
+
         publicada
+
       `)
       .eq(
         "id",
@@ -1183,7 +1148,6 @@ if (!esAppPay) {
         true
       )
       .maybeSingle();
-
     if (rifaError) {
       console.error(
         "Error consultando rifa:",
@@ -1192,8 +1156,8 @@ if (!esAppPay) {
           error:
             rifaError,
         }
-      );
 
+      );
       return errorResponse(
         "No se pudo consultar la rifa seleccionada",
         500
@@ -1211,13 +1175,11 @@ if (!esAppPay) {
       normalizarTexto(
         rifa.estado
       );
-
     /*
      * No aceptamos "agotada".
      *
      * Una rifa agotada no debe iniciar nuevas compras.
      */
-
     if (
       ![
         "activa",
@@ -1233,15 +1195,78 @@ if (!esAppPay) {
       );
     }
 
+// =========================================================
+// CONFIGURACIÓN DE SELECCIÓN MANUAL
+// =========================================================
+const {
+  data: seleccionSettings,
+  error: seleccionSettingsError,
+} = await supabaseAdmin
+  .from("seleccion_manual_settings")
+  .select("enabled, modo_compra, max_numeros_por_compra")
+  .eq("rifa_id", rifaIdLimpio)
+  .maybeSingle();
+if (seleccionSettingsError) {
+  console.error(
+    "Error consultando selección manual:",
+    seleccionSettingsError
+  );
+  return errorResponse(
+    "No se pudo validar la configuración de compra.",
+    503
+  );
+}
+
+const seleccionActiva =
+  seleccionSettings?.enabled === true;
+const modoCompra = seleccionActiva
+  ? seleccionSettings.modo_compra
+  : "automatica";
+const maxNumeros =
+  seleccionSettings?.max_numeros_por_compra ?? 100;
+if (
+  !["ambos", "manual", "automatica"].includes(modoCompra) ||
+  !Number.isInteger(maxNumeros) ||
+  maxNumeros < 1 ||
+  maxNumeros > 100
+) {
+  return errorResponse(
+    "La configuración de compra no es válida.",
+    503
+  );
+}
+
+if (
+  compraManual &&
+  (!seleccionActiva || modoCompra === "automatica")
+) {
+  return errorResponse(
+    "La selección manual no está disponible para esta rifa.",
+    403
+  );
+}
+
+if (!compraManual && modoCompra === "manual") {
+  return errorResponse(
+    "Debes seleccionar tus números para continuar.",
+    400
+  );
+}
+
+if (compraManual && cantidadTickets > maxNumeros) {
+  return errorResponse(
+    `Puedes seleccionar un máximo de ${maxNumeros} números por compra.`,
+    400
+  );
+}
+
     // -------------------------------------------------------
     // TOTAL DE NÚMEROS
     // -------------------------------------------------------
-
     const totalNumeros =
       obtenerTotalNumeros(
         rifa
       );
-
     if (
       totalNumeros <= 0
     ) {
@@ -1251,10 +1276,19 @@ if (!esAppPay) {
       );
     }
 
+    if (compraManual) {
+      const inicio = Number(rifa.numero_inicio);
+      const fin = Number(rifa.numero_fin);
+      if (!Number.isSafeInteger(inicio) || !Number.isSafeInteger(fin) ||
+          numerosManuales.some((n) => n < inicio || n > fin)) {
+        return errorResponse("Hay números fuera del rango de la rifa", 400);
+      }
+
+    }
+
     // -------------------------------------------------------
     // PRECIO
     // -------------------------------------------------------
-
     /*
      * SEGURIDAD:
      *
@@ -1264,12 +1298,10 @@ if (!esAppPay) {
      * Nunca confiamos en el precio calculado por
      * el navegador.
      */
-
     const precioTicket =
       Number(
         rifa.precio_ticket
       );
-
     if (
       !Number.isFinite(
         precioTicket
@@ -1285,26 +1317,21 @@ if (!esAppPay) {
     // -------------------------------------------------------
     // INVENTARIO
     // -------------------------------------------------------
-
-
     // =========================================================
     // INVENTARIO OPTIMIZADO
     // =========================================================
     // No generamos miles de tickets al registrar una compra.
     // La asignación ocurre cuando el administrador la aprueba.
     // Consultamos las estadísticas directamente en PostgreSQL.
-
     const { data: estadisticas, error: estadisticasError } =
       await supabaseAdmin.rpc("get_rifa_stats", {
         p_rifa_id: rifaIdLimpio,
       });
-
     if (estadisticasError) {
       console.error(
         "Error consultando estadísticas de rifa:",
         estadisticasError
       );
-
       return errorResponse(
         "No se pudo validar la disponibilidad de tickets",
         500
@@ -1314,7 +1341,6 @@ if (!esAppPay) {
     const stats = Array.isArray(estadisticas)
       ? estadisticas[0]
       : estadisticas;
-
     if (!stats) {
       return errorResponse(
         "No se encontraron estadísticas de la rifa",
@@ -1324,7 +1350,6 @@ if (!esAppPay) {
 
     const ticketsOcupados = Number(stats.tickets_vendidos);
     const ticketsLibres = Number(stats.tickets_disponibles);
-
     if (
       !Number.isSafeInteger(ticketsOcupados) ||
       !Number.isSafeInteger(ticketsLibres) ||
@@ -1336,7 +1361,6 @@ if (!esAppPay) {
         "Estadísticas de rifa inconsistentes:",
         stats
       );
-
       return errorResponse(
         "No se pudo validar el inventario de tickets",
         500
@@ -1345,11 +1369,9 @@ if (!esAppPay) {
 
     // Mantener compatibilidad con la respuesta del frontend.
     const ticketsVendidos = ticketsOcupados;
-
     // -------------------------------------------------------
     // SOLD OUT
     // -------------------------------------------------------
-
     if (
       ticketsLibres <= 0
     ) {
@@ -1372,11 +1394,9 @@ if (!esAppPay) {
     // -------------------------------------------------------
     // TOTAL
     // -------------------------------------------------------
-
     /*
      * Recalculamos el monto completamente en el servidor.
      */
-
     const totalEsperado =
       Number(
         (
@@ -1384,14 +1404,12 @@ if (!esAppPay) {
           precioTicket
         ).toFixed(2)
       );
-
     const totalEnviado =
       Number(
         totalRecibido.toFixed(
           2
         )
       );
-
     if (
       totalEsperado !==
       totalEnviado
@@ -1405,8 +1423,7 @@ if (!esAppPay) {
     // -------------------------------------------------------
     // REFERENCIA DUPLICADA
     // -------------------------------------------------------
-
-    if (!esAppPay) {
+    if (!esAppPay && referenciaLimpia) {
       const {
         data:
           compraDuplicada,
@@ -1426,7 +1443,6 @@ if (!esAppPay) {
           rifaIdLimpio
         )
         .maybeSingle();
-
       if (
         compraDuplicadaError
       ) {
@@ -1434,7 +1450,6 @@ if (!esAppPay) {
           "Error validando duplicidad:",
           compraDuplicadaError
         );
-
         return errorResponse(
           "No se pudo validar la referencia de pago",
           500
@@ -1449,12 +1464,12 @@ if (!esAppPay) {
           409
         );
       }
+
     }
 
     // -------------------------------------------------------
     // BUSCAR USUARIO
     // -------------------------------------------------------
-
     const {
       data:
         usuarioExistente,
@@ -1470,7 +1485,6 @@ if (!esAppPay) {
         emailLimpio
       )
       .maybeSingle();
-
     if (
       usuarioBusquedaError
     ) {
@@ -1478,7 +1492,6 @@ if (!esAppPay) {
         "Error buscando usuario:",
         usuarioBusquedaError
       );
-
       return errorResponse(
         "No se pudo procesar la información del participante",
         500
@@ -1488,11 +1501,9 @@ if (!esAppPay) {
     let usuarioId =
       usuarioExistente?.id ||
       null;
-
     // -------------------------------------------------------
     // CREAR USUARIO
     // -------------------------------------------------------
-
     if (!usuarioId) {
       const {
         data:
@@ -1505,10 +1516,8 @@ if (!esAppPay) {
           {
             nombre:
               nombreLimpio,
-
             email:
               emailLimpio,
-
             telefono:
               telefonoLimpio,
           },
@@ -1517,7 +1526,6 @@ if (!esAppPay) {
           "id, nombre, email, telefono"
         )
         .single();
-
       if (
         crearUsuarioError ||
         !nuevoUsuario
@@ -1526,7 +1534,6 @@ if (!esAppPay) {
           "Error creando usuario:",
           crearUsuarioError
         );
-
         return errorResponse(
           "No se pudo registrar la información del participante",
           500
@@ -1539,7 +1546,6 @@ if (!esAppPay) {
       // -----------------------------------------------------
       // ACTUALIZAR USUARIO EXISTENTE
       // -----------------------------------------------------
-
       const {
         error:
           actualizarUsuarioError,
@@ -1548,7 +1554,6 @@ if (!esAppPay) {
         .update({
           nombre:
             nombreLimpio,
-
           telefono:
             telefonoLimpio,
         })
@@ -1556,7 +1561,6 @@ if (!esAppPay) {
           "id",
           usuarioId
         );
-
       if (
         actualizarUsuarioError
       ) {
@@ -1564,33 +1568,29 @@ if (!esAppPay) {
           "Error actualizando usuario:",
           actualizarUsuarioError
         );
-
         return errorResponse(
           "No se pudo actualizar la información del participante",
           500
         );
       }
+
     }
 
     // -------------------------------------------------------
     // REFERENCIA FINAL
     // -------------------------------------------------------
-
 const referenciaFinal =
   referenciaLimpia ||
   (esAppPay
     ? `APPPAY-${randomUUID()}`
     : `COMPRA-${randomUUID()}`);
-
 const comprobanteFinal =
   esAppPay
     ? null
     : comprobantePathLimpio;
-
     // -------------------------------------------------------
     // CREAR COMPRA
     // -------------------------------------------------------
-
     /*
      * IMPORTANTE:
      *
@@ -1600,14 +1600,11 @@ const comprobanteFinal =
      * El navegador no puede decidir que una compra
      * está aprobada.
      */
-
 const payloadCompra = {
   usuario_id:
     usuarioId,
-
   rifa_id:
     rifaIdLimpio,
-
   // =====================================================
   // DATOS HISTÓRICOS DE ESTA COMPRA
   // =====================================================
@@ -1616,107 +1613,97 @@ const payloadCompra = {
   // utilizando otro nombre o teléfono.
   nombre_cliente:
     nombreLimpio,
-
   email_cliente:
     emailLimpio,
-
   telefono_cliente:
     telefonoLimpio,
-
   cantidad_tickets:
     cantidadTickets,
-
 monto_total:
   totalEsperado,
-
 tasa_bcv:
   Number.isFinite(tasaBcvRecibida)
     ? tasaBcvRecibida
     : null,
-
 monto_bolivares:
   Number.isFinite(montoBolivaresRecibido)
     ? Number(montoBolivaresRecibido.toFixed(2))
     : null,
-
 metodo_pago:
   metodoPago,
-
   referencia:
     referenciaFinal,
-
   comprobante_url:
     comprobanteFinal,
-
   estado_pago:
     "pendiente",
-
   fecha_compra:
     new Date().toISOString(),
 };
+    let compraCreada;
+    let compraError;
+    if (compraManual) {
+      // La compra y TODOS los números se reservan en una transacción SQL.
+      // Nunca creamos primero una compra pendiente sin reservar sus números.
+      const { data: compraId, error: rpcError } = await supabaseAdmin.rpc(
+        "crear_compra_con_reserva_manual_segura",
+        {
+          p_compra: payloadCompra,
+          p_numeros: numerosManuales,
+        }
 
-    const {
-      data:
-        compraCreada,
-      error:
-        compraError,
-    } = await supabaseAdmin
-      .from("compras")
-      .insert([
-        payloadCompra,
-      ])
-.select(`
-  id,
-  usuario_id,
-  rifa_id,
-  nombre_cliente,
-  email_cliente,
-  telefono_cliente,
-  cantidad_tickets,
-  monto_total,
-  metodo_pago,
-  referencia,
-  comprobante_url,
-  estado_pago,
-  fecha_compra
-`)
-      .single();
-
-    if (
-      compraError ||
-      !compraCreada
-    ) {
-      console.error(
-        "Error creando compra:",
-        compraError
       );
+      compraError = rpcError;
+      if (!compraError && compraId) {
+        // La función SQL confirmó la transacción: no depender de otra consulta.
+        compraCreada = { id: compraId, ...payloadCompra };
+      }
 
+    } else {
+      // Flujo anterior de compras sin números elegidos: se conserva.
+      const { data, error } = await supabaseAdmin
+        .from("compras")
+        .insert([payloadCompra])
+        .select(`
+
+          id, usuario_id, rifa_id, nombre_cliente, email_cliente,
+
+          telefono_cliente, cantidad_tickets, monto_total, metodo_pago,
+
+          referencia, comprobante_url, estado_pago, fecha_compra
+
+        `)
+        .single();
+      compraCreada = data;
+      compraError = error;
+    }
+
+    if (compraError || !compraCreada) {
+      console.error("Error creando compra:", compraError);
+      // No revelar al público detalles internos de la base de datos.
       return errorResponse(
-        "No se pudo registrar la compra",
-        500
+        compraManual
+          ? "No se pudo reservar la selección. Comprueba los números disponibles e inténtalo de nuevo."
+          : "No se pudo registrar la compra",
+        compraManual ? 409 : 500
       );
     }
+
     // -------------------------------------------------------
 // PUSH ADMIN - NUEVA COMPRA PENDIENTE
 // -------------------------------------------------------
-
 try {
   const cantidad =
     Number(compraCreada.cantidad_tickets) || 0;
-
   const monto =
     Number(compraCreada.monto_total) || 0;
-
   await enviarPushAdmins({
     title: "🔔 Nueva compra pendiente",
-
     body:
       `${nombreLimpio} compró ` +
       `${cantidad} ticket${cantidad === 1 ? "" : "s"} · ` +
       `$${monto.toFixed(2)}`,
-
     url: "/admin?abrir=compras-pendientes",
-
     tag:
       `compra-pendiente-${compraCreada.id}`,
   });
@@ -1730,81 +1717,86 @@ try {
     // -------------------------------------------------------
     // ESTADÍSTICAS DE RESPUESTA
     // -------------------------------------------------------
-
     /*
-     * Una compra pendiente todavía NO tiene números
-     * asignados.
-     *
-     * Por eso no restamos cantidadTickets de la
-     * disponibilidad física.
-     *
-     * Los números se ocuparán cuando la compra sea
-     * aprobada y se asignen realmente.
+     * La compra automática pendiente no asigna números.
+     * La manual sí reserva sus números al registrarse.
      */
+    let ocupadosRespuesta = ticketsOcupados;
+    let libresRespuesta = ticketsLibres;
+    if (compraManual) {
+      // La reserva ya existe: refrescar las cifras sin invalidar la compra.
+      try {
+        const { data: statsActualizadas, error: errorStatsActualizadas } =
+          await supabaseAdmin.rpc("get_rifa_stats", { p_rifa_id: rifaIdLimpio });
+        const actual = Array.isArray(statsActualizadas)
+          ? statsActualizadas[0]
+          : statsActualizadas;
+        const ocupados = Number(actual?.tickets_vendidos);
+        const libres = Number(actual?.tickets_disponibles);
+        if (!errorStatsActualizadas && Number.isSafeInteger(ocupados) &&
+            Number.isSafeInteger(libres) && ocupados >= 0 && libres >= 0 &&
+            ocupados + libres === totalNumeros) {
+          ocupadosRespuesta = ocupados;
+          libresRespuesta = libres;
+        } else {
+          console.error("No se pudieron refrescar estadísticas después de reservar", errorStatsActualizadas);
+        }
+
+      } catch (errorStats) {
+        console.error("Error refrescando estadísticas después de reservar", errorStats);
+      }
+
+    }
 
     const ticketsDisponiblesDespues =
-      ticketsLibres;
-
+      libresRespuesta;
     const porcentajeVendido =
       totalNumeros > 0
         ? Number(
             (
-              (ticketsVendidos /
+              (ocupadosRespuesta /
                 totalNumeros) *
               100
             ).toFixed(2)
           )
         : 0;
-
     const soldOut =
       totalNumeros > 0 &&
       ticketsDisponiblesDespues <=
         0;
-
     // -------------------------------------------------------
     // RESPUESTA
     // -------------------------------------------------------
-
     return NextResponse.json(
       {
         ok: true,
-
         message:
           "Compra registrada correctamente",
-
+        reserva_manual: compraManual,
+        reserva_horas: compraManual ? 24 : null,
         compra: {
           id:
             compraCreada.id,
-
           rifa_id:
             compraCreada.rifa_id,
-
           cantidad_tickets:
             compraCreada.cantidad_tickets,
-
           monto_total:
             compraCreada.monto_total,
-
           estado_pago:
             compraCreada.estado_pago,
         },
-
         disponibilidad: {
           total_numeros:
             totalNumeros,
-
           tickets_vendidos:
-            ticketsVendidos,
-
+            ocupadosRespuesta,
           tickets_ocupados:
-            ticketsOcupados,
-
+            ocupadosRespuesta,
           tickets_disponibles:
             ticketsDisponiblesDespues,
-
           porcentaje_vendido:
             porcentajeVendido,
-
           sold_out:
             soldOut,
         },
@@ -1816,16 +1808,17 @@ try {
             "no-store, no-cache, must-revalidate",
         },
       }
+
     );
   } catch (error) {
     console.error(
       "comprar route error:",
       error
     );
-
     return errorResponse(
       "No se pudo procesar la compra",
       500
     );
   }
+
 }

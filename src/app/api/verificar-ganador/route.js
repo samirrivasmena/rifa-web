@@ -194,6 +194,7 @@ export async function POST(req) {
         rifa_id,
         tipo,
         estado,
+        reserva_expira_at,
         free_drop_id,
         free_drop_participation_id,
         asignado_a_nombre,
@@ -279,8 +280,11 @@ export async function POST(req) {
         )
       );
 
-    const ocupado =
-      esCompra || esFreeAsignado;
+    const reservado = estadoTicket === "reservado" || ticketData.reserva_expira_at != null;
+    const ocupado = esCompra || esFreeAsignado || reservado;
+    if (reservado) {
+      return NextResponse.json({ existe: true, ocupado: true, bloqueado: true, reservado: true, vendido: false, es_free: false, tipo: "reservado", numero_ticket: numero, numero_oficial: numeroOficial, reserva_expira_at: ticketData.reserva_expira_at, compra_id: null, compra: null, usuario: null, free_drop: null, codigo_free: null, participacion: null, sorteo: null, esGanador: false, mensaje: `El número ${numeroOficial} está reservado y no puede registrarse como ganador` });
+    }
 
     /* =====================================================
        TICKET DISPONIBLE
@@ -686,14 +690,16 @@ export async function POST(req) {
        RESPUESTA
     ===================================================== */
 
-    const esFree =
-      Boolean(esFreeAsignado);
-
+    const esFree = esFreeAsignado && !esCompra && estadoTicket === "asignado" && tipoTicket === "free" && participacionFree?.rifa_id === rifaId && participacionFree?.ticket_id === ticketData.id && String(participacionFree?.free_drop_id) === String(ticketData.free_drop_id) && freeDropData?.rifa_id === rifaId && ["valida", "válida", "aprobado", "aprobada", "approved", "activo", "activa"].includes(normalizarTexto(participacionFree?.estado));
+    const vendido = esCompra && estadoTicket === "asignado" && tipoTicket !== "free" && !ticketData.free_drop_id && !ticketData.free_drop_participation_id && compraData?.rifa_id === rifaId && ["aprobado", "aprobada", "approved", "pagado", "pagada", "activo", "activa"].includes(normalizarTexto(compraData?.estado_pago));
+    if (!vendido && !esFree) {
+      return NextResponse.json({ existe: true, ocupado: true, bloqueado: true, vendido: false, es_free: false, tipo: "no_confirmado", numero_ticket: numero, numero_oficial: numeroOficial, compra_id: null, compra: null, usuario: null, free_drop: null, codigo_free: null, participacion: null, sorteo: null, esGanador: false, mensaje: `El número ${numeroOficial} no tiene una asignación confirmada` });
+    }
     return NextResponse.json({
       existe: true,
       ocupado: true,
 
-      vendido: esCompra,
+      vendido,
 
       es_free: esFree,
 
@@ -831,7 +837,7 @@ export async function POST(req) {
         La condición de "ganador oficial" se controla
         posteriormente cuando se guarda el resultado.
       */
-      esGanador: ocupado,
+      esGanador: vendido || esFree,
 
       mensaje: esFree
         ? `🟢 El número ${numeroOficial} pertenece a una participación FREE válida`

@@ -1,13 +1,10 @@
 "use client";
-
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import Swal from "sweetalert2";
-
 import { getAdminAuthHeaders } from "../../lib/getAdminAuthHeaders";
 import { formatearFecha } from "../../lib/admin/formatearFecha";
 import { escaparCSV } from "../../lib/admin/escaparCSV";
 import { getRifaProgress } from "@/lib/getRifaProgress";
-
 import Sidebar from "../../components/admin/Sidebar";
 import HeaderPanel from "../../components/admin/HeaderPanel";
 import ManualApprovalModal from "../../components/admin/ManualApprovalModal";
@@ -23,23 +20,20 @@ import AdminRifasSection from "../../components/admin/sections/AdminRifasSection
 import AdminConfiguracionSection from "@/components/admin/sections/AdminConfiguracionSection";
 import AdminFreeDropsSection from "@/components/admin/sections/AdminFreeDropsSection";
 import AdminFreeDropsSettingsSection from "@/components/admin/sections/AdminFreeDropsSettingsSection";
+import AdminSeleccionManualSection from "@/components/admin/sections/AdminSeleccionManualSection";
 import AdminFreeDropParticipationsSection from "@/components/admin/sections/AdminFreeDropParticipationsSection";
 import AdminPerfilSection from "@/components/admin/sections/AdminPerfilSection";
-
 import {
   enriquecerListaRifasConResumen,
   enriquecerRifaConResumen,
 } from "@/lib/rifas/enriquecerRifaConResumen";
-
 import { useAdminAuth } from "../../hooks/admin/useAdminAuth";
 import { useAdminNavigation } from "../../hooks/admin/useAdminNavigation";
 import { useAdminRanking } from "../../hooks/admin/useAdminRanking";
 import { useAdminGanador } from "../../hooks/admin/useAdminGanador";
 import { useAdminCompras } from "../../hooks/admin/useAdminCompras";
 import { useSiteConfig } from "@/hooks/useSiteConfig";
-
 import "./admin.css";
-
 export default function Admin() {
   const {
   authLoading,
@@ -48,7 +42,6 @@ export default function Admin() {
   adminToken,
   cerrarSesion,
 } = useAdminAuth();
-
   const {
     refs: {
       topRef,
@@ -65,159 +58,120 @@ export default function Admin() {
     setFiltroDashboard,
     scrollToRef,
   } = useAdminNavigation();
-
 const [dataLoading, setDataLoading] = useState(false);
 const [showSecondImage, setShowSecondImage] = useState(false);
-
 /* =========================================================
    MODO MANTENIMIENTO GLOBAL
 ========================================================= */
-
 const [modoMantenimiento, setModoMantenimiento] = useState(false);
 const [mantenimientoLoading, setMantenimientoLoading] = useState(false);
-
 const [notificacionesPushActivas, setNotificacionesPushActivas] =
   useState(false);
-
 const adminPushControlRef = useRef(null);
-
 const [compras, setCompras] = useState([]);
   const [tickets, setTickets] = useState([]);
   const [rifas, setRifas] = useState([]);
-
   const [rifaSeleccionadaId, setRifaSeleccionadaId] = useState("");
   const rifaSeleccionadaIdRef = useRef("");
-
   const [loadingAprobacion, setLoadingAprobacion] = useState(null);
   const [loadingRechazo, setLoadingRechazo] = useState(null);
   const [loadingEliminacion, setLoadingEliminacion] = useState(null);
-
   const { config: siteConfig } = useSiteConfig();
   const logoUrl = siteConfig?.logo_url || "";
-
   const [modalManualOpen, setModalManualOpen] = useState(false);
   const [compraManualSeleccionada, setCompraManualSeleccionada] = useState(null);
   const [ticketsManualSeleccionados, setTicketsManualSeleccionados] = useState([]);
   const [preselectedManualNumber, setPreselectedManualNumber] = useState(null);
-
   const esPublicada = (value) =>
     value === true || value === 1 || value === "1" || value === "true";
-
 const cargarDashboard = useCallback(
   async (headersParam = null, rifaIdParam = null) => {
     if (!accesoPermitido) {
       return { compras: [], tickets: [] };
     }
-
     try {
       const headers = headersParam || (await getAdminAuthHeaders());
-
       if (!headers.Authorization) {
         console.warn(
           "No hay token admin listo todavía para cargar dashboard"
         );
-
         return { compras: [], tickets: [] };
       }
-
       const urlAdminCompras = rifaIdParam
         ? `/api/admin-compras?rifaId=${encodeURIComponent(rifaIdParam)}`
         : "/api/admin-compras";
-
       const res = await fetch(urlAdminCompras, {
         method: "GET",
         headers,
         cache: "no-store",
       });
-
       const rawText = await res.text();
-
       let data;
-
       try {
         data = JSON.parse(rawText);
       } catch {
         console.error("Respuesta inválida en /api/admin-compras");
         return { compras: [], tickets: [] };
       }
-
       if (!res.ok) {
         console.error("Error admin compras:", data.error);
         return { compras: [], tickets: [] };
       }
-
       const comprasData = Array.isArray(data.compras)
         ? data.compras
         : [];
-
       const ticketsData = Array.isArray(data.tickets)
         ? data.tickets
         : [];
-
       setCompras(comprasData);
       setTickets(ticketsData);
-
       return {
         compras: comprasData,
         tickets: ticketsData,
       };
     } catch (err) {
       console.error("Error cargando dashboard:", err);
-
       await Swal.fire({
         icon: "error",
         title: "Error",
         text: "No se pudo cargar el dashboard",
       });
-
       return { compras: [], tickets: [] };
     }
   },
   [accesoPermitido]
 );
-
 const cargarRifasGlobal = useCallback(async (headersParam = null) => {
   try {
     const headers = headersParam || (await getAdminAuthHeaders());
-
     if (!headers.Authorization) {
       console.warn("No hay token admin listo todavía para listar rifas");
       return "";
     }
-
     const resRifas = await fetch("/api/listar-rifas", {
       method: "GET",
       headers,
       cache: "no-store",
     });
-
     const rawTextRifas = await resRifas.text();
-
     let dataRifas;
-
     try {
       dataRifas = JSON.parse(rawTextRifas);
     } catch {
       console.error("Respuesta inválida en /api/listar-rifas");
       return "";
     }
-
     if (!resRifas.ok) {
       console.error("Error en /api/listar-rifas:", dataRifas.error);
       return "";
     }
-
     const listaRifas = Array.isArray(dataRifas.rifas)
       ? dataRifas.rifas
       : [];
-
     const rifasConStats =
       await enriquecerListaRifasConResumen(listaRifas);
-
     setRifas(rifasConStats);
-
     let rifaIdElegida = "";
-
 if (
   rifaSeleccionadaIdRef.current &&
   rifasConStats.find(
@@ -230,13 +184,10 @@ if (
       const activa = rifasConStats.find(
         (r) => String(r.estado || "").toLowerCase() === "activa"
       );
-
       rifaIdElegida = activa?.id || rifasConStats[0]?.id || "";
     }
-
 rifaSeleccionadaIdRef.current = rifaIdElegida;
 setRifaSeleccionadaId(rifaIdElegida);
-
 return rifaIdElegida;
   } catch (error) {
     console.error("Error cargando rifas globales:", error);
@@ -246,23 +197,18 @@ return rifaIdElegida;
 /* =========================================================
    MODO MANTENIMIENTO GLOBAL
 ========================================================= */
-
 const cargarModoMantenimiento = useCallback(async () => {
   try {
     const headers = await getAdminAuthHeaders();
-
     if (!headers.Authorization) {
       return;
     }
-
     const response = await fetch("/api/admin-mantenimiento", {
       method: "GET",
       headers,
       cache: "no-store",
     });
-
     const data = await response.json();
-
     if (!response.ok || !data?.ok) {
       console.error(
         "Error consultando modo mantenimiento:",
@@ -270,20 +216,16 @@ const cargarModoMantenimiento = useCallback(async () => {
       );
       return;
     }
-
     setModoMantenimiento(data.modo_mantenimiento === true);
   } catch (error) {
     console.error("Error cargando modo mantenimiento:", error);
   }
 }, []);
-
 const cambiarModoMantenimiento = useCallback(async () => {
   if (mantenimientoLoading) {
     return;
   }
-
   const nuevoEstado = !modoMantenimiento;
-
   const confirmacion = await Swal.fire({
     icon: nuevoEstado ? "warning" : "question",
     title: nuevoEstado
@@ -299,26 +241,20 @@ const cambiarModoMantenimiento = useCallback(async () => {
     cancelButtonText: "Cancelar",
     reverseButtons: true,
   });
-
   if (!confirmacion.isConfirmed) {
     return;
   }
-
   try {
     setMantenimientoLoading(true);
-
     const headers = await getAdminAuthHeaders();
-
     if (!headers.Authorization) {
       await Swal.fire({
         icon: "error",
         title: "Sin sesión",
         text: "No se encontró una sesión válida del administrador.",
       });
-
       return;
     }
-
     const response = await fetch("/api/admin-mantenimiento", {
       method: "PUT",
       headers: {
@@ -329,19 +265,14 @@ const cambiarModoMantenimiento = useCallback(async () => {
         activo: nuevoEstado,
       }),
     });
-
     const data = await response.json();
-
     if (!response.ok || !data?.ok) {
       throw new Error(
         data?.error || "No se pudo cambiar el modo mantenimiento."
       );
     }
-
     const estadoReal = data.modo_mantenimiento === true;
-
     setModoMantenimiento(estadoReal);
-
     await Swal.fire({
       icon: "success",
       title: estadoReal
@@ -355,7 +286,6 @@ const cambiarModoMantenimiento = useCallback(async () => {
     });
   } catch (error) {
     console.error("Error cambiando modo mantenimiento:", error);
-
     await Swal.fire({
       icon: "error",
       title: "No se pudo cambiar",
@@ -363,7 +293,6 @@ const cambiarModoMantenimiento = useCallback(async () => {
         error?.message ||
         "Ocurrió un error cambiando el modo mantenimiento.",
     });
-
     // Volvemos a consultar el servidor.
     // No suponemos que el cambio falló o tuvo éxito.
     await cargarModoMantenimiento();
@@ -379,56 +308,45 @@ useEffect(() => {
   if (!accesoPermitido) {
     return;
   }
-
   cargarModoMantenimiento();
 }, [accesoPermitido, cargarModoMantenimiento]);
 const recargarTodo = useCallback(async () => {
   try {
     setDataLoading(true);
-
     const headers = await getAdminAuthHeaders();
-
     if (!headers.Authorization) {
       console.warn(
         "Aún no hay sesión admin lista para recargar datos"
       );
-
       return {
         compras: [],
         tickets: [],
       };
     }
-
     const rifaId = await cargarRifasGlobal(headers);
-
     if (!rifaId) {
       setCompras([]);
       setTickets([]);
-
       return {
         compras: [],
         tickets: [],
       };
     }
-
     const {
       compras: comprasData,
       tickets: ticketsData,
     } = await cargarDashboard(headers, rifaId);
-
     return {
       compras: comprasData,
       tickets: ticketsData,
     };
   } catch (error) {
     console.error("Error recargando datos:", error);
-
     await Swal.fire({
       icon: "error",
       title: "Error",
       text: "No se pudieron actualizar los datos",
     });
-
     return {
       compras: [],
       tickets: [],
@@ -437,44 +355,33 @@ const recargarTodo = useCallback(async () => {
     setDataLoading(false);
   }
 }, [cargarDashboard, cargarRifasGlobal]);
-
 useEffect(() => {
   if (!accesoPermitido) return;
-
   recargarTodo();
 }, [accesoPermitido, recargarTodo]);
-
-
   useEffect(() => {
     const handleScroll = () => {
       setShowSecondImage(window.scrollY > 180);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 const cambiarRifaSeleccionada = useCallback(
   async (nuevoId) => {
     const id = nuevoId || "";
-
     rifaSeleccionadaIdRef.current = id;
     setRifaSeleccionadaId(id);
-
     if (!id || !accesoPermitido) {
       setCompras([]);
       setTickets([]);
       return;
     }
-
     try {
       setDataLoading(true);
-
       const headers = await getAdminAuthHeaders();
-
       if (!headers.Authorization) {
         return;
       }
-
       await cargarDashboard(headers, id);
     } catch (error) {
       console.error("Error cambiando de rifa:", error);
@@ -484,20 +391,15 @@ const cambiarRifaSeleccionada = useCallback(
   },
   [accesoPermitido, cargarDashboard]
 );
-
   const rifaSeleccionada = useMemo(() => {
     return rifas.find((r) => String(r.id) === String(rifaSeleccionadaId)) || null;
   }, [rifas, rifaSeleccionadaId]);
-
   const progresoRifa = useMemo(() => {
     return getRifaProgress(rifaSeleccionada || {});
   }, [rifaSeleccionada]);
-
   const padLength = rifaSeleccionada?.formato === "3digitos" ? 3 : 4;
-
   const premioRef = useRef(null);
   const numeroRef = useRef(null);
-
   const {
     numeroGanador,
     setNumeroGanador,
@@ -519,16 +421,13 @@ const cambiarRifaSeleccionada = useCallback(
     padLength,
     recargarTodo,
   });
-
   const comprasDeRifaSeleccionada = useMemo(() => {
     if (!rifaSeleccionadaId) return [];
     return compras.filter(
       (compra) => String(compra.rifa_id) === String(rifaSeleccionadaId)
     );
   }, [compras, rifaSeleccionadaId]);
-
   const comprasFiltradasPorRifa = comprasDeRifaSeleccionada;
-
   const {
     filtrosCompras,
     setFiltrosCompras,
@@ -549,49 +448,35 @@ const cambiarRifaSeleccionada = useCallback(
     eliminarFiltroIndividual,
     resetComprasState,
   } = useAdminCompras(comprasDeRifaSeleccionada);
-
 useEffect(() => {
   if (!accesoPermitido) return;
-
   const params = new URLSearchParams(window.location.search);
   const abrir = params.get("abrir");
-
   // ========================================================
   // NOTIFICACIÓN → COMPRAS PENDIENTES
   // ========================================================
-
   if (abrir === "compras-pendientes") {
     setSeccionActiva("compras");
-
     setFiltrosCompras((prev) => ({
       ...prev,
       estado: "pendiente",
     }));
-
     setPaginaCompras(1);
-
     const timer = setTimeout(() => {
       scrollToRef(comprasSectionRef, 180);
     }, 500);
-
     window.history.replaceState({}, "", "/admin");
-
     return () => clearTimeout(timer);
   }
-
   // ========================================================
   // NOTIFICACIÓN → FREE DROPS
   // ========================================================
-
   if (abrir === "free-drops") {
     setSeccionActiva("freeDrops");
-
     const timer = setTimeout(() => {
       scrollToRef(topRef, 120);
     }, 500);
-
     window.history.replaceState({}, "", "/admin");
-
     return () => clearTimeout(timer);
   }
 }, [
@@ -603,8 +488,6 @@ useEffect(() => {
   setPaginaCompras,
   setSeccionActiva,
 ]);
-  
-
   const {
     busquedaRanking,
     setBusquedaRanking,
@@ -628,10 +511,8 @@ useEffect(() => {
     resumenRanking,
     resetRankingState,
   } = useAdminRanking(comprasDeRifaSeleccionada);
-
   const ticketsFiltradosPorRifa = useMemo(() => {
     if (!rifaSeleccionadaId) return [];
-
     return tickets
       .filter((ticket) => String(ticket.rifa_id) === String(rifaSeleccionadaId))
       .filter(
@@ -641,43 +522,34 @@ useEffect(() => {
       )
       .sort((a, b) => Number(a.numero_ticket) - Number(b.numero_ticket));
   }, [tickets, rifaSeleccionadaId]);
-
   const comprasPendientes = useMemo(() => {
     return comprasFiltradasPorRifa.filter(
       (compra) =>
         String(compra.estado_pago || "").toLowerCase().trim() === "pendiente"
     );
   }, [comprasFiltradasPorRifa]);
-
   const ticketsPorCompra = useMemo(() => {
     const map = {};
-
     ticketsFiltradosPorRifa.forEach((ticket) => {
       const key = String(ticket.compra_id);
       if (!map[key]) map[key] = [];
       map[key].push(String(ticket.numero_ticket).padStart(padLength, "0"));
     });
-
     return map;
   }, [ticketsFiltradosPorRifa, padLength]);
-
   const dashboardCompactSummary = useMemo(() => {
     const totalCompras = comprasFiltradasPorRifa.length;
-
     const comprasPendientesCount = comprasFiltradasPorRifa.filter(
       (c) => String(c.estado_pago || "").toLowerCase().trim() === "pendiente"
     ).length;
-
     const comprasAprobadas = comprasFiltradasPorRifa.filter((c) =>
       ["aprobado", "aprobada"].includes(
         String(c.estado_pago || "").toLowerCase().trim()
       )
     ).length;
-
     const comprasRechazadas = comprasFiltradasPorRifa.filter(
       (c) => String(c.estado_pago || "").toLowerCase().trim() === "rechazado"
     ).length;
-
     const totalTickets = Number(
       progresoRifa.total ??
         rifaSeleccionada?.stats?.total ??
@@ -685,50 +557,32 @@ useEffect(() => {
         rifaSeleccionada?.cantidad_numeros ??
         0
     );
-
-const ticketsVendidos = Number(
-  rifaSeleccionada?.tickets_ocupados ??
-    rifaSeleccionada?.stats?.ocupados ??
-    rifaSeleccionada?.tickets_vendidos ??
-    rifaSeleccionada?.stats?.vendidos ??
-    progresoRifa.vendidos ??
-    0
-);
-
-const disponibles = Math.max(
-  totalTickets - ticketsVendidos,
-  0
-);
-
-const porcentajeVendido =
-  totalTickets > 0
-    ? Number(((ticketsVendidos / totalTickets) * 100).toFixed(2))
-    : 0;
-
+const ticketsVendidos = progresoRifa.vendidos;
+const ticketsOcupados = progresoRifa.ocupados;
+const ticketsReservados = progresoRifa.reservados;
+const disponibles = progresoRifa.disponibles;
+const porcentajeVendido = progresoRifa.porcentaje;
     return {
       totalCompras,
       comprasPendientesCount,
       comprasAprobadas,
       comprasRechazadas,
       ticketsVendidos,
+      ticketsOcupados, ticketsReservados,
       disponibles,
       totalTickets,
       porcentajeVendido,
     };
-  }, [comprasFiltradasPorRifa, rifaSeleccionada, progresoRifa]);
-
+  }, [comprasFiltradasPorRifa, rifaSeleccionada, progresoRifa, ticketsFiltradosPorRifa]);
     /* =========================================================
      BADGE DEL ICONO ADMIN
      Muestra la cantidad REAL de compras pendientes
   ========================================================= */
-
   useEffect(() => {
     if (!accesoPermitido) return;
-
     const pendientes = Number(
       dashboardCompactSummary?.comprasPendientesCount || 0
     );
-
     const actualizarBadge = async () => {
       try {
         if ("setAppBadge" in navigator) {
@@ -738,12 +592,10 @@ const porcentajeVendido =
             await navigator.clearAppBadge();
           }
         }
-
 if ("caches" in window) {
   const cache = await window.caches.open(
     "sorteos-admin-badge"
   );
-
   await cache.put(
     "/admin-badge-count",
     new Response(String(pendientes))
@@ -756,13 +608,11 @@ if ("caches" in window) {
         );
       }
     };
-
     actualizarBadge();
   }, [
     accesoPermitido,
     dashboardCompactSummary?.comprasPendientesCount,
   ]);
-
   useEffect(() => {
     setFiltroDashboard(null);
     setModalManualOpen(false);
@@ -779,18 +629,15 @@ if ("caches" in window) {
     resetGanadorState,
     resetRankingState,
   ]);
-
   const irARankingDetallado = () => {
     setSeccionActiva("ranking");
     scrollToRef(rankingDetalleRef, 180);
   };
-
   const abrirFiltroDashboard = (key) => {
     setSeccionActiva("dashboard");
     setFiltroDashboard(key);
     scrollToRef(dashboardFilterRef, 180);
   };
-
   const exportarComprasCSV = () => {
     if (!comprasFiltradasYOrdenadas.length) {
       Swal.fire({
@@ -800,7 +647,6 @@ if ("caches" in window) {
       });
       return;
     }
-
     const encabezados = [
       "Compra ID",
       "Estado",
@@ -816,7 +662,6 @@ if ("caches" in window) {
       "Comprobante",
       "Rifa ID",
     ];
-
     const filas = comprasFiltradasYOrdenadas.map((compra) => {
       const monto = Number(compra.monto_total ?? compra.total ?? 0).toFixed(2);
       const fecha = formatearFecha(compra.fecha_compra || compra.created_at || "");
@@ -829,7 +674,6 @@ if ("caches" in window) {
         compra.capture_url ||
         compra.soporte_pago ||
         "";
-
       return [
         compra.id,
         compra.estado_pago || "",
@@ -846,20 +690,16 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
         compra.rifa_id || "",
       ].map(escaparCSV);
     });
-
     const contenidoCSV = [
       encabezados.map(escaparCSV).join(","),
       ...filas.map((f) => f.join(",")),
     ].join("\n");
-
     const blob = new Blob([contenidoCSV], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
     const nombreRifa = rifaSeleccionada?.nombre
       ? rifaSeleccionada.nombre.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")
       : "rifa";
-
     link.href = url;
     link.setAttribute("download", `compras_${nombreRifa}.csv`);
     document.body.appendChild(link);
@@ -867,7 +707,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
   const exportarRankingCSV = () => {
     if (!rankingFiltradoYOrdenado.length) {
       Swal.fire({
@@ -877,7 +716,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       });
       return;
     }
-
     const encabezados = [
       "Posición",
       "Nombre",
@@ -888,7 +726,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       "Monto total",
       "Porcentaje del total",
     ];
-
     const filas = rankingFiltradoYOrdenado.map((persona, index) => {
       const porcentaje =
         resumenRanking.totalTicketsAprobados > 0
@@ -896,7 +733,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
               2
             )
           : "0.00";
-
       return [
         index + 1,
         persona.nombre,
@@ -908,20 +744,16 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
         `${porcentaje}%`,
       ].map(escaparCSV);
     });
-
     const contenidoCSV = [
       encabezados.map(escaparCSV).join(","),
       ...filas.map((fila) => fila.join(",")),
     ].join("\n");
-
     const blob = new Blob([contenidoCSV], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
-
     const link = document.createElement("a");
     const nombreRifa = rifaSeleccionada?.nombre
       ? rifaSeleccionada.nombre.replace(/[^\w\s-]/g, "").replace(/\s+/g, "_")
       : "rifa";
-
     link.href = url;
     link.setAttribute("download", `ranking_${nombreRifa}.csv`);
     document.body.appendChild(link);
@@ -929,7 +761,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
   };
-
   const aprobarCompra = async (compra) => {
     if (!compra?.id) {
       await Swal.fire({
@@ -939,9 +770,7 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       });
       return;
     }
-
     if (loadingAprobacion === compra.id) return;
-
     const confirmar = await Swal.fire({
       title: "¿Aprobar compra?",
       text: "Se asignarán los tickets automáticamente a esta compra.",
@@ -952,12 +781,9 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       confirmButtonColor: "#16a34a",
       cancelButtonColor: "#6b7280",
     });
-
     if (!confirmar.isConfirmed) return;
-
     try {
       setLoadingAprobacion(compra.id);
-
       const res = await fetch("/api/aprobar-compra", {
         method: "POST",
         headers: {
@@ -968,9 +794,7 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
           compraId: compra.id,
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         await Swal.fire({
           icon: "error",
@@ -979,22 +803,18 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
         });
         return;
       }
-
       const numerosFormateados = (data.tickets || [])
         .map((t) => String(t.numero_ticket).padStart(padLength, "0"))
         .join(", ");
-
       const resultado = await Swal.fire({
         icon: "success",
         title: "🎉 Compra aprobada",
         html: `
           <div style="text-align:center">
             <p>La compra fue aprobada correctamente.</p>
-
             <p style="margin-top:10px">
               <strong>🎟️ Tickets asignados:</strong>
             </p>
-
             <p style="
               background:#f8fafc;
               padding:12px;
@@ -1004,7 +824,6 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
             ">
               ${numerosFormateados || "Sin tickets"}
             </p>
-
             <div style="
               margin-top:15px;
               background:#ecfdf5;
@@ -1024,13 +843,11 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
         confirmButtonColor: "#16a34a",
         cancelButtonColor: "#25D366",
       });
-
       if (resultado.dismiss === Swal.DismissReason.cancel) {
         if (data?.whatsapp?.url) {
           window.open(data.whatsapp.url, "_blank");
         }
       }
-
       await recargarTodo();
     } catch (error) {
       console.error(error);
@@ -1043,10 +860,8 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       setLoadingAprobacion(null);
     }
   };
-
   const abrirAprobacionManual = (compra, numeroPreseleccionado = null) => {
     if (!compra) return;
-
     if (String(compra.estado_pago || "").toLowerCase() !== "pendiente") {
       Swal.fire({
         icon: "warning",
@@ -1055,14 +870,13 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       });
       return;
     }
-
     setCompraManualSeleccionada(compra);
     setTicketsManualSeleccionados([]);
     setPreselectedManualNumber(numeroPreseleccionado);
     setModalManualOpen(true);
   };
-
   const abrirAprobacionManualDesdeCuadricula = async (numero) => {
+    const comprasPendientes = comprasFiltradasPorRifa.filter(c => String(c.estado_pago || "").trim().toLowerCase() === "pendiente" && !ticketsFiltradosPorRifa.some(t => String(t.compra_id) === String(c.id)));
     if (!comprasPendientes.length) {
       await Swal.fire({
         icon: "info",
@@ -1071,12 +885,10 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
       });
       return;
     }
-
     if (comprasPendientes.length === 1) {
       abrirAprobacionManual(comprasPendientes[0], numero);
       return;
     }
-
     const opciones = comprasPendientes.reduce((acc, compra) => {
 const nombre =
   compra.nombre_cliente ||
@@ -1085,11 +897,9 @@ const nombre =
   compra.usuarios?.email ||
   compra.usuario_id ||
   "Sin nombre";
-
       acc[compra.id] = `${nombre} - ${compra.cantidad_tickets} ticket(s) - Ref: ${compra.referencia}`;
       return acc;
     }, {});
-
     const { value: compraIdElegida } = await Swal.fire({
       title: "Selecciona la compra pendiente",
       input: "select",
@@ -1105,13 +915,10 @@ const nombre =
         return null;
       },
     });
-
     if (!compraIdElegida) return;
-
     const compraElegida = comprasPendientes.find(
       (c) => String(c.id) === String(compraIdElegida)
     );
-
     if (!compraElegida) {
       await Swal.fire({
         icon: "error",
@@ -1120,15 +927,11 @@ const nombre =
       });
       return;
     }
-
     abrirAprobacionManual(compraElegida, numero);
   };
-
   const aprobarCompraManual = async () => {
     if (!compraManualSeleccionada?.id || !rifaSeleccionada?.id) return;
-
     const cantidadEsperada = Number(compraManualSeleccionada.cantidad_tickets) || 0;
-
     if (ticketsManualSeleccionados.length !== cantidadEsperada) {
       await Swal.fire({
         icon: "warning",
@@ -1137,7 +940,6 @@ const nombre =
       });
       return;
     }
-
     const confirmar = await Swal.fire({
       title: "¿Confirmar aprobación manual?",
       html: `
@@ -1153,12 +955,9 @@ const nombre =
       confirmButtonColor: "#16a34a",
       cancelButtonColor: "#6b7280",
     });
-
     if (!confirmar.isConfirmed) return;
-
     try {
       setLoadingAprobacion(compraManualSeleccionada.id);
-
       const res = await fetch("/api/aprobar-compra-manual", {
         method: "POST",
         headers: {
@@ -1171,9 +970,7 @@ const nombre =
           ticketsSeleccionados: ticketsManualSeleccionados,
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         await Swal.fire({
           icon: "error",
@@ -1182,7 +979,6 @@ const nombre =
         });
         return;
       }
-
       await Swal.fire({
         icon: "success",
         title: "Compra aprobada",
@@ -1194,14 +990,11 @@ const nombre =
             .join(", ")}</p>
         `,
       });
-
       setModalManualOpen(false);
       setCompraManualSeleccionada(null);
       setTicketsManualSeleccionados([]);
       setPreselectedManualNumber(null);
-
       await recargarTodo();
-
       setSeccionActiva("compras");
       scrollToRef(comprasSectionRef, 180);
     } catch (error) {
@@ -1215,7 +1008,6 @@ const nombre =
       setLoadingAprobacion(null);
     }
   };
-
   const rechazarCompra = async (compra) => {
     if (!compra?.id) {
       await Swal.fire({
@@ -1225,9 +1017,7 @@ const nombre =
       });
       return;
     }
-
     if (loadingRechazo === compra.id) return;
-
     const confirmar = await Swal.fire({
       title: "¿Rechazar compra?",
       text: "Esta acción marcará la compra como rechazada.",
@@ -1238,12 +1028,9 @@ const nombre =
       confirmButtonColor: "#dc2626",
       cancelButtonColor: "#6b7280",
     });
-
     if (!confirmar.isConfirmed) return;
-
     try {
       setLoadingRechazo(compra.id);
-
       const res = await fetch("/api/rechazar-compra", {
         method: "POST",
         headers: {
@@ -1254,9 +1041,7 @@ const nombre =
           compraId: compra.id,
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         await Swal.fire({
           icon: "error",
@@ -1265,13 +1050,11 @@ const nombre =
         });
         return;
       }
-
       await Swal.fire({
         icon: "success",
         title: "Compra rechazada",
         text: "La compra fue rechazada correctamente",
       });
-
       await recargarTodo();
     } catch (error) {
       console.error(error);
@@ -1284,7 +1067,6 @@ const nombre =
       setLoadingRechazo(null);
     }
   };
-
   const eliminarCompra = async (compra) => {
     if (!compra?.id) {
       await Swal.fire({
@@ -1294,9 +1076,7 @@ const nombre =
       });
       return;
     }
-
     if (loadingEliminacion === compra.id) return;
-
     const confirmar = await Swal.fire({
       title: "¿Eliminar compra rechazada?",
       text: "Esta acción eliminará la compra definitivamente.",
@@ -1307,12 +1087,9 @@ const nombre =
       confirmButtonColor: "#b91c1c",
       cancelButtonColor: "#6b7280",
     });
-
     if (!confirmar.isConfirmed) return;
-
     try {
       setLoadingEliminacion(compra.id);
-
       const res = await fetch("/api/eliminar-compra", {
         method: "POST",
         headers: {
@@ -1323,9 +1100,7 @@ const nombre =
           compraId: compra.id,
         }),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         await Swal.fire({
           icon: "error",
@@ -1334,13 +1109,11 @@ const nombre =
         });
         return;
       }
-
       await Swal.fire({
         icon: "success",
         title: "Compra eliminada",
         text: "La compra fue eliminada correctamente",
       });
-
       await recargarTodo();
     } catch (error) {
       console.error(error);
@@ -1361,10 +1134,8 @@ const nombre =
         title: "Notificaciones no disponibles",
         text: "El sistema de notificaciones todavía se está iniciando.",
       });
-
       return;
     }
-
     await adminPushControlRef.current.alternar();
   } catch (error) {
     console.error(
@@ -1376,17 +1147,14 @@ const nombre =
   const probarNotificacionPush = async () => {
   try {
     const headers = await getAdminAuthHeaders();
-
     if (!headers.Authorization) {
       await Swal.fire({
         icon: "error",
         title: "Sin sesión",
         text: "No se encontró una sesión válida del administrador.",
       });
-
       return;
     }
-
     const response = await fetch(
       "/api/admin-push/test",
       {
@@ -1395,16 +1163,13 @@ const nombre =
         cache: "no-store",
       }
     );
-
     const data = await response
       .json()
       .catch(() => ({}));
-
     console.log(
       "🔔 Resultado notificación Admin:",
       data
     );
-
     if (!response.ok || !data?.ok) {
       await Swal.fire({
         icon: "error",
@@ -1413,10 +1178,8 @@ const nombre =
           data?.error ||
           "No se pudo enviar la notificación.",
       });
-
       return;
     }
-
 await Swal.fire({
   icon: "success",
   title: "🔔 Sistema verificado",
@@ -1431,7 +1194,6 @@ await Swal.fire({
       "Error probando Admin Push:",
       error
     );
-
     await Swal.fire({
       icon: "error",
       title: "Error",
@@ -1439,104 +1201,88 @@ await Swal.fire({
     });
   }
 };
-
   const irADashboardTotal = () => {
     setSeccionActiva("dashboard");
     setFiltroDashboard("total");
     scrollToRef(dashboardFilterRef, 180);
   };
-
   const irAPendientes = () => {
     setSeccionActiva("dashboard");
     setFiltroDashboard("pendientes");
     scrollToRef(dashboardFilterRef, 180);
   };
-
   const irAAprobadas = () => {
     setSeccionActiva("dashboard");
     setFiltroDashboard("aprobadas");
     scrollToRef(dashboardFilterRef, 180);
   };
-
   const irARechazadas = () => {
     setSeccionActiva("dashboard");
     setFiltroDashboard("rechazadas");
     scrollToRef(dashboardFilterRef, 180);
   };
-
   const irAMapaTickets = () => {
     setSeccionActiva("numero");
     scrollToRef(numeroRef, 180);
   };
-
   const handleSidebarNavigate = (id) => {
     setFiltroDashboard(null);
-
     switch (id) {
       case "dashboard":
         setSeccionActiva("dashboard");
         scrollToRef(premioRef, 160);
         break;
-
       case "numero":
         setSeccionActiva("numero");
         scrollToRef(numeroRef, 160);
         break;
-
+        case "seleccionManual":
+  setSeccionActiva("seleccionManual");
+  scrollToRef(topRef, 120);
+  break;
       case "rifas":
         setSeccionActiva("rifas");
         scrollToRef(topRef, 120);
         break;
-
       case "compras":
         setSeccionActiva("compras");
         scrollToRef(comprasSectionRef, 180);
         break;
-
       case "usuarios":
         setSeccionActiva("usuarios");
         scrollToRef(topRef, 120);
         break;
-
       case "ganador":
         setSeccionActiva("ganador");
         scrollToRef(ganadorRef, 180);
         break;
-
       case "ganadores":
         setSeccionActiva("ganadores");
         scrollToRef(topRef, 120);
         break;
-
       case "ranking":
         setSeccionActiva("ranking");
         scrollToRef(rankingRef, 180);
         break;
-
       case "freeDrops":
         setSeccionActiva("freeDrops");
         scrollToRef(topRef, 120);
         break;
-
 case "configuracion":
   setSeccionActiva("configuracion");
   scrollToRef(topRef, 120);
   break;
-
 case "perfil":
   setSeccionActiva("perfil");
   scrollToRef(topRef, 120);
   break;
-
 default:
   break;
     }
   };
-
   if (authLoading) {
     return <div className="adminpro-loading">Verificando acceso al panel...</div>;
   }
-
   if (!accesoPermitido) {
     return (
       <div className="adminpro-loading">
@@ -1544,7 +1290,6 @@ default:
       </div>
     );
   }
-
 return (
   <>
 <AdminPushManager
@@ -1552,7 +1297,6 @@ return (
   onEstadoChange={setNotificacionesPushActivas}
   controlRef={adminPushControlRef}
 />
-
     <div className="adminpro-layout" ref={topRef}>
 <Sidebar
   activa={seccionActiva}
@@ -1563,7 +1307,6 @@ return (
   adminEmail={adminEmail}
   logoUrl={logoUrl}
 />
-
 <main className="adminpro-main">
 <HeaderPanel
   rifas={rifas}
@@ -1575,11 +1318,9 @@ return (
   mantenimientoLoading={mantenimientoLoading}
   onCambiarMantenimiento={cambiarModoMantenimiento}
 />
-
           {dataLoading && (
             <div className="adminpro-top-info">Cargando datos del panel...</div>
           )}
-
           {seccionActiva === "dashboard" && (
             <AdminDashboardSection
               dashboardRef={dashboardRef}
@@ -1616,7 +1357,6 @@ return (
               numeroGanadorOficial={numeroGanadorOficial}
             />
           )}
-
           {seccionActiva === "numero" && (
             <AdminNumerosSection
               numeroRef={numeroRef}
@@ -1631,7 +1371,11 @@ return (
               numeroGanadorOficial={numeroGanadorOficial}
             />
           )}
-
+{seccionActiva === "seleccionManual" && (
+  <AdminSeleccionManualSection
+    rifaSeleccionada={rifaSeleccionada}
+  />
+)}
 {seccionActiva === "rifas" && (
   <AdminRifasSection
     rifas={rifas}
@@ -1644,7 +1388,6 @@ return (
     formatearFecha={formatearFecha}
   />
 )}
-
           {seccionActiva === "configuracion" && <AdminConfiguracionSection />}
 {seccionActiva === "perfil" && (
   <AdminPerfilSection
@@ -1652,7 +1395,6 @@ return (
     adminToken={adminToken}
   />
 )}
-
           {seccionActiva === "ganador" && (
             <div id="admin-ganador-anchor">
               <AdminGanadorSection
@@ -1682,7 +1424,6 @@ return (
               />
             </div>
           )}
-
           {seccionActiva === "ganadores" && (
             <AdminGanadoresSection
               rifaSeleccionada={rifaSeleccionada}
@@ -1690,7 +1431,6 @@ return (
               formatearFecha={formatearFecha}
             />
           )}
-
           {seccionActiva === "ranking" && (
             <div id="admin-ranking-anchor">
               <AdminRankingSection
@@ -1717,17 +1457,14 @@ return (
               />
             </div>
           )}
-
           {seccionActiva === "freeDrops" && (
             <>
               <AdminFreeDropsSettingsSection rifaSeleccionada={rifaSeleccionada} />
-
               <AdminFreeDropsSection
                 rifaSeleccionada={rifaSeleccionada}
                 recargarTodo={recargarTodo}
                 formatearFecha={formatearFecha}
               />
-
               <AdminFreeDropParticipationsSection
                 rifaSeleccionada={rifaSeleccionada}
                 formatearFecha={formatearFecha}
@@ -1735,7 +1472,6 @@ return (
               />
             </>
           )}
-
           {seccionActiva === "compras" && (
             <AdminComprasSection
               comprasSectionRef={comprasSectionRef}
@@ -1776,16 +1512,13 @@ return (
               padLength={padLength}
             />
           )}
-
           {seccionActiva === "usuarios" && (
             <AdminUsuariosSection
               rifaSeleccionada={rifaSeleccionada}
             />
           )}
-
         </main>
       </div>
-
       <ManualApprovalModal
         open={modalManualOpen}
         onClose={() => {
@@ -1804,7 +1537,6 @@ return (
         preselectedNumber={preselectedManualNumber}
         formatearFecha={formatearFecha}
       />
-
       {modalRankingOpen && participanteSeleccionado && (
         <div
           className="adminpro-modal-backdrop"
@@ -1819,7 +1551,6 @@ return (
                 <h2>Detalle del participante</h2>
                 <p>Resumen completo dentro de la rifa seleccionada</p>
               </div>
-
               <button
                 type="button"
                 className="adminpro-soft-btn dark"
@@ -1828,39 +1559,33 @@ return (
                 Cerrar
               </button>
             </div>
-
             <div className="adminpro-ranking-modal-user">
               <div className="adminpro-ranking-modal-avatar">
                 {String(participanteSeleccionado.nombre || "?")
                   .charAt(0)
                   .toUpperCase()}
               </div>
-
               <div>
                 <h3>{participanteSeleccionado.nombre}</h3>
                 <p>{participanteSeleccionado.email || "Sin email"}</p>
                 <p>{participanteSeleccionado.telefono || "Sin teléfono"}</p>
               </div>
             </div>
-
             <div className="adminpro-ranking-modal-kpis">
               <div className="adminpro-ranking-modal-kpi">
                 <span>Tickets aprobados</span>
                 <strong>{participanteSeleccionado.cantidad}</strong>
               </div>
-
               <div className="adminpro-ranking-modal-kpi">
                 <span>Compras aprobadas</span>
                 <strong>{participanteSeleccionado.compras}</strong>
               </div>
-
               <div className="adminpro-ranking-modal-kpi">
                 <span>Monto total</span>
                 <strong>
                   ${Number(participanteSeleccionado.montoTotal || 0).toFixed(2)}
                 </strong>
               </div>
-
               <div className="adminpro-ranking-modal-kpi">
                 <span>Participación</span>
                 <strong>
@@ -1875,10 +1600,8 @@ return (
                 </strong>
               </div>
             </div>
-
 <div className="adminpro-ranking-modal-compras">
   <h4>Compras aprobadas del participante</h4>
-
   {participanteSeleccionado.comprasDetalle?.length ? (
     <div className="adminpro-ranking-modal-compras-list">
       {[...participanteSeleccionado.comprasDetalle]
@@ -1886,11 +1609,9 @@ return (
           const fechaA = new Date(
             a?.fecha_compra || a?.created_at || 0
           ).getTime();
-
           const fechaB = new Date(
             b?.fecha_compra || b?.created_at || 0
           ).getTime();
-
           return fechaB - fechaA;
         })
         .map((compra) => {
@@ -1898,17 +1619,14 @@ return (
             compra?.nombre_cliente ||
             compra?.usuarios?.nombre ||
             "Sin nombre";
-
           const emailCompra =
             compra?.email_cliente ||
             compra?.usuarios?.email ||
             "Sin email";
-
           const telefonoCompra =
             compra?.telefono_cliente ||
             compra?.usuarios?.telefono ||
             "Sin teléfono";
-
           return (
             <div
               key={compra.id}
@@ -1916,7 +1634,6 @@ return (
             >
               <div className="adminpro-ranking-modal-compra-info">
                 <strong>Compra #{compra.id}</strong>
-
                 <p>
                   📅{" "}
                   {formatearFecha(
@@ -1924,23 +1641,19 @@ return (
                       compra.created_at
                   )}
                 </p>
-
                 <p>
                   👤 <b>Nombre usado:</b>{" "}
                   {nombreCompra}
                 </p>
-
                 <p>
                   📧 <b>Email:</b>{" "}
                   {emailCompra}
                 </p>
-
                 <p>
                   📱 <b>Teléfono:</b>{" "}
                   {telefonoCompra}
                 </p>
               </div>
-
               <div className="adminpro-ranking-modal-compra-metricas">
                 <strong>
                   🎟️ {Number(compra.cantidad_tickets || 0)}{" "}
@@ -1949,7 +1662,6 @@ return (
                     ? "s"
                     : ""}
                 </strong>
-
                 <p>
                   💰 $
                   {Number(

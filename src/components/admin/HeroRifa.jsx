@@ -1,7 +1,5 @@
 "use client";
-
 import { useEffect, useRef, useState } from "react";
-
 import {
   Eye,
   ShoppingCart,
@@ -17,16 +15,13 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
-
 function formatBool(value) {
   return value ? "Sí" : "No";
 }
-
 function toNumber(value, fallback = 0) {
   const num = Number(value);
   return Number.isFinite(num) ? num : fallback;
 }
-
 export default function HeroRifa({
   rifaSeleccionada,
   totalCompras = 0,
@@ -38,7 +33,6 @@ export default function HeroRifa({
   showSecondImage = false,
 }) {
   if (!rifaSeleccionada) return null;
-
   const {
     nombre,
     descripcion,
@@ -58,7 +52,6 @@ export default function HeroRifa({
     portada_scroll_url,
     stats,
   } = rifaSeleccionada;
-
   // ✅ Primero usa los datos ya normalizados por API / admin
   // ✅ Luego usa stats
   // ✅ Luego usa props
@@ -68,78 +61,49 @@ export default function HeroRifa({
     toNumber(stats?.total, 0) ||
     toNumber(cantidad_numeros, 0) ||
     (toNumber(numero_fin, 0) - toNumber(numero_inicio, 0) + 1);
-
-  const vendidos =
-    toNumber(rifaSeleccionada?.tickets_vendidos, NaN) ||
-    toNumber(stats?.ticketsVendidos, NaN) ||
-    toNumber(totalTicketsVendidos, NaN) ||
-    0;
-
-  const disponibles =
-    toNumber(rifaSeleccionada?.tickets_disponibles, NaN) ||
-    toNumber(stats?.disponibles, NaN) ||
-    Math.max(totalNumeros - vendidos, 0);
-
-  const porcentajeVendido =
-    toNumber(rifaSeleccionada?.porcentaje_vendido, NaN) ||
-    toNumber(stats?.porcentajeVendido, NaN) ||
-    (totalNumeros > 0
-      ? Number(((vendidos / totalNumeros) * 100).toFixed(2))
-      : 0);
-
+  const vendidos = toNumber(rifaSeleccionada.tickets_pagados ?? stats?.pagados ?? totalTicketsVendidos);
+  const disponibles = toNumber(rifaSeleccionada.tickets_disponibles ?? stats?.disponibles ?? Math.max(totalNumeros - vendidos, 0));
+  const reservados = toNumber(rifaSeleccionada.tickets_reservados ?? stats?.reservados);
+  const porcentajeVendido = totalNumeros > 0 ? vendidos * 100 / totalNumeros : 0;
   const urlPublica =
     typeof window !== "undefined" ? window.location.origin : "#";
-
   const ringRadius = 42;
   const circumference = 2 * Math.PI * ringRadius;
   const dash = `${(Math.min(Math.max(porcentajeVendido, 0), 100) / 100) * circumference} ${circumference}`;
-
   const imagenPrincipal = portada_url || "";
   const imagenScroll = portada_scroll_url || imagenPrincipal;
   const tieneSegundaImagen =
   Boolean(portada_scroll_url) && portada_scroll_url !== portada_url;
-
 const [imagenActiva, setImagenActiva] = useState(
   showSecondImage && tieneSegundaImagen ? 1 : 0
 );
-
 const touchStartXRef = useRef(null);
-
 useEffect(() => {
   if (!tieneSegundaImagen) {
     setImagenActiva(0);
     return;
   }
-
   setImagenActiva(showSecondImage ? 1 : 0);
 }, [showSecondImage, tieneSegundaImagen]);
-
 const mostrarAnterior = () => {
   if (!tieneSegundaImagen) return;
   setImagenActiva((actual) => (actual === 0 ? 1 : 0));
 };
-
 const mostrarSiguiente = () => {
   if (!tieneSegundaImagen) return;
   setImagenActiva((actual) => (actual === 0 ? 1 : 0));
 };
-
 const handleTouchStart = (event) => {
   touchStartXRef.current = event.touches?.[0]?.clientX ?? null;
 };
-
 const handleTouchEnd = (event) => {
   if (!tieneSegundaImagen || touchStartXRef.current === null) return;
-
   const touchEndX = event.changedTouches?.[0]?.clientX;
-
   if (typeof touchEndX !== "number") {
     touchStartXRef.current = null;
     return;
   }
-
   const diferencia = touchEndX - touchStartXRef.current;
-
   if (Math.abs(diferencia) >= 45) {
     if (diferencia < 0) {
       mostrarSiguiente();
@@ -147,16 +111,13 @@ const handleTouchEnd = (event) => {
       mostrarAnterior();
     }
   }
-
   touchStartXRef.current = null;
 };
-
   return (
     <section className="adminhero4 adminhero4--compact">
       <div className="adminhero4__bg" />
       <div className="adminhero4__glow adminhero4__glow--one" />
       <div className="adminhero4__glow adminhero4__glow--two" />
-
       <div className="adminhero4__topbar">
         <div className="adminhero4__badges">
           <span className={`adminhero4__badge ${estado || "inactiva"}`}>
@@ -168,16 +129,13 @@ const handleTouchEnd = (event) => {
               ? "Rifa finalizada"
               : estado || "Sin estado"}
           </span>
-
           <span className="adminhero4__badge adminhero4__badge--public">
             {publicada ? "Publicada" : "No publicada"}
           </span>
-
           <span className="adminhero4__badge adminhero4__badge--featured">
             {destacada ? "Destacada" : "No destacada"}
           </span>
         </div>
-
         <div className="adminhero4__actions">
           <a
             href={urlPublica}
@@ -188,7 +146,6 @@ const handleTouchEnd = (event) => {
             <Eye className="adminhero4__icon" />
             Ver pública
           </a>
-
           <button
             type="button"
             className="adminhero4__action adminhero4__action--ghost"
@@ -197,7 +154,6 @@ const handleTouchEnd = (event) => {
             <ShoppingCart className="adminhero4__icon" />
             Ir a compras
           </button>
-
           <button
             type="button"
             className="adminhero4__action adminhero4__action--ghost"
@@ -206,7 +162,6 @@ const handleTouchEnd = (event) => {
             <Trophy className="adminhero4__icon" />
             Ir a ganador
           </button>
-
           <button
             type="button"
             className="adminhero4__action adminhero4__action--primary"
@@ -217,7 +172,6 @@ const handleTouchEnd = (event) => {
           </button>
         </div>
       </div>
-
       <div className="adminhero4__main">
         <div className="adminhero4__left">
           <div className="adminhero4__header">
@@ -226,12 +180,10 @@ const handleTouchEnd = (event) => {
               {descripcion || "Sin descripción registrada"}
             </p>
           </div>
-
           <div className="adminhero4__featured">
             <div className="adminhero4__featured-icon-wrap">
               <Gift className="adminhero4__icon" />
             </div>
-
             <div className="adminhero4__featured-copy">
               <span className="adminhero4__featured-label">Premio principal</span>
               <strong className="adminhero4__featured-value">
@@ -239,7 +191,6 @@ const handleTouchEnd = (event) => {
               </strong>
             </div>
           </div>
-
           <div className="adminhero4__quickgrid">
             <div className="adminhero4__quickcard">
               <div className="adminhero4__quickicon">
@@ -250,7 +201,6 @@ const handleTouchEnd = (event) => {
                 <strong>${toNumber(precio_ticket).toFixed(2)}</strong>
               </div>
             </div>
-
             <div className="adminhero4__quickcard">
               <div className="adminhero4__quickicon">
                 <Layers3 className="adminhero4__icon" />
@@ -262,7 +212,6 @@ const handleTouchEnd = (event) => {
                 </strong>
               </div>
             </div>
-
             <div className="adminhero4__quickcard">
               <div className="adminhero4__quickicon">
                 <Ticket className="adminhero4__icon" />
@@ -272,7 +221,6 @@ const handleTouchEnd = (event) => {
                 <strong>{toNumber(totalNumeros, 0)}</strong>
               </div>
             </div>
-
             <div className="adminhero4__quickcard">
               <div className="adminhero4__quickicon">
                 <TrendingUp className="adminhero4__icon" />
@@ -283,17 +231,14 @@ const handleTouchEnd = (event) => {
               </div>
             </div>
           </div>
-
           <div className="adminhero4__salespanel">
             <div className="adminhero4__saleshead">
               <div>
                 <span className="adminhero4__kicker">Rendimiento comercial</span>
                 <h3>Progreso de ventas</h3>
               </div>
-
               <strong>{toNumber(porcentajeVendido, 0).toFixed(2)}%</strong>
             </div>
-
             <div className="adminhero4__bar">
               <div
                 className="adminhero4__barfill"
@@ -302,18 +247,15 @@ const handleTouchEnd = (event) => {
                 }}
               />
             </div>
-
             <div className="adminhero4__salesmeta">
               <div className="adminhero4__salesmeta-card">
                 <span>Vendidos</span>
                 <strong>{toNumber(vendidos, 0)}</strong>
               </div>
-
               <div className="adminhero4__salesmeta-card">
                 <span>Disponibles</span>
                 <strong>{toNumber(disponibles, 0)}</strong>
               </div>
-
               <div className="adminhero4__salesmeta-card">
                 <span>Total</span>
                 <strong>{toNumber(totalNumeros, 0)}</strong>
@@ -321,7 +263,6 @@ const handleTouchEnd = (event) => {
             </div>
           </div>
         </div>
-
         <div className="adminhero4__right">
 <div
   className="adminhero4__media adminhero4__media-switch"
@@ -338,7 +279,6 @@ const handleTouchEnd = (event) => {
         }`}
         draggable="false"
       />
-
       {tieneSegundaImagen && (
         <img
           src={imagenScroll}
@@ -349,7 +289,6 @@ const handleTouchEnd = (event) => {
           draggable="false"
         />
       )}
-
       {tieneSegundaImagen && (
         <>
           <button
@@ -360,7 +299,6 @@ const handleTouchEnd = (event) => {
           >
             <ChevronLeft />
           </button>
-
           <button
             type="button"
             className="adminhero4__carousel-arrow adminhero4__carousel-arrow--right"
@@ -369,7 +307,6 @@ const handleTouchEnd = (event) => {
           >
             <ChevronRight />
           </button>
-
           <div
             className="adminhero4__carousel-dots"
             aria-label="Selector de imágenes"
@@ -380,7 +317,6 @@ const handleTouchEnd = (event) => {
               onClick={() => setImagenActiva(0)}
               aria-label="Ver imagen principal"
             />
-
             <button
               type="button"
               className={imagenActiva === 1 ? "active" : ""}
@@ -396,13 +332,11 @@ const handleTouchEnd = (event) => {
       <div className="adminhero4__media-placeholder-icon">
         <ImageIcon className="adminhero4__icon" />
       </div>
-
       <strong>Sin portada</strong>
       <span>Esta rifa todavía no tiene imagen principal cargada.</span>
     </div>
   )}
 </div>
-
           <div className="adminhero4__insight">
             <div className="adminhero4__ring">
               <svg className="adminhero4__ring-svg" viewBox="0 0 110 110">
@@ -415,27 +349,24 @@ const handleTouchEnd = (event) => {
                   strokeDasharray={dash}
                 />
               </svg>
-
               <div className="adminhero4__ring-center">
                 <strong>{toNumber(porcentajeVendido, 0).toFixed(1)}%</strong>
                 <span>Vendido</span>
               </div>
             </div>
-
             <div className="adminhero4__insight-copy">
-              <h4>Resumen de ocupación</h4>
+              <h4>Resumen de ventas</h4>
               <p>
                 Se han vendido {toNumber(vendidos, 0)} de {toNumber(totalNumeros, 0)} números
                 disponibles en esta rifa.
               </p>
               <p>
-                Compras aprobadas: <strong>{toNumber(totalComprasAprobadas, 0)}</strong>
+                Reservados: <strong>{reservados}</strong> · Compras aprobadas: <strong>{toNumber(totalComprasAprobadas, 0)}</strong>
               </p>
             </div>
           </div>
         </div>
       </div>
-
       <div className="adminhero4__bottom">
         <div className="adminhero4__bottomcard">
           <div className="adminhero4__bottomicon">
@@ -446,7 +377,6 @@ const handleTouchEnd = (event) => {
             <strong>{fecha_cierre || "Sin fecha"}</strong>
           </div>
         </div>
-
         <div className="adminhero4__bottomcard">
           <div className="adminhero4__bottomicon">
             <CalendarDays className="adminhero4__icon" />
@@ -459,7 +389,6 @@ const handleTouchEnd = (event) => {
             </strong>
           </div>
         </div>
-
         <div className="adminhero4__bottomcard">
           <div className="adminhero4__bottomicon">
             <Globe className="adminhero4__icon" />
@@ -469,7 +398,6 @@ const handleTouchEnd = (event) => {
             <strong>{formatBool(Boolean(publicada))}</strong>
           </div>
         </div>
-
         <div className="adminhero4__bottomcard">
           <div className="adminhero4__bottomicon">
             <Star className="adminhero4__icon" />

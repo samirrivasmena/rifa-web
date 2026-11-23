@@ -48,7 +48,7 @@ function esTicketDisponible(ticket = {}) {
   return (
     normalizarTexto(ticket?.estado) === "disponible" &&
     !esCompraAsignada(ticket) &&
-    !esFreeAsignado(ticket)
+    !esFreeAsignado(ticket) && ticket.reserva_expira_at == null
   );
 }
 
@@ -90,7 +90,8 @@ async function consultarTodosLosTickets(rifaId) {
         asignado_a_telefono,
         asignado_at,
         fecha_asignacion,
-        created_at
+        created_at,
+        reserva_expira_at
       `)
       .eq("rifa_id", rifaId)
       .or(
@@ -98,7 +99,7 @@ async function consultarTodosLosTickets(rifaId) {
         "compra_id.not.is.null," +
         "free_drop_id.not.is.null," +
         "free_drop_participation_id.not.is.null," +
-        "tipo.eq.free"
+        "tipo.eq.free,reserva_expira_at.not.is.null"
       )
       .order("numero_ticket", { ascending: true })
       .range(desde, desde + PAGE_SIZE - 1);
@@ -296,8 +297,9 @@ export async function GET(req) {
           ? dropsMap.get(String(ticket.free_drop_id)) || null
           : null;
 
-        const esFree = esFreeAsignado(ticket);
-        const esCompra = esCompraAsignada(ticket) && !esFree;
+        const asignado = normalizarTexto(ticket.estado) === "asignado" && ticket.reserva_expira_at == null;
+        const esFree = asignado && !ticket.compra_id && esFreeAsignado(ticket) && normalizarTexto(ticket.tipo) === "free" && !!freeParticipation && String(freeParticipation.ticket_id) === String(ticket.id) && String(freeParticipation.rifa_id) === rifaId && String(freeParticipation.free_drop_id) === String(ticket.free_drop_id) && !!freeDrop && String(freeDrop.rifa_id) === rifaId && ["valida", "válida", "aprobada", "aprobado", "approved", "activa", "activo"].includes(normalizarTexto(freeParticipation.estado));
+        const esCompra = asignado && !!compra && String(compra.rifa_id) === rifaId && !esFreeAsignado(ticket) && ["aprobado", "aprobada", "approved", "pagado", "pagada"].includes(normalizarTexto(compra.estado_pago));
         const disponible = esTicketDisponible(ticket);
         const ocupado = !disponible;
 
@@ -347,6 +349,8 @@ export async function GET(req) {
           numero_ticket: numero,
           ocupado,
           vendido: esCompra,
+          confirmado: esCompra || esFree,
+          reservado: normalizarTexto(ticket.estado) === "reservado",
           es_free: esFree,
           disponible,
           estado_visual: esFree
@@ -354,7 +358,7 @@ export async function GET(req) {
             : esCompra
             ? "OCUPADO"
             : ocupado
-            ? "RESERVADO"
+            ? (normalizarTexto(ticket.estado) === "reservado" ? "RESERVADO" : "NO CONFIRMADO")
             : "DISPONIBLE",
           tipo_normalizado: esFree
             ? "free"

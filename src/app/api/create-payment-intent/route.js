@@ -134,6 +134,14 @@ function esTicketOcupado(ticket) {
 ========================================================= */
 
 export async function POST(req) {
+    const appPayHabilitado = false;
+
+  if (!appPayHabilitado) {
+    return errorResponse(
+      "App Pay está temporalmente desactivado.",
+      403
+    );
+  }
   try {
         /* -------------------------------------------------------
        MODO MANTENIMIENTO GLOBAL

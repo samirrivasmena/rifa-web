@@ -457,6 +457,7 @@ export async function POST(req) {
         rifa_id,
         tipo,
         estado,
+        reserva_expira_at,
         free_drop_id,
         free_drop_participation_id,
         asignado_a_nombre,
@@ -538,6 +539,12 @@ export async function POST(req) {
         )
       );
 
+    if (estadoTicket !== "asignado" || ticketData.reserva_expira_at != null) {
+      return errorResponse("El número no tiene una asignación confirmada o está reservado", 409);
+    }
+    if (esCompra && (tipoTicket === "free" || ticketData.free_drop_id || ticketData.free_drop_participation_id)) {
+      return errorResponse("El ticket tiene asociaciones incompatibles", 409);
+    }
     const ocupado =
       esCompra ||
       esFreeAsignado;
@@ -723,27 +730,13 @@ export async function POST(req) {
           participacionFree.estado
         );
 
-      const estadosFreeInvalidos = [
-        "rechazado",
-        "rechazada",
-        "rejected",
-        "anulado",
-        "anulada",
-        "cancelado",
-        "cancelada",
-        "cancelled",
-      ];
-
-      if (
-        estadosFreeInvalidos.includes(
-          estadoParticipacion
-        )
-      ) {
-        return errorResponse(
-          `El número ${numeroOficial} pertenece a una participación FREE que ya no es válida`,
-          409
-        );
+      const estadosFreeValidos = ["valida", "válida", "aprobado", "aprobada", "approved", "activo", "activa"];
+      if (!estadosFreeValidos.includes(estadoParticipacion) || participacionFree.ticket_id !== ticketData.id || !ticketData.free_drop_id || String(participacionFree.free_drop_id) !== String(ticketData.free_drop_id)) {
+        return errorResponse("La participación FREE no está confirmada o no corresponde al ticket", 409);
       }
+      const { data: drop, error: dropError } = await supabaseAdmin.from("free_drops").select("id,rifa_id").eq("id", ticketData.free_drop_id).maybeSingle();
+      if (dropError) return errorResponse("No se pudo verificar el Free Drop", 500);
+      if (!drop || drop.rifa_id !== rifaIdLimpio) return errorResponse("Free Drop incompatible", 409);
     }
 
     /* =====================================================

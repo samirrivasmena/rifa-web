@@ -94,10 +94,12 @@ export default function WinnerCard({
      ESTADO DEL GANADOR
   ======================================================= */
 
-  const ganadorOficialActual = Boolean(
-    resultado?.oficial === true ||
-      numeroGanadorOficial
-  );
+  const esReservado = resultado?.reservado === true || resultado?.tipo === "reservado";
+  const esBloqueado = esReservado || resultado?.bloqueado === true;
+  const elegible = !esBloqueado && resultado?.esGanador === true && (resultado?.vendido === true || resultado?.es_free === true);
+  const oficial = normalizarNumero(numeroGanadorOficial, padLength);
+  const consultado = normalizarNumero(resultado?.numero_ticket ?? resultado?.numero_ganador ?? resultado?.numero_oficial, padLength);
+  const ganadorOficialActual = !esBloqueado && Boolean(resultado?.oficial === true || (oficial && (!resultado || oficial === consultado)));
 
   /* =======================================================
      DETECTAR FREE
@@ -389,7 +391,7 @@ export default function WinnerCard({
     !ganadorOficialActual;
 
   const puedeGuardarGanador =
-    resultado?.existe &&
+    elegible &&
     !ganadorOficialActual &&
     !numeroGanadorGuardado &&
     onGuardar;
@@ -402,6 +404,28 @@ export default function WinnerCard({
      RENDER
   ======================================================= */
 
+  if (esBloqueado) {
+    const vence = resultado?.reserva_expira_at;
+    return (
+      <div className="adminpro-result-stack">
+        <div className="adminpro-card adminpro-winner-card" style={{border:"1px solid #52525b", background:"#18181b", color:"#f4f4f5"}}>
+          <div className="adminpro-winner-card-head">
+            <div className="adminpro-winner-title-block">
+              <div className="adminpro-winner-icon" style={{background:"#27272a"}}>🔒</div>
+              <div><strong>{esReservado ? "RESERVADO" : "BLOQUEADO"}</strong><h3>{esReservado ? "Pendiente de aprobación" : "Asignación no confirmada"}</h3><p>Este número no está disponible ni es elegible como ganador confirmado.</p></div>
+            </div>
+            <div className="adminpro-winner-number-box"><span>Número consultado</span><strong>{numeroFormateado}</strong></div>
+          </div>
+          <div className="adminpro-winner-info-box">
+            <div className="adminpro-winner-info-item"><span>Estado</span><strong>{esReservado ? "Reservado 🔒" : "Bloqueado"}</strong></div>
+            <div className="adminpro-winner-info-item"><span>Pago confirmado</span><strong>No</strong></div>
+            <div className="adminpro-winner-info-item"><span>Elegible como ganador</span><strong>No</strong></div>
+            {vence && <div className="adminpro-winner-info-item"><span>Reserva hasta</span><strong>{formatearFecha?.(vence) || vence}</strong></div>}
+          </div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="adminpro-result-stack">
       {mensaje ? (
@@ -431,7 +455,7 @@ export default function WinnerCard({
 
           <div className="adminpro-winner-empty-tip">
             <strong>Tip:</strong> cuando el
-            número sea ocupado podrás
+            número esté confirmado podrás
             registrarlo como ganador oficial o
             quitarlo si hace falta.
           </div>
@@ -1144,7 +1168,7 @@ export default function WinnerCard({
                       ? "El ganador ya fue guardado, pero no se cargaron los datos del cliente en esta vista."
                       : esFree
                       ? "La participación FREE existe, pero no se pudieron cargar todos los datos del participante."
-                      : "La compra existe, pero no se pudieron cargar los datos del cliente."}
+                      : resultado?.existe ? "No se pudieron cargar los datos del cliente." : "Este número no tiene un participante confirmado."}
                   </p>
                 </div>
               )}

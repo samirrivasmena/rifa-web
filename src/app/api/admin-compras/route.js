@@ -29,6 +29,7 @@ async function traerTodosLosTickets(rifaId = null) {
         tipo,
         free_drop_id,
         free_drop_participation_id,
+        reserva_expira_at,
         asignado_at,
         fecha_asignacion,
         asignado_a_nombre,
@@ -37,6 +38,7 @@ async function traerTodosLosTickets(rifaId = null) {
       `)
       .neq("estado", "disponible")
       .order("numero_ticket", { ascending: true })
+      .order("id", { ascending: true })
       .range(from, from + pageSize - 1);
 
     if (rifaId) {
@@ -284,6 +286,78 @@ async function prepararComprobanteParaAdmin(compra = {}) {
 // GET
 // =========================================================
 
+async function traerTodasLasCompras() {
+  const pageSize = 1000;
+  const compras = [];
+  for (let from = 0; ; from += pageSize) {
+    const { data, error } = await supabaseAdmin.from("compras")
+      .select(`
+          id,
+          rifa_id,
+          usuario_id,
+          nombre_cliente,
+          email_cliente,
+          telefono_cliente,
+cantidad_tickets,
+monto_total,
+tasa_bcv,
+monto_bolivares,
+referencia,
+metodo_pago,
+          estado_pago,
+          comprobante_url,
+          fecha_compra,
+          created_at,
+          aprobado_at,
+          usuarios (
+            id,
+            nombre,
+            email,
+            telefono
+          ),
+          rifas (
+            id,
+            nombre,
+            premio,
+            descripcion,
+            portada_url,
+            portada_scroll_url,
+            fecha_sorteo,
+            hora_sorteo,
+            formato,
+            estado
+          )
+        `)
+      .order("fecha_compra", { ascending: false })
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw error;
+    compras.push(...(data || []));
+    if (!data || data.length < pageSize) return compras;
+  }
+}
+
+function agregarReserva(compra, tickets, rifaId) {
+  const consultada = !rifaId || compra.rifa_id === rifaId;
+  const reservados = (tickets || []).filter(t =>
+    t.rifa_id === compra.rifa_id && t.estado === "reservado" &&
+    !t.free_drop_id && !t.free_drop_participation_id &&
+    String(t.tipo || "").toLowerCase() !== "free"
+  );
+  const fechas = reservados.map(t => Date.parse(t.reserva_expira_at || ""));
+  const fechaValida = fechas.length > 0 && fechas.every(Number.isFinite);
+  const expira = fechaValida ? Math.min(...fechas) : null;
+  const pendiente = compra.estado_pago === "pendiente";
+  return {
+    ...compra,
+    modo_compra_pendiente: !consultada || !pendiente ? null : reservados.length ? "manual" : tickets?.length ? "revision" : "automatica",
+    numeros_reservados: reservados.map(t => t.numero_ticket).sort((a,b) => a-b),
+    reserva_expira_at: expira === null ? null : new Date(expira).toISOString(),
+    reserva_vencida: expira !== null && expira <= Date.now(),
+    reserva_incompleta: reservados.length > 0 && (!fechaValida || reservados.length !== Number(compra.cantidad_tickets) || reservados.length !== tickets.length),
+  };
+}
+
 export async function GET(req) {
   // =========================================================
   // 1. VERIFICAR ADMIN + MFA
@@ -317,92 +391,19 @@ export async function GET(req) {
     // 3. CARGAR COMPRAS Y TICKETS
     // =========================================================
 
-    const [
-      comprasResult,
-      tickets,
-    ] = await Promise.all([
-      supabaseAdmin
-        .from("compras")
-        .select(`
-          id,
-          rifa_id,
-          usuario_id,
-          nombre_cliente,
-          email_cliente,
-          telefono_cliente,
-cantidad_tickets,
-monto_total,
-tasa_bcv,
-monto_bolivares,
-referencia,
-metodo_pago,
-          estado_pago,
-          comprobante_url,
-          fecha_compra,
-          created_at,
-          usuarios (
-            id,
-            nombre,
-            email,
-            telefono
-          ),
-          rifas (
-            id,
-            nombre,
-            premio,
-            descripcion,
-            portada_url,
-            portada_scroll_url,
-            fecha_sorteo,
-            hora_sorteo,
-            formato,
-            estado
-          )
-        `)
-        .order(
-          "fecha_compra",
-          {
-            ascending: false,
-          }
-        ),
-
-      traerTodosLosTickets(
-        rifaId
-      ),
+    const [comprasBase, tickets] = await Promise.all([
+      traerTodasLasCompras(),
+      traerTodosLosTickets(rifaId),
     ]);
-
-    // =========================================================
-    // 4. VALIDAR CONSULTA
-    // =========================================================
-
-    const {
-      data: comprasBase,
-      error: comprasError,
-    } = comprasResult;
-
-    if (comprasError) {
-      return NextResponse.json(
-        {
-          error:
-            comprasError.message ||
-            "Error al cargar compras",
-        },
-        {
-          status: 500,
-        }
-      );
+    const porCompra = new Map();
+    for (const ticket of tickets) {
+      if (!ticket.compra_id) continue;
+      if (!porCompra.has(ticket.compra_id)) porCompra.set(ticket.compra_id, []);
+      porCompra.get(ticket.compra_id).push(ticket);
     }
-
-    // =========================================================
-    // 5. NORMALIZAR COMPRAS
-    // =========================================================
-
-    const comprasNormalizadas =
-      Array.isArray(comprasBase)
-        ? comprasBase.map(
-            normalizarCompra
-          )
-        : [];
+    const comprasNormalizadas = comprasBase.map(compra =>
+      agregarReserva(normalizarCompra(compra), porCompra.get(compra.id) || [], rifaId)
+    );
 
     // =========================================================
     // 6. GENERAR URLs FIRMADAS
