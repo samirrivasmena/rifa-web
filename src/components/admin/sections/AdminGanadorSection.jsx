@@ -6,6 +6,7 @@ import { getAdminAuthHeaders } from "../../../lib/getAdminAuthHeaders";
 
 export default function AdminGanadorSection({
   ganadorRef,
+  rifaSeleccionada,
   padLength,
   numeroGanador,
   setNumeroGanador,
@@ -31,8 +32,7 @@ export default function AdminGanadorSection({
   const editarGanadorOficial = async () => {
     const sorteoId =
       resultadoGanador?.sorteo?.id ||
-      resultadoGanador?.id ||
-      resultadoGanador?.sorteo_id ||
+      rifaSeleccionada?.sorteo?.id ||
       null;
 
     if (!sorteoId) {
@@ -68,7 +68,7 @@ export default function AdminGanadorSection({
           <input 
             id="swal-fuente-ganador" 
             class="swal2-input" 
-            value="${resultadoGanador?.sorteo?.fuente || "Rifa"}" 
+            value="" 
             style="margin:0; width:100%;"
           />
 
@@ -86,6 +86,7 @@ export default function AdminGanadorSection({
       cancelButtonText: "Cancelar",
       confirmButtonColor: "#1d4ed8",
       cancelButtonColor: "#6b7280",
+      didOpen: () => { document.getElementById("swal-fuente-ganador").value = resultadoGanador?.sorteo?.fuente || "SuperGana"; },
       preConfirm: () => {
         const numero = document
           .getElementById("swal-numero-ganador")
@@ -106,7 +107,7 @@ export default function AdminGanadorSection({
         return {
           numero_ganador: numero,
           fuente: fuente || "Rifa",
-          fecha_sorteo: fecha ? new Date(fecha).toISOString() : new Date().toISOString(),
+          ...(fecha ? {fecha_sorteo: new Date(fecha).toISOString()} : {}),
         };
       },
     });
@@ -141,6 +142,7 @@ export default function AdminGanadorSection({
       setNumeroGanador(String(data.numero_ganador).padStart(padLength, "0"));
       setMensajeBusqueda(`🏆 Ganador actualizado: ${data.numero_oficial}`);
       setEsNumeroGanador(true);
+      window.location.reload();
 
       await Swal.fire({
         icon: "success",
@@ -179,7 +181,7 @@ export default function AdminGanadorSection({
               className="adminpro-soft-btn blue"
               style={{ marginLeft: "12px" }}
               onClick={editarGanadorOficial}
-              disabled={guardandoGanador || quitandoGanador}
+              disabled={guardandoGanador || quitandoGanador || resultadoGanador?.sorteo?.estado_entrega === "entregado"}
             >
               Editar ganador
             </button>
@@ -217,7 +219,9 @@ export default function AdminGanadorSection({
           </button>
         </form>
 
+        {rifaSeleccionada?.estado === "activa" && <p>Cierra el evento desde Rifas antes de registrar el resultado oficial.</p>}
         <WinnerCard
+          estadoRifa={rifaSeleccionada?.estado}
           resultado={resultadoGanador}
           esGanador={esNumeroGanador}
           mensaje={mensajeBusqueda}

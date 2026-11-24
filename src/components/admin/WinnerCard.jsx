@@ -80,6 +80,7 @@ async function copiarTextoSeguro(texto) {
 
 export default function WinnerCard({
   resultado,
+  estadoRifa,
   esGanador,
   mensaje,
   onGuardar,
@@ -114,7 +115,7 @@ export default function WinnerCard({
       resultado?.participacion?.codigo_unico
   );
 
-  const esPagado = Boolean(
+  const esPagado = resultado?.vendido === true && Boolean(
     resultado?.existe &&
       !esFree &&
       (
@@ -322,7 +323,7 @@ export default function WinnerCard({
 
   const titulo =
     ganadorOficialActual
-      ? "🏆 Número ganador oficial"
+      ? elegible ? "🏆 Número ganador oficial" : "Resultado oficial sin ganador confirmado"
       : esFree
       ? "🎁 Número FREE"
       : resultado?.existe
@@ -333,7 +334,7 @@ export default function WinnerCard({
     ganadorOficialActual
       ? esFree
         ? "Este número FREE quedó registrado como ganador oficial de la rifa."
-        : "Este número pagado quedó registrado como ganador oficial de la rifa."
+        : esPagado ? "Este número pagado quedó registrado como ganador oficial de la rifa." : "Resultado oficial sin participante ganador confirmado."
       : esFree
       ? "El número pertenece a una participación FREE y puede convertirse en ganador."
       : resultado?.existe
@@ -391,13 +392,13 @@ export default function WinnerCard({
     !ganadorOficialActual;
 
   const puedeGuardarGanador =
-    elegible &&
+    estadoRifa === "cerrada" && (elegible || (resultado?.tipo === "disponible" && resultado?.existe === false)) &&
     !ganadorOficialActual &&
     !numeroGanadorGuardado &&
     onGuardar;
 
   const puedeQuitarGanador =
-    ganadorOficialActual &&
+    ganadorOficialActual && resultado?.sorteo?.estado_entrega !== "entregado" &&
     onQuitar;
 
   /* =======================================================
@@ -491,7 +492,7 @@ export default function WinnerCard({
                   className={`adminpro-winner-badge ${estadoKey}`}
                 >
                   {ganadorOficialActual
-                    ? "Ganador oficial"
+                    ? elegible ? "Ganador oficial" : "Resultado oficial"
                     : esFree
                     ? "FREE"
                     : resultado?.existe
@@ -550,7 +551,7 @@ export default function WinnerCard({
                     fontSize: "14px",
                   }}
                 >
-                  🏆 GANADOR DE ESTA RIFA
+                  {elegible ? "🏆 GANADOR DE ESTA RIFA" : "RESULTADO OFICIAL"}
                 </strong>
 
                 <span
@@ -568,7 +569,7 @@ export default function WinnerCard({
                 >
                   {esFree
                     ? "🎁 TICKET FREE"
-                    : "🎟️ TICKET PAGADO"}
+                    : esPagado ? "🎟️ TICKET PAGADO" : "SIN PARTICIPANTE"}
                 </span>
               </div>
 
@@ -660,7 +661,7 @@ export default function WinnerCard({
 
                 <strong>
                   {ganadorOficialActual
-                    ? "Ganador oficial"
+                    ? elegible ? "Ganador oficial" : "Resultado oficial"
                     : esFree
                     ? "FREE asignado"
                     : resultado?.existe
@@ -1165,7 +1166,7 @@ export default function WinnerCard({
 
                   <p>
                     {ganadorOficialActual
-                      ? "El ganador ya fue guardado, pero no se cargaron los datos del cliente en esta vista."
+                      ? "Resultado registrado; no hay datos de participante disponibles."
                       : esFree
                       ? "La participación FREE existe, pero no se pudieron cargar todos los datos del participante."
                       : resultado?.existe ? "No se pudieron cargar los datos del cliente." : "Este número no tiene un participante confirmado."}
@@ -1214,7 +1215,7 @@ export default function WinnerCard({
                   ? "Registrando..."
                   : esFree
                   ? "Registrar FREE como ganador"
-                  : "Registrar ganador oficial"}
+                  : elegible ? "Registrar ganador oficial" : "Registrar resultado sin ganador"}
               </button>
             )}
 

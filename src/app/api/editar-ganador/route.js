@@ -1,89 +1,40 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../lib/supabaseAdmin";
 import { requireAdmin } from "../../../lib/requireAdmin";
-
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
-
+const accion = "editar";
+const mensaje = "Resultado actualizado correctamente";
+const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const responder = (data, status=200) => NextResponse.json(data,{status,headers:{"Cache-Control":"no-store"}});
 export async function POST(req) {
-  const auth = await requireAdmin(req);
-
-  if (!auth.ok) {
-    return NextResponse.json({ error: auth.error }, { status: auth.status });
-  }
-
   try {
-    const body = await req.json();
-
-    const sorteoId = String(body.sorteoId || body.sorteo_id || "").trim();
-    const padLength = Number(body.padLength || 4);
-    const numero = Number(String(body.numero_ganador || "").replace(/\D/g, ""));
-
-    if (!sorteoId) {
-      return NextResponse.json({ error: "Falta sorteoId" }, { status: 400 });
+    const auth = await requireAdmin(req);
+    if (!auth.ok) return responder({ok:false,error:auth.error},auth.status);
+    let body;
+    try { body = await req.json(); } catch { return responder({ok:false,error:"Solicitud inválida"},400); }
+    if (!body || typeof body !== "object" || Array.isArray(body)) return responder({ok:false,error:"Solicitud inválida"},400);
+    const rifaId = String(body.rifaId ?? body.rifa_id ?? "").trim();
+    const sorteoId = String(body.sorteoId ?? body.sorteo_id ?? "").trim();
+    if (accion === "editar" ? !uuid.test(sorteoId) : !uuid.test(rifaId)) return responder({ok:false,error:"Identificador inválido"},400);
+    const raw = body.numeroGanador ?? body.numero_ganador ?? body.numero;
+    let numero = null;
+    if (["guardar","editar","finalizar"].includes(accion)) {
+      if (raw != null) {
+        const texto = String(raw).trim();
+        if (!/^\d{1,4}$/.test(texto)) return responder({ok:false,error:"Número inválido"},400);
+        numero = Number(texto);
+      } else if (accion !== "editar") return responder({ok:false,error:"Falta el número oficial"},400);
     }
-
-    if (!Number.isInteger(numero)) {
-      return NextResponse.json({ error: "Número inválido" }, { status: 400 });
-    }
-
-    const numeroOficial = String(numero).padStart(padLength, "0");
-
-    const estadoEntrega =
-      String(body.estado_entrega || "").toLowerCase() === "entregado"
-        ? "entregado"
-        : "pendiente";
-
-    const updateData = {
-      numero_ganador: numero,
-      numero_oficial: numeroOficial,
-      fuente: body.fuente || "Rifa",
-
-      nombre_ganador: body.nombre_ganador || null,
-      foto_ganador_url: body.foto_ganador_url || null,
-      foto_ganador_secundaria_url: body.foto_ganador_secundaria_url || null,
-      descripcion_resultado: body.descripcion_resultado || null,
-      ciudad_ganador: body.ciudad_ganador || null,
-      instagram_ganador: body.instagram_ganador || null,
-
-      estado_entrega: estadoEntrega,
-      fecha_entrega:
-        estadoEntrega === "entregado"
-          ? body.fecha_entrega || new Date().toISOString()
-          : body.fecha_entrega || null,
-      nota_interna: body.nota_interna || null,
-    };
-
-    if (body.fecha_sorteo) {
-      updateData.fecha_sorteo = body.fecha_sorteo;
-    }
-
-    const { error } = await supabaseAdmin
-      .from("sorteos")
-      .update(updateData)
-      .eq("id", sorteoId);
-
+    const {data,error} = await supabaseAdmin.rpc("lsd_resultado_seguro",{p_accion:accion,p_rifa_id:accion==="editar"?null:rifaId,p_sorteo_id:accion==="editar"?sorteoId:null,p_numero:numero,p_datos:body});
     if (error) {
-      return NextResponse.json(
-        { error: error.message || "No se pudo editar el ganador" },
-        { status: 500 }
-      );
+      console.error("Resultado seguro",accion,error.code,error.message);
+      return responder({ok:false,error:error.code==="P0001"?error.message:"No se pudo completar la operación"},error.code==="P0001"?409:500);
     }
-
-    return NextResponse.json({
-      ok: true,
-      numero_ganador: numero,
-      numero_oficial: numeroOficial,
-      estado_entrega: estadoEntrega,
-      fecha_entrega: updateData.fecha_entrega,
-      nota_interna: updateData.nota_interna,
-    });
-  } catch (error) {
-    console.error("editar-ganador error:", error);
-
-    return NextResponse.json(
-      { error: error.message || "Error interno" },
-      { status: 500 }
-    );
+    return responder({...data,mensaje,message:mensaje});
+  } catch(error) {
+    console.error("Resultado seguro",accion,error);
+    return responder({ok:false,error:"Error interno del servidor"},500);
   }
 }

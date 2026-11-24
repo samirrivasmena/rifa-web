@@ -313,7 +313,7 @@ export async function POST(req) {
       ticketsOcupadosDespues = Number(stats.tickets_ocupados);
       ticketsReservadosDespues = Number(stats.tickets_reservados);
       ticketsDisponiblesDespues = Number(stats.tickets_disponibles);
-      ticketsVendidosDespues = ticketsOcupadosDespues; // Compatibilidad con el administrador anterior.
+      ticketsVendidosDespues = ticketsPagadosDespues; // Compatibilidad con el administrador anterior.
       porcentajeOcupado = Number(stats.porcentaje_ocupado);
       porcentajeVendido = Number(stats.porcentaje_vendido);
       rifaCompleta = stats.sold_out === true && ticketsReservadosDespues === 0;
@@ -350,10 +350,11 @@ export async function POST(req) {
         error
       );
     }
-    // ENVIAR CORREO
-    try {
+// ENVIAR CORREO
+let emailEnviado = false;
+try {
       if (emailDestino) {
-        await sendCompraAprobadaEmail({
+        const correo = await sendCompraAprobadaEmail({
           to: emailDestino,
           nombre: nombreCliente,
           rifaNombre:
@@ -392,6 +393,7 @@ export async function POST(req) {
             `${getBaseUrl(req)}/principal`,
           padLength,
         });
+        emailEnviado = Boolean(correo?.id);
       } else {
         console.warn(
           `La compra ${compra.id} fue aprobada pero no tiene email destino`
@@ -430,11 +432,12 @@ export async function POST(req) {
             mensajeWhatsapp
           )}`
         : null;
-    // RESPUESTA AL ADMINISTRADOR
-    return NextResponse.json({
-      ok: true,
-      message:
-        "Compra aprobada correctamente",
+// RESPUESTA AL ADMINISTRADOR
+
+return NextResponse.json({
+  ok: true,
+  emailEnviado,
+  message: "Compra aprobada correctamente",
       advertenciaRifa,
       whatsapp: {
         telefono: telefonoWhatsapp,

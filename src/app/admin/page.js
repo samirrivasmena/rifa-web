@@ -773,7 +773,7 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
     if (loadingAprobacion === compra.id) return;
     const confirmar = await Swal.fire({
       title: "¿Aprobar compra?",
-      text: "Se asignarán los tickets automáticamente a esta compra.",
+      text: ticketsPorCompra[String(compra.id)]?.length ? "Se confirmarán los números reservados por el cliente." : "Se asignarán los tickets automáticamente a esta compra.",
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Sí, aprobar",
@@ -832,8 +832,8 @@ compra.telefono_cliente || compra.usuarios?.telefono || "",
               border-radius:10px;
             ">
               ✅ Compra aprobada<br/>
-              📧 Correo enviado<br/>
-              📱 WhatsApp disponible
+              ${data.emailEnviado === true ? "📧 Correo aceptado por Resend" : "⚠️ Correo no confirmado; revisa Resend"}<br/>
+              ${data?.whatsapp?.url ? "📱 WhatsApp disponible" : "WhatsApp no disponible"}
             </div>
           </div>
         `,
@@ -985,9 +985,10 @@ const nombre =
         html: `
           <p>La compra fue aprobada manualmente.</p>
           <p><strong>Tickets asignados:</strong></p>
-          <p>${ticketsManualSeleccionados
-            .map((n) => String(n).padStart(padLength, "0"))
+          <p>${(data.tickets || [])
+            .map((t) => String(t.numero_ticket).padStart(padLength, "0"))
             .join(", ")}</p>
+          <p>${data.emailEnviado === true ? "📧 Correo aceptado por Resend" : "⚠️ Correo no confirmado; revisa Resend"}</p>
         `,
       });
       setModalManualOpen(false);

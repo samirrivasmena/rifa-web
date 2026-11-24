@@ -74,7 +74,8 @@ export function useAdminGanador({
           if (!active) return;
 
           setResultadoGanador({
-            existe: true,
+            existe: false,
+            bloqueado: true,
             numero_ticket: ganadorPersistido,
             numero_ganador: ganadorPersistido,
             compra_id: null,
@@ -117,7 +118,7 @@ export function useAdminGanador({
         }
 
         const ganadorNormalizado = normalizarNumero(
-          data.numero_ganador ?? data.numero_oficial ?? data.numero_ticket ?? ganadorPersistido,
+          ganadorPersistido,
           padLength
         );
 
@@ -142,7 +143,8 @@ export function useAdminGanador({
 
         if (ganadorPersistido) {
           setResultadoGanador({
-            existe: true,
+            existe: false,
+            bloqueado: true,
             numero_ticket: ganadorPersistido,
             numero_ganador: ganadorPersistido,
             compra_id: null,
@@ -222,47 +224,15 @@ export function useAdminGanador({
         return;
       }
 
-const ocupado = Boolean(data.ocupado ?? data.existe);
-const esFree = Boolean(data.es_free);
-
-setResultadoGanador({
-  existe: ocupado,
-  numero_ticket: data.numero_ticket ?? numeroFormateado,
-  numero_ganador: data.numero_oficial ?? numeroFormateado,
-  compra_id: data.compra_id ?? null,
-  usuario: data.usuario ?? null,
-  sorteo: data.sorteo ?? null,
-  oficial: false,
-  persistido: false,
-  tipo: data.tipo ?? (esFree ? "free" : "compra"),
-  es_free: esFree,
-  free_drop: data.free_drop ?? null,
-  codigo_free:
-    data.codigo_free ??
-    data.participacion?.codigo ??
-    data.participacion?.codigo_unico ??
-    null,
-  participacion: data.participacion ?? null,
-});
-
-if (!ocupado) {
-  setMensajeBusqueda(
-    `❌ El número ${numeroFormateado} no está ocupado en esta rifa`
-  );
-} else if (esFree) {
-  setMensajeBusqueda(
-    `🟢 El número ${numeroFormateado} fue asignado por FREE DROP`
-  );
-} else {
-  setMensajeBusqueda(
-    `✅ El número ${numeroFormateado} sí fue vendido en esta rifa`
-  );
-}
+const oficial = ganadorPersistido === numeroFormateado;
+setResultadoGanador({...data, numero_ticket: data.numero_ticket ?? numeroFormateado, oficial, persistido: oficial});
+setEsNumeroGanador(oficial);
+setMensajeBusqueda(data.mensaje || "Número consultado");
     } catch (error) {
       console.error("Error buscando ganador:", error);
       setMensajeBusqueda("❌ Error inesperado al buscar el número");
     }
-  }, [rifaSeleccionada, numeroGanador, padLength]);
+  }, [rifaSeleccionada, numeroGanador, padLength, ganadorPersistido]);
 
   const guardarGanadorOficial = useCallback(async () => {
     const rifaId = String(rifaSeleccionada?.id || "").trim();
@@ -276,11 +246,13 @@ if (!ocupado) {
       return;
     }
 
-    if (!resultadoGanador?.existe) {
+    const elegible = resultadoGanador?.esGanador === true && !resultadoGanador?.bloqueado && !resultadoGanador?.reservado;
+    const sinGanador = resultadoGanador?.tipo === "disponible" && resultadoGanador?.existe === false;
+    if (rifaSeleccionada?.estado !== "cerrada" || (!elegible && !sinGanador)) {
       await Swal.fire({
         icon: "error",
         title: "No permitido",
-        text: "Ese número no está ocupado, no se puede registrar como ganador",
+        text: "Cierra el evento y consulta un número confirmado o disponible.",
       });
       return;
     }
@@ -309,7 +281,7 @@ if (!ocupado) {
     }
 
     const confirmar = await Swal.fire({
-      title: "¿Registrar ganador oficial?",
+      title: sinGanador ? "¿Registrar resultado sin ganador?" : "¿Registrar ganador oficial?",
       text: `Se registrará el número ${numeroFormateado} como ganador oficial de esta rifa.`,
       icon: "question",
       showCancelButton: true,
@@ -324,14 +296,14 @@ if (!ocupado) {
     try {
       setGuardandoGanador(true);
 
-      const res = await fetch("/api/guardar-ganador", {
+      const res = await fetch(sinGanador ? "/api/finalizar-rifa" : "/api/guardar-ganador", {
         method: "POST",
         headers: {
           ...(await getAdminAuthHeaders()),
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          numero_ticket: numeroFormateado,
+          numeroGanador: numeroFormateado,
           rifaId,
           padLength,
         }),
@@ -353,6 +325,7 @@ if (!ocupado) {
         prev
           ? {
               ...prev,
+              sorteo: data.sorteo,
               numero_ganador: numeroFormateado,
               oficial: true,
               persistido: true,
@@ -378,8 +351,8 @@ if (!ocupado) {
 
       await Swal.fire({
         icon: "success",
-        title: "Ganador registrado",
-        text: `El número ${numeroFormateado} fue registrado como ganador oficial`,
+        title: sinGanador ? "Resultado sin ganador registrado" : "Ganador registrado",
+        text: sinGanador ? `Resultado oficial ${numeroFormateado}, sin participante ganador.` : `El número ${numeroFormateado} fue registrado como ganador oficial`,
       });
     } catch (error) {
       console.error(error);
@@ -416,7 +389,7 @@ if (!ocupado) {
 
     const confirmar = await Swal.fire({
       title: "¿Quitar ganador oficial?",
-      text: "La rifa volverá a estado activa y se eliminará el número ganador guardado.",
+      text: "Se quitará el resultado. La rifa permanecerá cerrada y no se reabrirán las ventas.",
       icon: "warning",
       showCancelButton: true,
       confirmButtonText: "Sí, quitar",
@@ -457,14 +430,14 @@ if (!ocupado) {
       setResultadoGanador(null);
       setNumeroGanadorOficial(null);
       setEsNumeroGanador(false);
-      setMensajeBusqueda("Ganador oficial eliminado. La rifa volvió a activa.");
+      setMensajeBusqueda("Resultado eliminado. La rifa permanece cerrada.");
 
       await recargarTodo?.();
 
       await Swal.fire({
         icon: "success",
         title: "Ganador eliminado",
-        text: "La rifa volvió a estar activa.",
+        text: "La rifa permanece cerrada.",
       });
     } catch (error) {
       console.error(error);
@@ -483,7 +456,8 @@ if (!ocupado) {
     setResultadoGanador(
       ganadorPersistido
         ? {
-            existe: true,
+            existe: false,
+            bloqueado: true,
             numero_ticket: ganadorPersistido,
             numero_ganador: ganadorPersistido,
             compra_id: null,

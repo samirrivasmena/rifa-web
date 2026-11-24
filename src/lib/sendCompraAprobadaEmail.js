@@ -27,7 +27,7 @@ function safeUrl(url = "") {
       return "";
     }
 
-    return parsed.toString();
+    return escapeHtml(parsed.toString());
   } catch {
     return "";
   }
@@ -1133,5 +1133,6 @@ const { data, error } = await resend.emails.send({
     throw error;
   }
 
+  if (!data?.id) throw new Error("Resend no confirmó la aceptación del correo");
   return data;
 }
