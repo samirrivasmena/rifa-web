@@ -1635,29 +1635,150 @@ limpiarArchivo();
             <section className="form-card reveal-fade-up reveal-delay-2" id="boletos">
               <section className="card-section personal-data-card">
                 <h2 className="big-card-title">LISTA DE BOLETOS</h2>
-                {permiteManual && !soloManual && (
-                <button
-  type="button"
-  onClick={() => {
-    setModoManual((anterior) => !anterior);
-    setNumerosElegidos([]);
-  }}
-  disabled={rifaCompleta || loadingCompra}
-  style={{
-    width: "100%",
-    marginTop: "15px",
-    marginBottom: "15px",
-    padding: "14px",
-    background: modoManual ? "#fff4f4" : "#c40000",
-    border: modoManual ? "1px solid #eab2b2" : "1px solid #c40000",
-    color: modoManual ? "#9b1111" : "#ffffff",
-    borderRadius: "12px",
-    fontWeight: "800",
-    cursor: "pointer",
-  }}
->
-  {modoManual ? "← VOLVER A COMPRA NORMAL" : "🔢 ELEGIR MIS NÚMEROS"}
-</button>
+{permiteManual && !soloManual && (
+  <div style={{ width: "100%", margin: "18px 0" }}>
+    <button
+      type="button"
+      onClick={() => {
+        setModoManual((anterior) => !anterior);
+        setNumerosElegidos([]);
+      }}
+      disabled={rifaCompleta || loadingCompra}
+      aria-expanded={modoManual}
+      className="selector-manual-premium"
+      style={{
+        width: "100%",
+        display: "flex",
+        alignItems: "center",
+        gap: "12px",
+        padding: "16px 14px",
+        background: modoManual
+          ? "#fff5f5"
+          : "linear-gradient(135deg, #080808, #242424)",
+        border: modoManual
+          ? "2px solid #bf0000"
+          : "2px solid #bf0000",
+        borderRadius: "16px",
+        color: modoManual ? "#bf0000" : "#ffffff",
+        boxShadow: modoManual
+          ? "0 4px 12px rgba(191,0,0,0.08)"
+          : "0 5px 18px rgba(0,0,0,0.20)",
+        cursor: rifaCompleta || loadingCompra
+          ? "not-allowed"
+          : "pointer",
+        opacity: rifaCompleta || loadingCompra ? 0.55 : 1,
+        textAlign: "left",
+        transition: "transform 0.2s, box-shadow 0.2s",
+      }}
+    >
+      <span
+        aria-hidden="true"
+        style={{
+          width: "46px",
+          height: "46px",
+          flexShrink: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: modoManual ? "#ffe4e4" : "#bf0000",
+          borderRadius: "12px",
+          fontSize: "25px",
+        }}
+      >
+        {modoManual ? "🎲" : "🔢"}
+      </span>
+
+      <span style={{ flex: 1, minWidth: 0 }}>
+        <span
+          style={{
+            display: "block",
+            fontSize: "clamp(14px, 3.5vw, 19px)",
+            fontWeight: "900",
+            lineHeight: 1.3,
+          }}
+        >
+          {modoManual
+            ? "VOLVER A COMPRA AL AZAR"
+            : "ELEGIR MIS NÚMEROS"}
+        </span>
+
+        <span
+          style={{
+            display: "block",
+            marginTop: "5px",
+            fontSize: "12px",
+            fontWeight: "600",
+            color: modoManual ? "#991b1b" : "#e5e7eb",
+            lineHeight: 1.4,
+          }}
+        >
+          {modoManual
+            ? "Recibe tus números aleatoriamente"
+            : "Selecciona tus números favoritos"}
+        </span>
+      </span>
+
+      <span
+        aria-hidden="true"
+        style={{
+          fontSize: "28px",
+          fontWeight: "900",
+          flexShrink: 0,
+        }}
+      >
+        {modoManual ? "↩" : "›"}
+      </span>
+    </button>
+
+    {!modoManual && !rifaCompleta && (
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          margin: "22px 0 10px",
+        }}
+      >
+        <span style={{ flex: 1, height: "1px", background: "#d1d5db" }} />
+
+        <span
+          style={{
+            color: "#64748b",
+            fontSize: "12px",
+            fontWeight: "900",
+            letterSpacing: "0.5px",
+            textAlign: "center",
+          }}
+        >
+          🎲 O PARTICIPA AL AZAR
+        </span>
+
+        <span style={{ flex: 1, height: "1px", background: "#d1d5db" }} />
+      </div>
+    )}
+
+    <style jsx>{`
+      @media (hover: hover) {
+        .selector-manual-premium:hover:not(:disabled) {
+          transform: translateY(-2px);
+          box-shadow: 0 8px 22px rgba(191, 0, 0, 0.30) !important;
+        }
+      }
+      .selector-manual-premium:active:not(:disabled) {
+        transform: scale(0.98);
+      }
+      .selector-manual-premium:focus-visible {
+        outline: 3px solid #d4af37;
+        outline-offset: 4px;
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .selector-manual-premium {
+          transition: none !important;
+          transform: none !important;
+        }
+      }
+    `}</style>
+  </div>
 )}
 {modoManual && rifaActiva && !rifaCompleta && (
   <>

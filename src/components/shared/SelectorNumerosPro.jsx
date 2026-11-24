@@ -145,7 +145,7 @@ export default function SelectorNumerosPro({ rifaId, inicio = 0, fin = 999, prec
   return (
     <section className="sp" aria-label="Elegir números de boleto">
       <style>{`
-        .sp{--rojo:#c40000;background:#fff;color:#152033;border:1px solid #e7eaf0;border-radius:18px;overflow:hidden;box-shadow:0 8px 26px rgba(16,24,40,.06);font-family:inherit}
+        .sp{--rojo:#bf0000;background:#fff;color:#152033;border:1px solid #e7eaf0;border-radius:18px;overflow:hidden;box-shadow:0 8px 26px rgba(16,24,40,.06);font-family:inherit}
         .sp *{box-sizing:border-box}.sp button{font-family:inherit}
         .sp__top{background:linear-gradient(135deg,#fff,#fff8f8);border-bottom:1px solid #f0e4e4;padding:19px 18px 16px}
         .sp__kicker{display:inline-flex;align-items:center;gap:6px;font-size:10px;font-weight:900;color:#a31313;letter-spacing:.9px;background:#ffe8e8;padding:6px 9px;border-radius:99px;margin-bottom:9px}
@@ -171,6 +171,39 @@ export default function SelectorNumerosPro({ rifaId, inicio = 0, fin = 999, prec
         .sp__searchhint{font-size:11px;color:#5d687b;margin:6px 0 0}.sp__success{font-size:12px;color:#166534;background:#effcf3;border:1px solid #bbebcb;padding:9px 11px;border-radius:9px;margin:10px 0}.sp__error{font-size:12px;color:#a30000;background:#fff2f2;border:1px solid #f4cccc;padding:10px;border-radius:9px;margin:12px 0}
         @media(min-width:520px){.sp__grid{grid-template-columns:repeat(6,minmax(0,1fr))}.sp__body{padding:19px}.sp__num{min-height:46px}}
         @media(prefers-reduced-motion:reduce){.sp__num{transition:none}}
+
+        /* Diseño visual LSD: sin cambios en consultas ni reservas */
+        .sp .sp__title{font-size:24px}
+        .sp .sp__subtitle,.sp .sp__searchhint{font-size:13px;line-height:1.5}
+        .sp .sp__searchlabel{font-size:14px}
+        .sp .sp__input{font-size:16px;min-height:46px}
+        .sp .sp__primary{font-size:13px;min-height:46px}
+        .sp .sp__legend{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin:16px 0;font-size:13px;color:#273347}
+        .sp .sp__legenditem{display:flex;align-items:center;gap:8px;font-weight:800;min-width:0;line-height:1.3}
+        .sp .sp__sample{display:inline-flex;align-items:center;justify-content:center;flex:0 0 32px;width:32px;height:27px;border:2px solid #bf0000;border-radius:7px;background:#bf0000;color:white;font-style:normal;font-size:12px}
+        .sp .sp__sample--picked{background:white;color:#bf0000;border-color:#bf0000}
+        .sp .sp__sample--busy{background:#e5e7eb;color:#64748b;border-color:#cbd5e1}
+        .sp .sp__sample--busy::after{left:3px;top:11px;width:24px;height:2px}
+        .sp .sp__sample--reserved{background:#fef3c7;color:#92400e;border-color:#f59e0b}
+        .sp .sp__sample--random{background:#dcfce7;color:#166534;border-color:#22c55e;font-size:10px}
+        .sp .sp__nav{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px;margin:16px 0 10px}
+        .sp .sp__range{grid-column:1/-1;grid-row:1;display:block;background:#fff5f5;border:1px solid #f2d0d0;border-radius:12px;padding:12px;font-size:26px;line-height:1.2;font-variant-numeric:tabular-nums;color:#172033}
+        .sp .sp__range small{font-size:15px;font-weight:800;color:#166534;margin-top:5px}
+        .sp .sp__navbtn{font-size:13px;min-height:42px;padding:9px 8px;border-color:#e4bcbc;color:#a30000;background:#fff}
+        .sp .sp__navbtn:disabled{opacity:.45}
+        .sp .sp__refresh{width:100%;margin-bottom:12px}
+        .sp .sp__num{display:flex;align-items:center;justify-content:center;gap:3px;padding:4px 2px;min-height:48px;border:2px solid #bf0000;background:#bf0000;color:#fff;font-size:16px;line-height:1.2;font-variant-numeric:tabular-nums;position:relative}
+        .sp .sp__num:hover:not(:disabled){background:#a60000;color:#fff;border-color:#a60000;transform:none}
+        .sp .sp__num[aria-pressed=true]:not(:disabled),.sp .sp__num[aria-pressed=true]:hover:not(:disabled){background:#fff;color:#bf0000;border-color:#bf0000;box-shadow:inset 0 0 0 1px #bf0000}
+        .sp .sp__num[aria-pressed=true]:not(:disabled)::before{content:"✓";position:absolute;right:3px;top:2px;font-size:10px;line-height:1;color:#bf0000}
+        .sp .sp__num:disabled{background:#e5e7eb;color:#64748b;border-color:#cbd5e1;box-shadow:none;opacity:1}
+        .sp .sp__num--reservado:disabled{background:#fef3c7;color:#92400e;border-color:#f59e0b}
+        .sp .sp__num--azar:disabled{background:#dcfce7;color:#166534;border-color:#22c55e}
+        .sp .sp__numicon{font-size:10px;white-space:nowrap}
+        .sp button:focus-visible{outline:3px solid #172033;outline-offset:2px}
+        .sp .sp__meta,.sp .sp__tip,.sp .sp__notice{font-size:12px}
+        @media(max-width:380px){.sp .sp__body{padding:10px}.sp .sp__grid{gap:5px}.sp .sp__num{font-size:14px}.sp .sp__legend{padding:8px;gap:8px 5px;font-size:12px}.sp .sp__legenditem{gap:5px}.sp .sp__sample{flex-basis:27px;width:27px}.sp .sp__search{flex-wrap:wrap}.sp .sp__primary{width:100%}}
+        @media(min-width:520px){.sp .sp__nav{grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);align-items:center}.sp .sp__range{grid-column:2;grid-row:1}.sp .sp__navbtn:first-child{grid-column:1;grid-row:1}.sp .sp__navbtn:last-child{grid-column:3;grid-row:1}}
       `}</style>
       <div className="sp__top">
         <span className="sp__kicker">🎟️ SELECCIÓN PERSONALIZADA</span>
@@ -182,11 +215,11 @@ export default function SelectorNumerosPro({ rifaId, inicio = 0, fin = 999, prec
         <label className="sp__searchlabel" htmlFor="sp-buscar">¿Tienes un número favorito?</label>
         <div className="sp__search"><input id="sp-buscar" className="sp__input" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={ancho} autoComplete="off" aria-describedby="sp-rango" placeholder={`Del ${formato(minimo)} al ${formato(maximo)}`} value={busqueda} onChange={e => { const valor = e.target.value.replace(/\D/g, "").slice(0, ancho); setBusqueda(valor); setError(""); setMensajeBusqueda(""); }} onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); buscar(); } }} /><button className="sp__primary" type="button" onClick={buscar} disabled={cargando || !busqueda.trim()}>Buscar y elegir</button></div><p id="sp-rango" className="sp__searchhint">Rango permitido: <strong>{formato(minimo)} – {formato(maximo)}</strong>. Al buscar un número disponible, se añade automáticamente a tu selección.</p></>}
         {mensajeBusqueda && <div className="sp__success" role="status">{mensajeBusqueda}</div>}
-        <div className="sp__legend"><span className="sp__legenditem"><i className="sp__sample"/> Disponible</span><span className="sp__legenditem"><i className="sp__sample sp__sample--picked"/> Seleccionado</span><span className="sp__legenditem"><i className="sp__sample sp__sample--busy"/> Vendido / ocupado</span><span>🔒 Reservado</span><span>🍀🔒 Solo al azar</span></div>
+        <div className="sp__legend"><span className="sp__legenditem"><i className="sp__sample" aria-hidden="true"/> Disponible</span><span className="sp__legenditem"><i className="sp__sample sp__sample--picked" aria-hidden="true">✓</i> Seleccionado</span><span className="sp__legenditem"><i className="sp__sample sp__sample--busy" aria-hidden="true"/> Vendido / ocupado</span><span className="sp__legenditem"><i className="sp__sample sp__sample--reserved" aria-hidden="true">🔒</i> Reservado</span><span className="sp__legenditem"><i className="sp__sample sp__sample--random" aria-hidden="true">🍀🔒</i> Solo al azar</span></div>
         {error && <div className="sp__error" role="alert">{error} <button type="button" className="sp__navbtn" onClick={() => cargar(pagina, true)}>Reintentar</button></div>}
         <div className="sp__nav"><button type="button" className="sp__navbtn" disabled={cargando || pagina <= minimo} onClick={() => cargar(Math.max(minimo, pagina - TAMANO), true)}>← 100 anteriores</button><span className="sp__range">{formato(pagina)} – {formato(Math.min(maximo, pagina + TAMANO - 1))}<small>{cargando ? "Consultando..." : `${disponibles} disponibles`}</small></span><button type="button" className="sp__navbtn" disabled={cargando || pagina + TAMANO > maximo} onClick={() => cargar(pagina + TAMANO, true)}>Siguientes 100 →</button></div>
-        <button type="button" className="sp__navbtn" disabled={cargando} onClick={() => cargar(pagina, true)}>↻ Actualizar disponibilidad</button>
-        <div className="sp__grid" aria-busy={cargando}>{cargando ? <div className="sp__loading">Consultando disponibilidad…</div> : numeros.map(({ numero, disponible, estado }) => <button key={numero} type="button" className={`sp__num${estado === "solo_azar" ? " sp__num--azar" : estado === "reservado" ? " sp__num--reservado" : !disponible ? " sp__num--busy" : ""}`} disabled={!disponible} aria-pressed={seleccionados.has(numero)} aria-label={`Número ${formato(numero)}: ${!disponible ? (estado||"ocupado") : seleccionados.has(numero) ? "seleccionado" : "disponible"}`} onClick={() => alternar(numero)}>{formato(numero)}{estado==="solo_azar"?" 🍀🔒":estado==="reservado"?" 🔒":""}</button>)}</div>
+        <button type="button" className="sp__navbtn sp__refresh" disabled={cargando} onClick={() => cargar(pagina, true)}>↻ Actualizar disponibilidad</button>
+        <div className="sp__grid" aria-busy={cargando}>{cargando ? <div className="sp__loading">Consultando disponibilidad…</div> : numeros.map(({ numero, disponible, estado }) => <button key={numero} type="button" className={`sp__num${estado === "solo_azar" ? " sp__num--azar" : estado === "reservado" ? " sp__num--reservado" : !disponible ? " sp__num--busy" : ""}`} disabled={!disponible} aria-pressed={seleccionados.has(numero)} aria-label={`Número ${formato(numero)}: ${!disponible ? (estado||"ocupado") : seleccionados.has(numero) ? "seleccionado" : "disponible"}`} onClick={() => alternar(numero)}>{formato(numero)}{estado === "solo_azar" || estado === "reservado" ? <span className="sp__numicon" aria-hidden="true">{estado === "solo_azar" ? "🍀🔒" : "🔒"}</span> : null}</button>)}</div>
       </div>
       <div className="sp__bottom"><div className="sp__totals"><div><span className="sp__meta">NÚMEROS ELEGIDOS</span><strong className="sp__value">{elegidos.length} <small style={{fontSize:12,color:"#718096"}}>/ {MAX_ELEGIDOS}</small></strong></div><div className="sp__price"><span className="sp__meta">TOTAL ESTIMADO</span><strong className="sp__value">${(elegidos.length * Number(precio || 0)).toFixed(2)} USD</strong>{pagoMovil && (Number.isFinite(Number(tasaBcv)) && Number(tasaBcv) > 0 ? <div style={{marginTop:7,fontSize:14,fontWeight:900,color:"#172033"}}>Bs. {new Intl.NumberFormat("es-VE",{minimumFractionDigits:2,maximumFractionDigits:2}).format(elegidos.length * Number(precio || 0) * Number(tasaBcv))}</div> : <div style={{marginTop:7,fontSize:11,color:"#b45309"}}>Tasa BCV no disponible</div>)}</div></div>
         {elegidos.length ? <><p className="sp__tip">Toca un número de esta lista para quitarlo:</p><div className="sp__chips">{elegidos.map(n => <button key={n} type="button" className="sp__chip" onClick={() => alternar(n)} aria-label={`Quitar ${formato(n)}`}>{formato(n)} ×</button>)}</div></> : <p className="sp__tip">Selecciona tus números para ver el total.</p>}
