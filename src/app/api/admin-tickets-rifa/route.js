@@ -91,7 +91,8 @@ async function consultarTodosLosTickets(rifaId) {
         asignado_at,
         fecha_asignacion,
         created_at,
-        reserva_expira_at
+        reserva_expira_at,
+        premio_bendecido
       `)
       .eq("rifa_id", rifaId)
       .or(
@@ -99,7 +100,7 @@ async function consultarTodosLosTickets(rifaId) {
         "compra_id.not.is.null," +
         "free_drop_id.not.is.null," +
         "free_drop_participation_id.not.is.null," +
-        "tipo.eq.free,reserva_expira_at.not.is.null"
+        "tipo.eq.free,reserva_expira_at.not.is.null,premio_bendecido.gt.0"
       )
       .order("numero_ticket", { ascending: true })
       .range(desde, desde + PAGE_SIZE - 1);
@@ -170,7 +171,8 @@ export async function GET(req) {
 
     // Solo leemos tickets ocupados o reservados.
     // Los disponibles no necesitan descargarse para la cuadrícula.
-    const tickets = await consultarTodosLosTickets(rifaId);
+    const [tickets,config]=await Promise.all([consultarTodosLosTickets(rifaId),supabaseAdmin.from("seleccion_manual_settings").select("bendecidos_activos").eq("rifa_id",rifaId).maybeSingle()]);
+    if(config.error)throw config.error;
 
     const compraIds = tickets
       .map((ticket) => ticket.compra_id)
@@ -346,6 +348,7 @@ export async function GET(req) {
 
         return {
           ...ticket,
+          solo_azar:config.data?.bendecidos_activos===true && disponible && Number(ticket.premio_bendecido)>0,
           numero_ticket: numero,
           ocupado,
           vendido: esCompra,

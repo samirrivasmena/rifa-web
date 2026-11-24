@@ -319,6 +319,7 @@ export default function RaffleProgressPanel({
     if (!ticket || !ocupado) {
       setTicketDetalle({
         tipo: "disponible",
+        ticket,
         numero,
         esGanador: ganador,
       });
@@ -400,7 +401,7 @@ export default function RaffleProgressPanel({
           <span>Vendidos: {vendidos} · Reservados: {reservados} · Confirmados: {confirmados}</span>
           <span>Ocupación: {porcentajeOcupado}% · Disponible: {porcentajeDisponible}%</span>
         </div>
-        {permiteAsignacionManual && (
+        {permiteAsignacionManual && !ticketDetalle.ticket?.solo_azar && (
           <div className="adminpro-grid-tip">
             Haz clic en un número disponible para iniciar la aprobación manual.
           </div>
@@ -451,7 +452,7 @@ export default function RaffleProgressPanel({
             <span className="legend-box free" /> Disponible
           </div>
           <div>
-            🔒 Reservado / bloqueado
+            <span style={{color:"#f59e0b"}}>🔒</span> Reservado / bloqueado
           </div>
           <div>
             <span className="legend-box winner" /> Ganador oficial
@@ -494,7 +495,9 @@ export default function RaffleProgressPanel({
                     boxShadow: "0 0 12px rgba(250, 204, 21, 0.45)",
                     fontWeight: 700,
                   }
-                : undefined;
+                : ticket?.solo_azar ? {background:"#dcfce7",color:"#166534",border:"1px solid #22c55e"}
+                : ticket?.reservado ? { background: "#fef3c7", color: "#92400e", border: "1px solid #f59e0b", fontWeight: 700 }
+                : ocupado && !ticket?.confirmado ? { background: "#e5e7eb", color: "#374151", border: "1px solid #9ca3af" } : undefined;
               return (
                 <button
                   key={numero}
@@ -514,7 +517,7 @@ export default function RaffleProgressPanel({
                   }
                   style={winnerStyle}
                 >
-                  {numeroFormateado}{ocupado && !ticket?.confirmado ? " 🔒" : ""}
+                  {numeroFormateado}{Number(ticket?.premio_bendecido)>0?" 🍀":""}{ticket?.solo_azar?" 🔒":""}{ocupado && !ticket?.confirmado ? " 🔒" : ""}
                 </button>
               );
             })}
@@ -607,6 +610,7 @@ export default function RaffleProgressPanel({
                 </div>
               </div>
             )}
+            {Number(ticketDetalle.ticket?.premio_bendecido)>0 && <p style={{color:"#22c55e",fontWeight:700}}>🍀 Premio: ${Number(ticketDetalle.ticket.premio_bendecido).toFixed(2)} {ticketDetalle.ticket.solo_azar?"· Solo al azar 🔒":""}</p>}
             {ticketDetalle.tipo === "disponible" && (
               <div className="adminpro-raffle-detail-summary">
                 <div className="adminpro-raffle-detail-big">
@@ -616,9 +620,9 @@ export default function RaffleProgressPanel({
                   </strong>
                 </div>
                 <p>
-                  Este número todavía no ha sido ocupado. {permiteAsignacionManual && "Puedes usarlo para aprobación manual."}
+                  Este número todavía no ha sido ocupado. {permiteAsignacionManual && !ticketDetalle.ticket?.solo_azar && "Puedes usarlo para aprobación manual."}
                 </p>
-                {permiteAsignacionManual && (
+                {permiteAsignacionManual && !ticketDetalle.ticket?.solo_azar && (
                   <button
                     type="button"
                     className="adminpro-primary-btn"
