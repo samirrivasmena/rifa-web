@@ -2522,9 +2522,19 @@ limpiarArchivo();
     onClick={async () => {
       const url = "https://www.sorteoslsd.com/";
 
-      const text = rifaActiva
-        ? `🔥 ${nombreRifa}\n\n🏆 Premio: ${premioPrincipal}\n🎟️ Ticket: $${precioPorTicket.toFixed(2)} USD\n\nConsulta los detalles y condiciones del evento.`
-        : "Consulta los eventos de Sorteos LSD.";
+const text = rifaActiva
+  ? [
+      `🔥 ${nombreRifa}`,
+      premioPrincipal ? `🏆 Premio: ${premioPrincipal}` : null,
+      `🎟️ Boleto: $${precioPorTicket.toFixed(2)} USD`,
+      fechaRifa ? `📅 Fecha: ${formatearFechaPublica(fechaRifa)}` : null,
+      horaRifa ? `🕐 Hora: ${formatearHoraPublica(horaRifa)}` : null,
+      "",
+      "📲 Consulta los detalles y condiciones del evento.",
+      "🔴 Sorteos LSD🏁",
+      "👇 Página oficial:"
+    ].filter(linea => linea !== null).join("\n")
+  : "Consulta los eventos de Sorteos LSD.";
 
       try {
         if (navigator.share) {
