@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { getAdminAuthHeaders } from "@/lib/getAdminAuthHeaders";
 import RaffleProgressPanel from "../RaffleProgressPanel";
 
@@ -16,51 +15,34 @@ export default function AdminNumerosSection({
   comprasSectionRef,
   numeroGanadorOficial,
 }) {
-  const [ticketsRifa, setTicketsRifa] = useState([]);
-  const [loadingTickets, setLoadingTickets] = useState(true);
-  const [intentos, setIntentos] = useState(0);
+  const rifaId = rifaSeleccionada?.id || "";
 
-  const requestIdRef = useRef(0);
+  const [resultado, setResultado] = useState(null);
+  const [errorTickets, setErrorTickets] = useState("");
+  const [recarga, setRecarga] = useState(0);
 
-  useEffect(() => {
-    setIntentos(0);
-    setTicketsRifa([]);
-    setLoadingTickets(true);
-  }, [rifaSeleccionada?.id]);
+  const loadingTickets =
+    resultado?.rifaId !== rifaId ||
+    resultado?.recarga !== recarga;
 
   useEffect(() => {
     let mounted = true;
     let retryTimeout = null;
 
     const controller = new AbortController();
-    const requestId = ++requestIdRef.current;
 
-    const leerRespuestaSegura = async (res) => {
-      const raw = await res.text();
+    setErrorTickets("");
+    setResultado(null);
 
+    if (!rifaId) {
+      return () => {
+        mounted = false;
+        controller.abort();
+      };
+    }
+
+    const cargarTickets = async (intento = 0) => {
       try {
-        return JSON.parse(raw);
-      } catch {
-        return { raw };
-      }
-    };
-
-    const cargarTickets = async () => {
-      const rifaId = rifaSeleccionada?.id;
-
-      if (!rifaId) {
-        if (mounted) {
-          setTicketsRifa([]);
-          setLoadingTickets(false);
-        }
-        return;
-      }
-
-      try {
-        if (mounted) {
-          setLoadingTickets(true);
-        }
-
         const headers = await getAdminAuthHeaders();
 
         if (!mounted || controller.signal.aborted) {
@@ -68,24 +50,19 @@ export default function AdminNumerosSection({
         }
 
         if (!headers.Authorization) {
-          console.warn(
-            "Todavía no hay token admin listo para cargar tickets"
-          );
-
-          if (mounted && intentos < 6) {
+          if (intento < 6) {
             retryTimeout = setTimeout(() => {
-              setIntentos((prev) => prev + 1);
+              cargarTickets(intento + 1);
             }, 700);
-          } else if (mounted) {
-            setTicketsRifa([]);
-            setLoadingTickets(false);
+
+            return;
           }
 
-          return;
+          throw new Error(
+            "No se encontró una sesión válida del administrador."
+          );
         }
 
-        // Solo consultamos los tickets.
-        // No ejecutamos sincronización automática.
         const res = await fetch(
           `/api/admin-tickets-rifa?rifaId=${encodeURIComponent(rifaId)}`,
           {
@@ -96,41 +73,39 @@ export default function AdminNumerosSection({
           }
         );
 
-        const data = await leerRespuestaSegura(res);
+        const data = await res.json().catch(() => null);
 
-        if (!res.ok) {
-          console.error(
-            data.error ||
-              data.raw ||
-              "No se pudieron cargar los tickets de la rifa"
+        if (!res.ok || !data?.ok || !Array.isArray(data.tickets)) {
+          throw new Error(
+            data?.error || "No se pudieron cargar los números."
           );
+        }
 
-          if (mounted && requestId === requestIdRef.current) {
-            setTicketsRifa([]);
-          }
-
+        if (!mounted || controller.signal.aborted) {
           return;
         }
 
-        if (mounted && requestId === requestIdRef.current) {
-          setTicketsRifa(
-            Array.isArray(data.tickets) ? data.tickets : []
-          );
-        }
+        setResultado({
+          rifaId,
+          recarga,
+          tickets: data.tickets,
+        });
+
+        setErrorTickets("");
       } catch (error) {
-        if (error?.name === "AbortError") {
+        if (
+          !mounted ||
+          controller.signal.aborted ||
+          error?.name === "AbortError"
+        ) {
           return;
         }
 
-        console.error("Error cargando tickets de la rifa:", error);
+        console.error("Error cargando números:", error);
 
-        if (mounted && requestId === requestIdRef.current) {
-          setTicketsRifa([]);
-        }
-      } finally {
-        if (mounted && requestId === requestIdRef.current) {
-          setLoadingTickets(false);
-        }
+        setErrorTickets(
+          error?.message || "No se pudieron cargar los números."
+        );
       }
     };
 
@@ -144,29 +119,61 @@ export default function AdminNumerosSection({
         clearTimeout(retryTimeout);
       }
     };
-  }, [rifaSeleccionada?.id, intentos]);
+  }, [rifaId, recarga]);
 
   return (
     <div className="adminpro-page-stack">
       <div ref={numeroRef} id="numero">
-        <RaffleProgressPanel
-          tickets={ticketsRifa}
-          compras={comprasFiltradasPorRifa}
-          rifaSeleccionada={rifaSeleccionada}
-          tieneComprasPendientes={comprasPendientes.length > 0}
-          onOpenManualFromGrid={abrirAprobacionManualDesdeCuadricula}
-          onOpenCompra={() => {
-            setSeccionActiva("compras");
-            scrollToRef(comprasSectionRef, 180);
-          }}
-          numeroGanadorOficial={numeroGanadorOficial}
-        />
 
-        {loadingTickets && (
+        {!rifaId ? (
+          <div className="adminpro-top-info">
+            Selecciona una rifa para consultar sus números.
+          </div>
+        ) : errorTickets ? (
+          <div className="adminpro-top-info">
+            <p>{errorTickets}</p>
+
+            <button
+              type="button"
+              onClick={() => {
+                setErrorTickets("");
+                setRecarga(prev => prev + 1);
+              }}
+              style={{
+                background: "#bf0000",
+                color: "#ffffff",
+                border: "none",
+                borderRadius: 8,
+                padding: "10px 18px",
+                cursor: "pointer",
+                fontWeight: 700,
+                marginTop: 10,
+              }}
+            >
+              🔄 Reintentar
+            </button>
+          </div>
+        ) : loadingTickets ? (
           <div className="adminpro-top-info">
             Cargando números de la rifa...
           </div>
+        ) : (
+          <RaffleProgressPanel
+            tickets={resultado.tickets}
+            compras={comprasFiltradasPorRifa}
+            rifaSeleccionada={rifaSeleccionada}
+            tieneComprasPendientes={comprasPendientes.length > 0}
+            onOpenManualFromGrid={
+              abrirAprobacionManualDesdeCuadricula
+            }
+            onOpenCompra={() => {
+              setSeccionActiva("compras");
+              scrollToRef(comprasSectionRef, 180);
+            }}
+            numeroGanadorOficial={numeroGanadorOficial}
+          />
         )}
+
       </div>
     </div>
   );

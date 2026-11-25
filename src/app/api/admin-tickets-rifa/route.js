@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 export const runtime = "nodejs";
 
-const PAGE_SIZE = 500;
+const PAGE_SIZE = 1000;
 const IN_BATCH_SIZE = 200;
 
 function errorResponse(mensaje, status = 400) {

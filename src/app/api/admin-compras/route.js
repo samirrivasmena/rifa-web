@@ -209,7 +209,50 @@ function obtenerPathComprobante(valorOriginal = "") {
 // Solamente transforma el valor que enviamos al navegador
 // del administrador.
 // =========================================================
+async function prepararComprobantesPorLotes(compras = []) {
+  const paths = [
+    ...new Set(
+      compras
+        .map(compra =>
+          obtenerPathComprobante(compra.comprobante_url)
+        )
+        .filter(Boolean)
+    ),
+  ];
 
+  const urls = new Map();
+  const TAMANO_LOTE = 100;
+
+  for (let i = 0; i < paths.length; i += TAMANO_LOTE) {
+    const lote = paths.slice(i, i + TAMANO_LOTE);
+
+    const { data, error } = await supabaseAdmin.storage
+      .from(COMPROBANTES_BUCKET)
+      .createSignedUrls(lote, SIGNED_URL_SECONDS);
+
+    if (error) {
+      console.error("Error firmando comprobantes:", error);
+      continue;
+    }
+
+    for (const item of data || []) {
+      if (item.path && item.signedUrl && !item.error) {
+        urls.set(item.path, item.signedUrl);
+      }
+    }
+  }
+
+  return compras.map(compra => {
+    const path = obtenerPathComprobante(
+      compra.comprobante_url
+    );
+
+    return {
+      ...compra,
+      comprobante_url: urls.get(path) || null,
+    };
+  });
+}
 async function prepararComprobanteParaAdmin(compra = {}) {
   const valorOriginal = String(
     compra?.comprobante_url || ""
@@ -414,13 +457,10 @@ export async function GET(req) {
     // - comprobantes antiguos guardados como URL pública
     // =========================================================
 
-    const compras =
-      await Promise.all(
-        comprasNormalizadas.map(
-          prepararComprobanteParaAdmin
-        )
-      );
-
+const compras =
+  await prepararComprobantesPorLotes(
+    comprasNormalizadas
+  );
     // =========================================================
     // 7. RESPUESTA
     // =========================================================

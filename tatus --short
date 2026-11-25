@@ -1,0 +1,58 @@
+warning: in the working copy of 'src/app/page.js', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/src/app/page.js b/src/app/page.js[m
+[1mindex fc6eff1..d662375 100644[m
+[1m--- a/src/app/page.js[m
+[1m+++ b/src/app/page.js[m
+[36m@@ -30,33 +30,21 @@[m [mconst obtenerConfiguracion = cache(async () => {[m
+    RIFAS INICIALES[m
+ ========================================================= */[m
+ [m
+[31m-const obtenerRifasIniciales = cache(async () => {[m
+[32m+[m[32masync function obtenerRifasIniciales() {[m
+   try {[m
+     return await obtenerRifasPublicas();[m
+   } catch (error) {[m
+     console.error("Error cargando rifas iniciales:", error);[m
+     return [];[m
+   }[m
+[31m-});[m
+[32m+[m[32m}[m
+ [m
+ /* =========================================================[m
+    METADATA[m
+ ========================================================= */[m
+ [m
+ export async function generateMetadata() {[m
+[31m-  const [config, rifas] = await Promise.all([[m
+[31m-    obtenerConfiguracion(),[m
+[31m-    obtenerRifasIniciales(),[m
+[31m-  ]);[m
+[31m-[m
+[31m-  const rifaActiva = ([m
+[31m-    Array.isArray(rifas) ? rifas : [][m
+[31m-  ).find((rifa) =>[m
+[31m-    ["activa", "activo"].includes([m
+[31m-      String(rifa?.estado || "").trim().toLowerCase()[m
+[31m-    ) &&[m
+[31m-    [true, 1, "1", "true"].includes(rifa?.publicada)[m
+[31m-  );[m
+[32m+[m[32m  const config = await obtenerConfiguracion();[m
+ [m
+   const nombreMarca =[m
+     config?.nombre_marca || "SORTEOS LSD";[m
+[36m@@ -69,11 +57,10 @@[m [mexport async function generateMetadata() {[m
+     config?.seo_descripcion ||[m
+     "Participa en el evento activo de SorteosLSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";[m
+ [m
+[31m-const imagenCompartir =[m
+[31m-  rifaActiva?.portada_url ||[m
+[31m-  config?.seo_imagen ||[m
+[31m-  config?.logo_url ||[m
+[31m-  "/og-image.png";[m
+[32m+[m[32m  const imagenCompartir =[m
+[32m+[m[32m    config?.seo_imagen ||[m
+[32m+[m[32m    config?.logo_url ||[m
+[32m+[m[32m    "/og-image.png";[m
+ [m
+   return {[m
+     metadataBase: new URL(siteUrl),[m
