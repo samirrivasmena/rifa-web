@@ -401,7 +401,7 @@ export default function RaffleProgressPanel({
           <span>Vendidos: {vendidos} · Reservados: {reservados} · Confirmados: {confirmados}</span>
           <span>Ocupación: {porcentajeOcupado}% · Disponible: {porcentajeDisponible}%</span>
         </div>
-        {permiteAsignacionManual && !ticketDetalle.ticket?.solo_azar && (
+        {permiteAsignacionManual && !ticketDetalle?.ticket?.solo_azar && (
           <div className="adminpro-grid-tip">
             Haz clic en un número disponible para iniciar la aprobación manual.
           </div>
