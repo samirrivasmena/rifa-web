@@ -30,21 +30,33 @@ const obtenerConfiguracion = cache(async () => {
    RIFAS INICIALES
 ========================================================= */
 
-async function obtenerRifasIniciales() {
+const obtenerRifasIniciales = cache(async () => {
   try {
     return await obtenerRifasPublicas();
   } catch (error) {
     console.error("Error cargando rifas iniciales:", error);
     return [];
   }
-}
+});
 
 /* =========================================================
    METADATA
 ========================================================= */
 
 export async function generateMetadata() {
-  const config = await obtenerConfiguracion();
+  const [config, rifas] = await Promise.all([
+    obtenerConfiguracion(),
+    obtenerRifasIniciales(),
+  ]);
+
+  const rifaActiva = (
+    Array.isArray(rifas) ? rifas : []
+  ).find((rifa) =>
+    ["activa", "activo"].includes(
+      String(rifa?.estado || "").trim().toLowerCase()
+    ) &&
+    [true, 1, "1", "true"].includes(rifa?.publicada)
+  );
 
   const nombreMarca =
     config?.nombre_marca || "SORTEOS LSD";
@@ -57,10 +69,11 @@ export async function generateMetadata() {
     config?.seo_descripcion ||
     "Participa en el evento activo de SorteosLSD. Compra tus tickets, verifica tus números y consulta eventos disponibles.";
 
-  const imagenCompartir =
-    config?.seo_imagen ||
-    config?.logo_url ||
-    "/og-image.png";
+const imagenCompartir =
+  rifaActiva?.portada_url ||
+  config?.seo_imagen ||
+  config?.logo_url ||
+  "/og-image.png";
 
   return {
     metadataBase: new URL(siteUrl),
