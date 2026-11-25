@@ -872,54 +872,6 @@ const metodoSeleccionado = {
     }
   };
 
-  const compartirPagina = async (opcion) => {
-    const url = "https://www.sorteoslsd.com/";
-    const marca = config?.nombre_marca || "SORTEOS LSD";
-    const activo = Boolean(rifaActiva && esPublicada(rifaActiva.publicada) &&
-      estaDisponibleParaCompra(rifaActiva.estado) && !rifaCompleta);
-    const titulo = activo ? nombreRifa || marca : marca;
-    const mensaje = activo ? [
-      `🔥 ${titulo}`,
-      ...premios.map(premio => `🏆 Premio: ${premio}`),
-      precioPorTicket > 0 ? `🎟️ Boleto: $${precioPorTicket.toFixed(2)} USD` : null,
-      fechaRifa ? `📅 Fecha: ${formatearFechaPublica(fechaRifa)}` : null,
-      horaRifa ? `🕐 Hora: ${formatearHoraPublica(horaRifa)}` : null,
-      "", "📲 Consulta los detalles y condiciones del evento.",
-      `🔴 ${marca}`, "👇 Página oficial:"
-    ].filter(linea => linea !== null).join("\n") :
-      `🔴 ${marca}\n\nConsulta nuestros eventos, resultados y ganadores.\n👇 Página oficial:`;
-    const completo = `${mensaje}\n${url}`;
-    if (opcion === "nativo" && typeof navigator.share === "function") {
-      try {
-        await navigator.share({ title: titulo, text: mensaje, url });
-        return;
-      } catch (error) {
-        if (error?.name === "AbortError") return;
-      }
-    }
-    if (opcion === "nativo") opcion = "copiar";
-    const enlace = encodeURIComponent(url);
-    const texto = encodeURIComponent(mensaje);
-    const redes = {
-      whatsapp: `https://wa.me/?text=${encodeURIComponent(completo)}`,
-      telegram: `https://t.me/share/url?url=${enlace}&text=${texto}`,
-      facebook: `https://www.facebook.com/sharer/sharer.php?u=${enlace}`,
-      x: `https://twitter.com/intent/tweet?text=${texto}&url=${enlace}`
-    };
-    if (redes[opcion]) {
-      window.open(redes[opcion], "_blank", "noopener,noreferrer");
-    } else if (opcion === "correo") {
-      window.location.href = `mailto:?subject=${encodeURIComponent(titulo)}&body=${encodeURIComponent(completo)}`;
-    } else if (["copiar", "instagram", "tiktok"].includes(opcion)) {
-      try {
-        await navigator.clipboard.writeText(completo);
-        await Swal.fire({ ...swalConfig, icon: "success", title: "¡Mensaje copiado!", text: opcion === "instagram" || opcion === "tiktok" ? "Abre tu aplicación y pega el mensaje donde se permita." : "Listo para compartir.", timer: 2500, showConfirmButton: false });
-      } catch {
-        await Swal.fire({ ...swalConfig, title: "Copia el mensaje", input: "textarea", inputValue: completo, confirmButtonText: "Cerrar" });
-      }
-    }
-  };
-
   const limpiarArchivo = () => {
     setFormData((prev) => ({ ...prev, comprobante: null }));
 
@@ -2561,47 +2513,62 @@ limpiarArchivo();
         {rifasFinalizadas.length > 0 && (
           <HomeEventosPreview rifas={rifasFinalizadas} />
         )}
+<div style={{
+  textAlign: "center",
+  padding: "20px 12px"
+}}>
+  <button
+    type="button"
+    onClick={async () => {
+      const url = "https://www.sorteoslsd.com/";
 
-        <section className="lsd-share-wrap" aria-label="Compartir página">
-          <details className="lsd-share-details">
-            <summary>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="m8.6 10.5 6.8-4M8.6 13.5l6.8 4"/></svg>
-              Compartir <span aria-hidden="true">⌄</span>
-            </summary>
-            <div className="lsd-share-grid">
-              {[
-                ["whatsapp", "WhatsApp", "WA", "#08783e"],
-                ["telegram", "Telegram", "➤", "#087ca8"],
-                ["facebook", "Facebook", "f", "#1765c1"],
-                ["instagram", "Instagram · copiar", "◎", "#a52a70"],
-                ["x", "X", "𝕏", "#171717"],
-                ["tiktok", "TikTok · copiar", "♪", "#171717"],
-                ["correo", "Correo", "✉", "#475569"],
-                ["copiar", "Copiar mensaje", "⧉", "#475569"],
-                ["nativo", "Más opciones", "⋯", "#bf0000"],
-              ].map(([id, label, symbol, color]) => (
-                <button key={id} type="button" onClick={() => compartirPagina(id)}>
-                  <span aria-hidden="true" style={{background: color}}>{symbol}</span>
-                  {label}
-                </button>
-              ))}
-            </div>
-            <p className="lsd-share-note">Instagram y TikTok: copia el mensaje y pégalo en la aplicación.</p>
-          </details>
-          <style jsx>{`
-            .lsd-share-wrap { box-sizing:border-box; width:100%; padding:6px 12px 16px; text-align:center; }
-            .lsd-share-details { max-width:280px; margin:0 auto; }
-            summary { list-style:none; display:inline-flex; align-items:center; justify-content:center; gap:7px; min-height:40px; padding:0 13px; border:1px solid #dedede; border-radius:24px; background:#fff; color:#bf0000; font-size:12px; font-weight:700; cursor:pointer; }
-            summary::-webkit-details-marker { display:none; }
-            .lsd-share-grid { display:grid; grid-template-columns:1fr; gap:2px; margin:6px auto 0; padding:6px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; }
-            .lsd-share-grid button { display:flex; align-items:center; gap:9px; min-width:0; min-height:44px; padding:4px 9px; border:0; border-radius:8px; background:transparent; color:#111827; font-size:12px; font-weight:600; cursor:pointer; text-align:left; }
-            .lsd-share-grid button span { display:grid; place-items:center; width:25px; height:25px; flex-shrink:0; border-radius:50%; color:#fff; font-size:12px; font-weight:800; }
-            .lsd-share-note { font-size:11px; color:#64748b; margin:6px 0 0; }
-            summary:focus-visible, button:focus-visible { outline:2px solid #bf0000; outline-offset:3px; }
-            @media(hover:hover) { summary:hover { background:#fff1f1; } .lsd-share-grid button:hover { background:#f1f5f9; } }
-          `}</style>
-        </section>
+      const text = rifaActiva
+        ? `🔥 ${nombreRifa}\n\n🏆 Premio: ${premioPrincipal}\n🎟️ Ticket: $${precioPorTicket.toFixed(2)} USD\n\nConsulta los detalles y condiciones del evento.`
+        : "Consulta los eventos de Sorteos LSD.";
 
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: "Sorteos LSD",
+            text,
+            url
+          });
+        } else {
+          await navigator.clipboard.writeText(
+            `${text}\n\n${url}`
+          );
+
+          Swal.fire({
+            ...swalConfig,
+            icon: "success",
+            title: "¡Enlace copiado!"
+          });
+        }
+      } catch (error) {
+        if (error.name !== "AbortError") {
+          Swal.fire({
+            ...swalConfig,
+            icon: "info",
+            title: "Compartir evento",
+            text: url
+          });
+        }
+      }
+    }}
+    style={{
+      background: "#fff",
+      color: "#bf0000",
+      border: "1px solid #bf0000",
+      borderRadius: "30px",
+      padding: "10px 20px",
+      fontSize: "13px",
+      fontWeight: "700",
+      cursor: "pointer"
+    }}
+  >
+    🔗 Compartir evento
+  </button>
+</div>
         <PublicFooter />
       </main>
 

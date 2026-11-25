@@ -4211,21 +4211,27 @@ a.home-top-link,
     width: 100%;
   }
 
-  .floating-header {
-    height: 96px;
-    grid-template-columns: 62px 1fr 62px;
-    padding: 0 12px;
-  }
-
+.floating-header {
+  height: auto;
+  min-height: 96px;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  padding: 12px 4px;
+  box-sizing: border-box;
+}
   .floating-logo {
     width: 46px;
   }
 
-  .floating-center {
-    width: 100%;
-    padding: 10px 12px;
-    border-radius: 18px;
-  }
+.floating-center {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 7px 30;
+  box-sizing: border-box;
+  text-align: center;
+  border-radius: 18px;
+  overflow-wrap: anywhere;
+}
 
   .floating-center h3 {
     font-size: 1rem;
@@ -10005,4 +10011,26 @@ body > .principal-reglas-modal-overlay {
     var(--site-dots, #dc2626) 11%,
     transparent
   ) !important;
+}
+/* ESTABILIDAD MÓVIL SIN AFECTAR EL MENÚ */
+
+@media (max-width: 768px) {
+
+  html {
+    touch-action: manipulation;
+    overflow-x: clip;
+    overscroll-behavior-x: none;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .page .smart-progress {
+    box-sizing: border-box;
+    max-width: 100%;
+  }
+
+  .page .public-footer {
+    width: 100%;
+    margin-left: 0;
+  }
+
 }
