@@ -1989,7 +1989,7 @@ if (!res.ok) {
 </div>
                     <div className="evento-mini-box">
                       <span>PROGRESO</span>
-                      <strong>{porcentajeVendido.toFixed(1)}%</strong>
+                      <strong>{progreso.porcentajeConfirmado.toFixed(1)}%</strong>
                     </div>
 
                     <div className="evento-mini-box">
@@ -2003,18 +2003,18 @@ if (!res.ok) {
                 </div>
 
                 <div className="evento-card premium-card-hover">
-                  <p className="evento-kicker">AVANCE DE VENTAS</p>
+                  <p className="evento-kicker">AVANCE DEL EVENTO</p>
                   <h2>Progreso del evento</h2>
 
-                  <ProgressVentaBar
-                    value={porcentajeVendido}
-                    soldOut={rifaCompleta}
-                    text={
-                      totalNumeros > 0
-                        ? `${ticketsVendidos} de ${totalNumeros} boletos vendidos`
-                        : "Progreso de venta"
-                    }
-                  />
+<ProgressVentaBar
+  value={progreso.porcentajeConfirmado}
+  soldOut={progreso.soldOut}
+  text={
+    totalNumeros > 0
+      ? `${progreso.confirmados} de ${totalNumeros} boletos confirmados`
+      : "Progreso del evento"
+  }
+/>
 
                   {rifaCompleta && (
                     <p className="evento-description" style={{ marginTop: "12px" }}>

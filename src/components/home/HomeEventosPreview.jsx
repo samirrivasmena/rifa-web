@@ -58,47 +58,9 @@ export default function HomeEventosPreview({ rifas = [] }) {
     });
   };
 
-  const normalizarProgreso = (evento) => {
-    const progresoFallback = getRifaProgress(evento || {});
-
-    const total = Number(
-      evento?.total_numeros ??
-        evento?.cantidad_numeros ??
-        evento?.numeros_totales ??
-        progresoFallback.total ??
-        0
-    );
-
-    const vendidos = Number(
-      evento?.tickets_vendidos ??
-        evento?.numeros_vendidos ??
-        progresoFallback.vendidos ??
-        0
-    );
-
-    const porcentajeApi = Number(evento?.porcentaje_vendido);
-
-    const porcentaje = Number.isFinite(porcentajeApi)
-      ? Number(
-          Math.min(
-            Math.max(porcentajeApi, 0),
-            100
-          ).toFixed(2)
-        )
-      : progresoFallback.porcentaje;
-
-    const soldOut =
-      Boolean(evento?.sold_out) ||
-      progresoFallback.soldOut ||
-      (total > 0 && vendidos >= total);
-
-    return {
-      total,
-      vendidos,
-      porcentaje,
-      soldOut,
-    };
-  };
+const normalizarProgreso = (evento) => {
+  return getRifaProgress(evento || {});
+};
 
   /* =========================================================
      DETECTAR TELÉFONO
@@ -388,11 +350,12 @@ export default function HomeEventosPreview({ rifas = [] }) {
 
                       {/* PROGRESO */}
                       <div className="home-progress-wrap">
-                        <ProgressVentaBar
-                          value={progreso.porcentaje}
-                          soldOut={progreso.soldOut}
-                          compact
-                        />
+<ProgressVentaBar
+  value={progreso.porcentajeConfirmado}
+  soldOut={progreso.soldOut}
+  text={progreso.soldOut ? "agotado" : "completado"}
+  compact
+/>
                       </div>
 
                       {/* BOTÓN */}

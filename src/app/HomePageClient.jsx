@@ -1596,10 +1596,11 @@ limpiarArchivo();
 
             {totalNumeros > 0 && (
               <section className="mini-progress-wrap reveal-fade-up reveal-delay-1">
-                <ProgressVentaBar
-                  value={porcentajeVendido}
-                  soldOut={rifaCompleta}
-                />
+<ProgressVentaBar
+  value={progresoRifaActiva.porcentajeConfirmado}
+  soldOut={progresoRifaActiva.soldOut}
+  text={progresoRifaActiva.soldOut ? "agotado" : "completado"}
+/>
               </section>
             )}
 

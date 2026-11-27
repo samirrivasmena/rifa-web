@@ -1603,9 +1603,9 @@ const progreso = getRifaProgress(evento);
 
                           <ProgressVentaBar
 
-                            value={progreso.porcentaje}
+                            value={progreso.porcentajeConfirmado}
 
-                            soldOut={progreso.soldOut}
+                            soldOut={progreso.soldOut} text={progreso.soldOut ? "agotado" : "completado"}
 
                           />
 
@@ -1732,9 +1732,9 @@ const progreso = getRifaProgress(evento);
 
                           <ProgressVentaBar
 
-                            value={progreso.porcentaje}
+                            value={progreso.porcentajeConfirmado}
 
-                            soldOut={progreso.soldOut}
+                            soldOut={progreso.soldOut} text={progreso.soldOut ? "agotado" : "completado"}
 
                           />
 
@@ -1946,9 +1946,9 @@ const progreso = getRifaProgress(evento);
 
                             <ProgressVentaBar
 
-                              value={progreso.porcentaje}
+                              value={progreso.porcentajeConfirmado}
 
-                              soldOut={progreso.soldOut}
+                              soldOut={progreso.soldOut} text={progreso.soldOut ? "agotado" : "completado"}
 
                             />
 
